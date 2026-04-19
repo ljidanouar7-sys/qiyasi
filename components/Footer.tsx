@@ -27,7 +27,7 @@ export default function Footer() {
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">الحساب</p>
               <ul className="space-y-3">
-                {[{href:"/auth",l:"تسجيل الدخول"},{href:"/auth",l:"إنشاء حساب"},{href:"/dashboard",l:"لوحة التحكم"}].map((i,idx)=>(
+                {[{href:"/auth",l:"تسجيل الدخول"},{href:"/auth",l:"إنشاء حساب"}].map((i,idx)=>(
                   <li key={idx}><Link href={i.href} className="text-sm text-slate-500 hover:text-slate-900 transition">{i.l}</Link></li>
                 ))}
               </ul>
