@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn-primary {
+  background: #0F172A;
+  color: white;
+  font-weight: 700;
+  padding: 12px 28px;
+  border-radius: 10px;
+  transition: background 0.2s, transform 0.15s;
+  display: inline-block;
+  font-size: 15px;
+}
+.btn-primary:hover { background: #1E293B; transform: translateY(-1px); }
+
+.btn-outline {
+  border: 1.5px solid #CBD5E1;
+  color: #334155;
+  font-weight: 600;
+  padding: 12px 28px;
+  border-radius: 10px;
+  transition: border-color 0.2s, background 0.2s;
+  display: inline-block;
+  font-size: 15px;
+}
+.btn-outline:hover { border-color: #94A3B8; background: #F8FAFC; }
+
+.card {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F0F9FF;
+  color: #0284C7;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: 1px solid #BAE6FD;
+}
