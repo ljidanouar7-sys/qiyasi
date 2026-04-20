@@ -117,21 +117,25 @@
 
   function findCartButton() {
     const selectors = [
-      '[name="add"]',
-      '.btn-add-to-cart',
-      '.single_add_to_cart_button',
-      '.product-form__submit',
-      '[id*="AddToCart"]',
-      '[class*="add-to-cart"]',
-      '[class*="addtocart"]',
-      '[data-action*="cart"]',
+      // Salla (سلة)
+      'salla-add-to-cart button', 'salla-add-to-cart', '.btn-add-to-cart',
+      '[class*="add-cart"]', '[class*="cart-btn"]', '[class*="btn-cart"]',
+      // Shopify
+      '[name="add"]', '.product-form__submit', '[id*="AddToCart"]',
+      // WooCommerce
+      '.single_add_to_cart_button', 'button.add_to_cart_button',
+      // Generic
+      '[class*="add-to-cart"]', '[class*="addtocart"]', '[class*="buy-now"]',
+      '[class*="buynow"]', '[data-action*="cart"]',
       'form[action*="cart"] button[type="submit"]',
-      '.product-actions button',
-      '.product-buy button',
+      '.product-actions button[type="submit"]',
+      '.product-buy button', '.product-form button[type="submit"]',
     ];
     for (const sel of selectors) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) return el;
+      try {
+        const el = document.querySelector(sel);
+        if (el) return el;
+      } catch(e) {}
     }
     return null;
   }
@@ -143,21 +147,38 @@
     return !!findCartButton();
   }
 
-  function injectButton() {
-    if (document.getElementById("ssm-trigger")) return;
-    if (!isProductPage()) return;
-
-    const cartBtn = findCartButton();
-    if (!cartBtn) return;
-
+  function createSsmBtn() {
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
     btn.type = "button";
     btn.innerHTML = "📏 احسب مقاسي";
     btn.onclick = () => { setupModal(); openModal(); };
+    return btn;
+  }
 
-    // Insert right before the cart button
-    cartBtn.parentNode.insertBefore(btn, cartBtn);
+  function injectButton() {
+    if (document.getElementById("ssm-trigger")) return;
+
+    const cartBtn = findCartButton();
+
+    if (cartBtn) {
+      // Inline: before the cart button
+      const btn = createSsmBtn();
+      cartBtn.parentNode.insertBefore(btn, cartBtn);
+    } else if (isProductPage()) {
+      // Fallback floating button if on product page but cart button not detected
+      const btn = createSsmBtn();
+      btn.style.cssText = "position:fixed!important;bottom:24px!important;left:24px!important;z-index:2147483647!important;border-radius:50px!important;box-shadow:0 4px 20px rgba(13,148,136,.5)!important";
+      document.body.appendChild(btn);
+    }
+  }
+
+  function tryInject(attempts) {
+    if (document.getElementById("ssm-trigger")) return;
+    const cartBtn = findCartButton();
+    if (cartBtn) { injectButton(); return; }
+    if (attempts > 0) setTimeout(() => tryInject(attempts - 1), 600);
+    else if (isProductPage()) injectButton(); // fallback
   }
 
   function openModal() { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
@@ -223,11 +244,11 @@
     init(config) {
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
-      const run = () => { setupModal(); injectButton(); };
+      const run = () => { setupModal(); tryInject(5); };
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => setTimeout(run, 400));
+        document.addEventListener("DOMContentLoaded", () => setTimeout(run, 500));
       } else {
-        setTimeout(run, 400);
+        setTimeout(run, 500);
       }
     },
     open() { setupModal(); openModal(); }
