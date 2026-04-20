@@ -2,40 +2,34 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
 
-
 export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();
     setLoading(true);
     setMessage("");
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      console.log("LOGIN ERROR:", error);
-      if (error) setMessage(error.message + " | code: " + error.status);
-      else window.location.href = "/dashboard";
-    } else {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) { setMessage(error.message); setLoading(false); return; }
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) setMessage("تم إنشاء الحساب! يمكنك تسجيل الدخول الآن.");
-      else window.location.href = "/dashboard";
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) setMessage("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+    else window.location.href = "/dashboard";
+
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6">
-          {isLogin ? "تسجيل الدخول" : "إنشاء حساب"}
-        </h1>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50" dir="rtl">
+      <div className="bg-white p-10 rounded-2xl shadow-sm border border-slate-200 w-full max-w-sm">
+        <div className="flex items-center gap-2.5 justify-center mb-8">
+          <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center text-white font-black text-sm">ق</div>
+          <span className="font-black text-slate-900 text-lg">قياسي</span>
+        </div>
+
+        <h1 className="text-2xl font-black text-slate-900 text-center mb-2">تسجيل الدخول</h1>
+        <p className="text-slate-400 text-sm text-center mb-8">أدخل بيانات حسابك للمتابعة</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
@@ -43,7 +37,7 @@ export default function AuthPage() {
             placeholder="البريد الإلكتروني"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="border rounded-lg p-3 text-right"
+            className="border border-slate-200 rounded-xl p-3.5 text-right text-sm focus:outline-none focus:border-teal-400 transition"
             required
           />
           <input
@@ -51,31 +45,21 @@ export default function AuthPage() {
             placeholder="كلمة المرور"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border rounded-lg p-3 text-right"
+            className="border border-slate-200 rounded-xl p-3.5 text-right text-sm focus:outline-none focus:border-teal-400 transition"
             required
           />
           <button
             type="submit"
             disabled={loading}
-            className="bg-blue-600 text-white rounded-lg p-3 font-bold hover:bg-blue-700"
+            className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-3.5 font-bold text-sm transition mt-1"
           >
-            {loading ? "جاري التحميل..." : isLogin ? "دخول" : "إنشاء حساب"}
+            {loading ? "جاري التحميل..." : "دخول ←"}
           </button>
         </form>
 
         {message && (
           <p className="mt-4 text-center text-sm text-red-500">{message}</p>
         )}
-
-        <p className="mt-4 text-center text-sm text-gray-500">
-          {isLogin ? "ليس لديك حساب؟" : "لديك حساب بالفعل؟"}{" "}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-blue-600 font-bold"
-          >
-            {isLogin ? "إنشاء حساب" : "تسجيل الدخول"}
-          </button>
-        </p>
       </div>
     </div>
   );
