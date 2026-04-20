@@ -46,12 +46,7 @@ export default function EmbedPage() {
 
   const domain = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
-  const embedCode = `<!-- زر احسب مقاسي — قياسي -->
-<button
-  onclick="SizeMatcher.open()"
-  style="background:#0d9488;color:#fff;padding:11px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px">
-  📏 احسب مقاسي
-</button>
+  const embedCode = `<!-- قياسي - احسب مقاسي | الصق هذا في هيدر متجرك -->
 <script src="${domain}/widget.js"></script>
 <script>SizeMatcher.init({ apiKey: "${apiKey || "YOUR_API_KEY"}" });</script>`;
 
@@ -140,9 +135,8 @@ export default function EmbedPage() {
           <div className="space-y-4">
             {[
               { n: "1", t: "انسخ الكود", d: "اضغط زر \"نسخ الكود\" بالأعلى" },
-              { n: "2", t: "افتح إعدادات متجرك", d: "في سلة: الإعدادات ← إضافة كود للهيدر. في Shopify: Theme ← Edit Code." },
-              { n: "3", t: "الصق الكود", d: "ألصق الكود في أي مكان تريد ظهور الزر فيه — بجانب خيارات المقاس مثلاً" },
-              { n: "4", t: "احفظ وجرب", d: "افتح صفحة منتج وستجد الزر جاهزاً للاستخدام" },
+              { n: "2", t: "الصقه في هيدر متجرك", d: "في سلة: الإعدادات ← إضافة كود للهيدر. في Shopify: Theme ← Edit Code ← theme.liquid" },
+              { n: "3", t: "احفظ — خلاص!", d: "الزر سيظهر تلقائياً في كل صفحة منتج بجانب زر الشراء — بدون أي إعداد إضافي" },
             ].map(s => (
               <div key={s.n} className="flex gap-4">
                 <div className="w-8 h-8 rounded-full bg-teal-50 border border-teal-200 text-teal-700 font-black text-sm flex items-center justify-center flex-shrink-0">

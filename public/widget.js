@@ -6,8 +6,8 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{position:fixed;bottom:28px;left:28px;z-index:2147483647;background:#0d9488;color:#fff;border:none;padding:13px 22px 13px 18px;border-radius:50px;cursor:pointer;font-size:15px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;box-shadow:0 4px 20px rgba(13,148,136,.45);transition:all .25s;display:flex;align-items:center;gap:8px;white-space:nowrap;line-height:1}
-#ssm-trigger:hover{background:#0f766e;transform:translateY(-2px);box-shadow:0 6px 28px rgba(13,148,136,.55)}
+#ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:#0d9488;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;transition:all .2s;white-space:nowrap;line-height:1}
+#ssm-trigger:hover{background:#0f766e}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -115,6 +115,51 @@
     overlay.onclick = e => { if (e.target === overlay) closeModal(); };
   }
 
+  function findCartButton() {
+    const selectors = [
+      '[name="add"]',
+      '.btn-add-to-cart',
+      '.single_add_to_cart_button',
+      '.product-form__submit',
+      '[id*="AddToCart"]',
+      '[class*="add-to-cart"]',
+      '[class*="addtocart"]',
+      '[data-action*="cart"]',
+      'form[action*="cart"] button[type="submit"]',
+      '.product-actions button',
+      '.product-buy button',
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el && el.offsetParent !== null) return el;
+    }
+    return null;
+  }
+
+  function isProductPage() {
+    const url = window.location.href.toLowerCase();
+    const urlHints = ['/product', '/item/', '/p/', '/منتج', '/سلعة'];
+    if (urlHints.some(p => url.includes(p))) return true;
+    return !!findCartButton();
+  }
+
+  function injectButton() {
+    if (document.getElementById("ssm-trigger")) return;
+    if (!isProductPage()) return;
+
+    const cartBtn = findCartButton();
+    if (!cartBtn) return;
+
+    const btn = document.createElement("button");
+    btn.id = "ssm-trigger";
+    btn.type = "button";
+    btn.innerHTML = "📏 احسب مقاسي";
+    btn.onclick = () => { setupModal(); openModal(); };
+
+    // Insert right before the cart button
+    cartBtn.parentNode.insertBefore(btn, cartBtn);
+  }
+
   function openModal() { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
   function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
@@ -178,15 +223,13 @@
     init(config) {
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
+      const run = () => { setupModal(); injectButton(); };
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", setupModal);
+        document.addEventListener("DOMContentLoaded", () => setTimeout(run, 400));
       } else {
-        setupModal();
+        setTimeout(run, 400);
       }
     },
-    open() {
-      setupModal();
-      openModal();
-    }
+    open() { setupModal(); openModal(); }
   };
 })();
