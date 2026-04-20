@@ -6,9 +6,8 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{display:inline-flex;align-items:center;gap:6px;background:none;color:#2c7da0;border:none;padding:0;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;text-decoration:underline;text-underline-offset:3px;transition:color .2s}
-#ssm-trigger:hover{color:#1e5f7a}
-#qiyasi-widget{display:inline-block;margin-top:8px}
+#ssm-trigger{position:fixed;bottom:24px;left:24px;z-index:99998;background:#0d9488;color:#fff;border:none;padding:14px 22px;border-radius:50px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 4px 20px rgba(13,148,136,.45);transition:all .2s;font-family:'Segoe UI',Arial,sans-serif;display:flex;align-items:center;gap:8px;white-space:nowrap}
+#ssm-trigger:hover{background:#0f766e;transform:translateY(-2px);box-shadow:0 6px 24px rgba(13,148,136,.5)}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -115,13 +114,7 @@
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
 
-    // Place button inside #qiyasi-widget if it exists, else append to body
-    const target = document.getElementById("qiyasi-widget");
-    if (target) {
-      target.appendChild(btn);
-    } else {
-      document.body.appendChild(btn);
-    }
+    document.body.appendChild(btn);
     document.body.appendChild(overlay);
 
     btn.onclick = openModal;

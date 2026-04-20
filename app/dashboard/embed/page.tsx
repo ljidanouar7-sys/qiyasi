@@ -114,10 +114,7 @@ export default function EmbedPage() {
 
   const domain = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
-  const embedCode = `<!-- 1) ضع هذا تحت خيارات المقاسات في صفحة المنتج -->
-<div id="qiyasi-widget"></div>
-
-<!-- 2) ضع هذا قبل </body> في نهاية الصفحة -->
+  const embedCode = `<!-- قياسي - Smart Size Matcher -->
 <script src="${domain}/widget.js"></script>
 <script>
   SizeMatcher.init({ apiKey: "${apiKey || "YOUR_API_KEY"}" });
