@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 
 export default function AuthPage() {
@@ -7,6 +7,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("blocked=1")) {
+      setMessage("حسابك موقوف — تواصل مع الإدارة.");
+    }
+  }, []);
 
   async function handleSubmit(e: React.SyntheticEvent) {
     e.preventDefault();

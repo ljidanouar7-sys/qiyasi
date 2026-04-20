@@ -17,10 +17,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [email, setEmail] = useState("");
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) router.replace("/auth");
-      else setEmail(user.email ?? "");
-    });
+    async function check() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/auth"); return; }
+      setEmail(user.email ?? "");
+
+      const { data } = await supabase.from("users").select("status").eq("id", user.id).single();
+      if (data?.status === "inactive") {
+        await supabase.auth.signOut();
+        router.replace("/auth?blocked=1");
+      }
+    }
+    check();
   }, [router]);
 
   async function logout() {
