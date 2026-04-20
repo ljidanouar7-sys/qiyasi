@@ -244,11 +244,31 @@
     init(config) {
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
-      const run = () => { setupModal(); tryInject(5); };
+
+      function start() {
+        setupModal();
+
+        // Try immediately
+        if (findCartButton()) { injectButton(); return; }
+
+        // Watch DOM for cart button appearing (handles lazy-loaded pages)
+        const observer = new MutationObserver(() => {
+          if (document.getElementById("ssm-trigger")) { observer.disconnect(); return; }
+          if (findCartButton()) { injectButton(); observer.disconnect(); }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Stop watching after 15 seconds — fallback if nothing found
+        setTimeout(() => {
+          observer.disconnect();
+          if (!document.getElementById("ssm-trigger") && isProductPage()) injectButton();
+        }, 15000);
+      }
+
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => setTimeout(run, 500));
+        document.addEventListener("DOMContentLoaded", start);
       } else {
-        setTimeout(run, 500);
+        start();
       }
     },
     open() { setupModal(); openModal(); }
