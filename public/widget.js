@@ -251,18 +251,17 @@
         // Try immediately
         if (findCartButton()) { injectButton(); return; }
 
-        // Watch DOM for cart button appearing (handles lazy-loaded pages)
-        const observer = new MutationObserver(() => {
-          if (document.getElementById("ssm-trigger")) { observer.disconnect(); return; }
-          if (findCartButton()) { injectButton(); observer.disconnect(); }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        // Stop watching after 15 seconds — fallback if nothing found
-        setTimeout(() => {
-          observer.disconnect();
-          if (!document.getElementById("ssm-trigger") && isProductPage()) injectButton();
-        }, 15000);
+        // Fast interval (200ms) — catches lazy-loaded buttons quickly
+        let tries = 0;
+        const interval = setInterval(() => {
+          if (document.getElementById("ssm-trigger")) { clearInterval(interval); return; }
+          if (findCartButton()) { injectButton(); clearInterval(interval); return; }
+          tries++;
+          if (tries > 40) { // 8 seconds max
+            clearInterval(interval);
+            if (!document.getElementById("ssm-trigger") && isProductPage()) injectButton();
+          }
+        }, 200);
       }
 
       if (document.readyState === "loading") {
