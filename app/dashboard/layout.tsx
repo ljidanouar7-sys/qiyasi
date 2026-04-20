@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
+const ADMIN_EMAIL = "ljidanouar7@gmail.com";
+
 const navLinks = [
   { href: "/dashboard", label: "الرئيسية", icon: "🏠" },
   { href: "/dashboard/products", label: "المنتجات", icon: "🛍️" },
@@ -22,10 +24,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!user) { router.replace("/auth"); return; }
       setEmail(user.email ?? "");
 
-      const { data } = await supabase.from("users").select("status").eq("id", user.id).single();
-      if (data?.status === "inactive") {
-        await supabase.auth.signOut();
-        router.replace("/auth?blocked=1");
+      if (user.email !== ADMIN_EMAIL) {
+        const { data } = await supabase.from("users").select("status").eq("id", user.id).single();
+        if (data?.status === "inactive") {
+          await supabase.auth.signOut();
+          router.replace("/auth?blocked=1");
+        }
       }
     }
     check();
