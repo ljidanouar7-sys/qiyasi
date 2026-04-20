@@ -115,35 +115,39 @@
     overlay.onclick = e => { if (e.target === overlay) closeModal(); };
   }
 
+  // Keywords to identify the cart/buy button by its TEXT — works on ANY platform
+  const CART_KEYWORDS = [
+    'add to cart', 'add to bag', 'buy now', 'purchase', 'order now',
+    'ajouter au panier', 'commander', 'acheter', 'ajouter',
+    'أضف للسلة', 'أضف إلى السلة', 'إضافة للسلة', 'إضافة إلى السلة',
+    'اشتر الآن', 'اطلب الآن', 'أضف', 'شراء', 'اشتري',
+    'agregar al carrito', 'comprar ahora',
+    'in den warenkorb', 'jetzt kaufen',
+  ];
+
   function findCartButton() {
-    const selectors = [
-      // Salla (سلة)
-      'salla-add-to-cart button', 'salla-add-to-cart', '.btn-add-to-cart',
-      '[class*="add-cart"]', '[class*="cart-btn"]', '[class*="btn-cart"]',
-      // Shopify
+    // 1) Search by text content — platform-independent
+    const candidates = document.querySelectorAll('button, [role="button"], a.btn, input[type="submit"], input[type="button"]');
+    for (const el of candidates) {
+      const text = (el.textContent || el.value || el.getAttribute('aria-label') || '').toLowerCase().trim();
+      if (CART_KEYWORDS.some(k => text.includes(k)) && el.offsetParent !== null) return el;
+    }
+    // 2) Fallback: common CSS selectors
+    const cssFallbacks = [
       '[name="add"]', '.product-form__submit', '[id*="AddToCart"]',
-      // WooCommerce
-      '.single_add_to_cart_button', 'button.add_to_cart_button',
-      // Generic
-      '[class*="add-to-cart"]', '[class*="addtocart"]', '[class*="buy-now"]',
-      '[class*="buynow"]', '[data-action*="cart"]',
-      'form[action*="cart"] button[type="submit"]',
-      '.product-actions button[type="submit"]',
-      '.product-buy button', '.product-form button[type="submit"]',
+      '.single_add_to_cart_button', '.btn-add-to-cart',
+      '[class*="add-to-cart"]', '[class*="addtocart"]',
+      'salla-add-to-cart button',
     ];
-    for (const sel of selectors) {
-      try {
-        const el = document.querySelector(sel);
-        if (el) return el;
-      } catch(e) {}
+    for (const sel of cssFallbacks) {
+      try { const el = document.querySelector(sel); if (el) return el; } catch(e) {}
     }
     return null;
   }
 
   function isProductPage() {
     const url = window.location.href.toLowerCase();
-    const urlHints = ['/product', '/item/', '/p/', '/منتج', '/سلعة'];
-    if (urlHints.some(p => url.includes(p))) return true;
+    if (['/product', '/item/', '/p/', '/منتج', '/سلعة', '/detail'].some(p => url.includes(p))) return true;
     return !!findCartButton();
   }
 
@@ -158,27 +162,23 @@
 
   function injectButton() {
     if (document.getElementById("ssm-trigger")) return;
-
     const cartBtn = findCartButton();
-
     if (cartBtn) {
-      // Inline: before the cart button
       const btn = createSsmBtn();
       cartBtn.parentNode.insertBefore(btn, cartBtn);
     } else if (isProductPage()) {
-      // Fallback floating button if on product page but cart button not detected
+      // Floating fallback — guaranteed to work
       const btn = createSsmBtn();
-      btn.style.cssText = "position:fixed!important;bottom:24px!important;left:24px!important;z-index:2147483647!important;border-radius:50px!important;box-shadow:0 4px 20px rgba(13,148,136,.5)!important";
+      btn.style.cssText = "position:fixed!important;bottom:24px!important;left:24px!important;z-index:2147483647!important;border-radius:50px!important;padding:14px 22px!important;box-shadow:0 4px 20px rgba(13,148,136,.5)!important";
       document.body.appendChild(btn);
     }
   }
 
   function tryInject(attempts) {
     if (document.getElementById("ssm-trigger")) return;
-    const cartBtn = findCartButton();
-    if (cartBtn) { injectButton(); return; }
-    if (attempts > 0) setTimeout(() => tryInject(attempts - 1), 600);
-    else if (isProductPage()) injectButton(); // fallback
+    if (findCartButton()) { injectButton(); return; }
+    if (attempts > 0) setTimeout(() => tryInject(attempts - 1), 700);
+    else if (isProductPage()) injectButton();
   }
 
   function openModal() { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
