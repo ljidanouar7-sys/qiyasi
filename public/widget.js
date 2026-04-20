@@ -94,28 +94,38 @@
   function gid(id) { return document.getElementById(id); }
 
   function findSizeContainer() {
-    // Common CSS selectors used by Shopify, Salla, WooCommerce, and generic stores
-    const selectors = [
+    // 1) Common size selector patterns (Shopify, Salla, WooCommerce, generic)
+    const sizeSelectors = [
       '[name="Size"]', '[name="size"]', '[name="TAILLE"]', '[name="taille"]',
       '.product-form__input', '.variant-input-wrap', '.swatch-wrapper',
       '.product-variants', '.size-options', '.size-selector',
       '.variations', '.woocommerce-variation',
       '[data-option-name*="size" i]', '[data-option-name*="taille" i]',
-      '[data-option-name*="مقاس"]',
-      'fieldset', '.product__variants',
+      '[data-option-name*="مقاس"]', '.product__variants',
     ];
-    for (const sel of selectors) {
+    for (const sel of sizeSelectors) {
       const el = document.querySelector(sel);
       if (el) return el;
     }
-    // Fallback: find any element whose label/heading contains size keywords
+    // 2) Find label/heading containing size keywords
     const keywords = ['size', 'taille', 'مقاس', 'المقاس', 'القياس'];
-    const labels = document.querySelectorAll('label, h3, h4, p, span, div');
-    for (const el of labels) {
-      const txt = el.textContent.toLowerCase().trim();
-      if (keywords.some(k => txt.includes(k)) && el.children.length === 0 && txt.length < 30) {
-        return el.closest('div, fieldset, section') || el;
+    for (const el of document.querySelectorAll('label, span, p, div')) {
+      const txt = el.textContent.trim();
+      if (keywords.some(k => txt.toLowerCase().includes(k)) && txt.length < 25 && el.children.length === 0) {
+        const container = el.closest('div, fieldset, section');
+        if (container) return container;
       }
+    }
+    // 3) Fallback: place above "Add to cart" button
+    const cartSelectors = [
+      '[name="add"]', '.btn-add-to-cart', '.add-to-cart',
+      'button[type="submit"]', '.product-form__submit',
+      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]',
+      '[class*="addtocart" i]', '[id*="AddToCart" i]',
+    ];
+    for (const sel of cartSelectors) {
+      const el = document.querySelector(sel);
+      if (el) return el.closest('div, form') || el;
     }
     return null;
   }
@@ -142,19 +152,15 @@
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
 
+    // Only show on product pages (when size selector exists)
+    const sizeContainer = findSizeContainer();
+    if (!sizeContainer) return;
+
     const wrap = document.createElement("div");
     wrap.id = "ssm-trigger-wrap";
     wrap.appendChild(btn);
 
-    // Auto-detect size selector on the page
-    const sizeContainer = findSizeContainer();
-    if (sizeContainer) {
-      sizeContainer.parentNode.insertBefore(wrap, sizeContainer.nextSibling);
-    } else {
-      // Fallback: floating button
-      btn.style.cssText = "position:fixed;bottom:24px;left:24px;z-index:99998;background:#0d9488;color:#fff;border:none;padding:12px 20px;border-radius:50px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(13,148,136,.4);font-family:'Segoe UI',Arial,sans-serif;text-decoration:none";
-      document.body.appendChild(wrap);
-    }
+    sizeContainer.parentNode.insertBefore(wrap, sizeContainer.nextSibling);
     document.body.appendChild(overlay);
 
     btn.onclick = openModal;
