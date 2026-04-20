@@ -6,8 +6,9 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{position:fixed;bottom:24px;left:24px;z-index:99998;background:#0d9488;color:#fff;border:none;padding:14px 22px;border-radius:50px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 4px 20px rgba(13,148,136,.45);transition:all .2s;font-family:'Segoe UI',Arial,sans-serif;display:flex;align-items:center;gap:8px;white-space:nowrap}
-#ssm-trigger:hover{background:#0f766e;transform:translateY(-2px);box-shadow:0 6px 24px rgba(13,148,136,.5)}
+#ssm-trigger{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;cursor:pointer;font-size:14px;font-weight:700;color:#0d9488;font-family:'Segoe UI',Arial,sans-serif;text-decoration:underline;text-underline-offset:3px;transition:color .2s;margin-top:10px}
+#ssm-trigger:hover{color:#0f766e}
+#ssm-trigger-wrap{margin:8px 0 4px}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -92,6 +93,33 @@
 
   function gid(id) { return document.getElementById(id); }
 
+  function findSizeContainer() {
+    // Common CSS selectors used by Shopify, Salla, WooCommerce, and generic stores
+    const selectors = [
+      '[name="Size"]', '[name="size"]', '[name="TAILLE"]', '[name="taille"]',
+      '.product-form__input', '.variant-input-wrap', '.swatch-wrapper',
+      '.product-variants', '.size-options', '.size-selector',
+      '.variations', '.woocommerce-variation',
+      '[data-option-name*="size" i]', '[data-option-name*="taille" i]',
+      '[data-option-name*="مقاس"]',
+      'fieldset', '.product__variants',
+    ];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return el;
+    }
+    // Fallback: find any element whose label/heading contains size keywords
+    const keywords = ['size', 'taille', 'مقاس', 'المقاس', 'القياس'];
+    const labels = document.querySelectorAll('label, h3, h4, p, span, div');
+    for (const el of labels) {
+      const txt = el.textContent.toLowerCase().trim();
+      if (keywords.some(k => txt.includes(k)) && el.children.length === 0 && txt.length < 30) {
+        return el.closest('div, fieldset, section') || el;
+      }
+    }
+    return null;
+  }
+
   function injectHTML() {
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
@@ -114,7 +142,19 @@
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
 
-    document.body.appendChild(btn);
+    const wrap = document.createElement("div");
+    wrap.id = "ssm-trigger-wrap";
+    wrap.appendChild(btn);
+
+    // Auto-detect size selector on the page
+    const sizeContainer = findSizeContainer();
+    if (sizeContainer) {
+      sizeContainer.parentNode.insertBefore(wrap, sizeContainer.nextSibling);
+    } else {
+      // Fallback: floating button
+      btn.style.cssText = "position:fixed;bottom:24px;left:24px;z-index:99998;background:#0d9488;color:#fff;border:none;padding:12px 20px;border-radius:50px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(13,148,136,.4);font-family:'Segoe UI',Arial,sans-serif;text-decoration:none";
+      document.body.appendChild(wrap);
+    }
     document.body.appendChild(overlay);
 
     btn.onclick = openModal;
