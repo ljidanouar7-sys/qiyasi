@@ -218,21 +218,44 @@
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
 
-      function start() {
+      let currentIv = null;
+
+      function startInject() {
+        // Remove old button if URL changed
+        const old = document.getElementById("ssm-trigger");
+        if (old) old.remove();
+
         setupModal();
         inject();
+
+        if (currentIv) clearInterval(currentIv);
         let tries = 0;
-        const iv = setInterval(() => {
+        currentIv = setInterval(() => {
           inject();
-          if (document.getElementById("ssm-trigger") || ++tries > 40) clearInterval(iv);
+          if (document.getElementById("ssm-trigger") || ++tries > 40) clearInterval(currentIv);
         }, 200);
       }
 
+      // Run on initial load
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", start);
+        document.addEventListener("DOMContentLoaded", startInject);
       } else {
-        start();
+        startInject();
       }
+
+      // Re-run on SPA navigation (URL change without page reload)
+      let lastUrl = location.href;
+      setInterval(() => {
+        if (location.href !== lastUrl) {
+          lastUrl = location.href;
+          setTimeout(startInject, 300);
+        }
+      }, 300);
+
+      // Also listen to history API (pushState / popstate)
+      const _push = history.pushState.bind(history);
+      history.pushState = function (...a) { _push(...a); setTimeout(startInject, 300); };
+      window.addEventListener("popstate", () => setTimeout(startInject, 300));
     },
     open() { setupModal(); openModal(); }
   };
