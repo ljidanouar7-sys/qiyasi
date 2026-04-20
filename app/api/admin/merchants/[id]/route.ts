@@ -5,7 +5,11 @@ import { cookies } from "next/headers";
 
 const ADMIN_EMAIL = "ljidanouar7@gmail.com";
 
-export async function GET() {
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -19,18 +23,16 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const body = await req.json();
+
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { data, error } = await admin
-    .from("users")
-    .select("*")
-    .order("created_at", { ascending: false });
-
+  const { error } = await admin.from("users").update(body).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ merchants: data });
+  return NextResponse.json({ success: true });
 }
