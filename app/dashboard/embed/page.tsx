@@ -2,110 +2,42 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 
-const PLATFORMS = [
-  { id: "shopify", label: "Shopify", icon: "🛒" },
-  { id: "wordpress", label: "WordPress", icon: "📝" },
-  { id: "html", label: "HTML عادي", icon: "🌐" },
-  { id: "gtm", label: "Google Tag Manager", icon: "🏷️" },
-];
-
-const STEPS: Record<string, { title: string; steps: string[] }> = {
-  shopify: {
-    title: "تضمين الـ Widget في Shopify",
-    steps: [
-      "سجّل دخولك إلى لوحة تحكم متجرك على Shopify.",
-      'اذهب إلى: Online Store → Themes → "Edit code".',
-      'افتح ملف "product.liquid" أو "main-product.liquid" (داخل مجلد Sections).',
-      'ابحث عن مكان خيارات المقاسات (كلمة size أو variant).',
-      'أضف هذا السطر بعد خيارات المقاسات مباشرةً: <div id="qiyasi-widget"></div>',
-      'افتح ملف "theme.liquid" والصق كود التضمين قبل </body>.',
-      'اضغط "Save" وافتح صفحة منتج — سيظهر زر "📏 احسب مقاسك" تحت المقاسات.',
-    ],
-  },
-  wordpress: {
-    title: "تضمين الـ Widget في WordPress",
-    steps: [
-      "سجّل دخولك إلى لوحة تحكم WordPress.",
-      'استخدم إضافة WPCode أو Header & Footer Scripts وألصق كود التضمين في قسم Footer.',
-      'في صفحة المنتج (WooCommerce)، اذهب إلى: المظهر → محرر القوالب → single-product.',
-      'بعد كود خيارات المقاسات أضف: <div id="qiyasi-widget"></div>',
-      'أو استخدم hook في functions.php: add_action("woocommerce_before_add_to_cart_button", ...)',
-      'احفظ وافتح صفحة منتج — سيظهر زر "📏 احسب مقاسك" تحت المقاسات.',
-    ],
-  },
-  html: {
-    title: "تضمين الـ Widget في HTML عادي",
-    steps: [
-      "افتح ملف HTML الخاص بصفحة المنتج في أي محرر نصوص.",
-      'ابحث عن مكان عرض خيارات المقاسات في الكود.',
-      'أضف هذا مباشرةً بعد خيارات المقاسات: <div id="qiyasi-widget"></div>',
-      'ابحث عن </body> في نهاية الملف وألصق كود التضمين قبله.',
-      "احفظ الملف وارفعه إلى السيرفر — سيظهر الزر تحت المقاسات مباشرةً.",
-    ],
-  },
-  gtm: {
-    title: "تضمين الـ Widget عبر Google Tag Manager",
-    steps: [
-      "سجّل دخولك إلى حسابك في Google Tag Manager.",
-      'اضغط على "Tags" ثم "New".',
-      'اختر نوع الـ Tag: "Custom HTML".',
-      "الصق كود التضمين كاملاً في حقل HTML.",
-      'في قسم "Triggering" اختر "All Pages" أو صفحات المنتجات فقط.',
-      'اضغط "Save" ثم "Submit" لنشر التغييرات.',
-      'تأكد من ظهور الـ Widget بفتح موقعك وتفعيل GTM Preview Mode.',
-    ],
-  },
-};
-
 export default function EmbedPage() {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [activePlatform, setActivePlatform] = useState("shopify");
 
-  useEffect(() => {
-    initPage();
-  }, []);
+  useEffect(() => { initPage(); }, []);
 
   async function initPage() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) { window.location.href = "/auth"; return; }
 
     let { data: merchant } = await supabase
-      .from("merchants")
-      .select("id")
-      .eq("user_id", userData.user.id)
-      .single();
+      .from("merchants").select("id").eq("user_id", userData.user.id).single();
 
     if (!merchant) {
-      const { data: newMerchant } = await supabase
-        .from("merchants")
-        .insert({ user_id: userData.user.id, store_name: "متجري" })
-        .select("id")
-        .single();
-      merchant = newMerchant;
+      const { data: m } = await supabase
+        .from("merchants").insert({ user_id: userData.user.id, store_name: "متجري" })
+        .select("id").single();
+      merchant = m;
     }
 
     if (merchant) {
       const { data: keyRow } = await supabase
-        .from("api_keys")
-        .select("key")
-        .eq("merchant_id", merchant.id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
+        .from("api_keys").select("key")
+        .eq("merchant_id", merchant.id).eq("is_active", true)
+        .order("created_at", { ascending: false }).limit(1).single();
       if (keyRow) setApiKey(keyRow.key);
     }
   }
 
   async function generateKey() {
     setLoading(true);
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
+    const { data: s } = await supabase.auth.getSession();
     const res = await fetch("/api/merchants/generate-key", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${s.session?.access_token}` },
     });
     const data = await res.json();
     if (data.key) setApiKey(data.key);
@@ -114,129 +46,138 @@ export default function EmbedPage() {
 
   const domain = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
-  const embedCode = `<!-- قياسي - Smart Size Matcher -->
+  const embedCode = `<!-- زر احسب مقاسي — قياسي -->
+<button
+  onclick="SizeMatcher.open()"
+  style="background:#0d9488;color:#fff;padding:11px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:7px">
+  📏 احسب مقاسي
+</button>
 <script src="${domain}/widget.js"></script>
-<script>
-  SizeMatcher.init({ apiKey: "${apiKey || "YOUR_API_KEY"}" });
-</script>`;
+<script>SizeMatcher.init({ apiKey: "${apiKey || "YOUR_API_KEY"}" });</script>`;
 
-  function copyCode() {
+  function copy() {
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 2500);
   }
-
-  const current = STEPS[activePlatform];
 
   return (
     <div dir="rtl">
       {/* Header */}
       <div className="mb-8">
         <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">التضمين</p>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">كود التضمين</h1>
-        <p className="text-slate-400 text-sm mt-1">أضف الـ Widget إلى متجرك في دقيقتين</p>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">أضف زر "احسب مقاسي"</h1>
+        <p className="text-slate-400 text-sm mt-1">خطوة واحدة فقط — انسخ الكود والصقه في متجرك</p>
       </div>
 
-      <div className="space-y-6 max-w-3xl">
+      <div className="max-w-2xl space-y-6">
 
-        {/* API Key card */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-6">
-          <h2 className="font-black text-slate-900 mb-1">مفتاح API الخاص بك</h2>
-          <p className="text-slate-400 text-sm mb-4">هذا المفتاح يربط الـ Widget بحسابك — لا تشاركه مع أحد.</p>
-
-          {apiKey ? (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-mono text-sm break-all text-left mb-4 text-slate-700" dir="ltr">
-              {apiKey}
+        {/* Step 1 - API Key */}
+        {!apiKey && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-bold text-amber-800 text-sm mb-0.5">أولاً: احصل على مفتاحك</p>
+              <p className="text-amber-600 text-xs">مفتاح API مطلوب لتفعيل الزر في متجرك</p>
             </div>
-          ) : (
-            <div className="bg-slate-50 border border-dashed border-slate-200 rounded-xl p-4 text-center text-slate-400 text-sm mb-4">
-              لا يوجد مفتاح بعد — اضغط الزر أدناه لإنشاء مفتاحك
-            </div>
-          )}
-
-          <div className="flex items-center gap-3">
             <button
               onClick={generateKey}
               disabled={loading}
-              className="bg-slate-900 hover:bg-slate-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition"
+              className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap"
             >
-              {loading ? "جاري التوليد..." : apiKey ? "🔄 توليد مفتاح جديد" : "✨ توليد مفتاح"}
+              {loading ? "جاري..." : "✨ احصل على المفتاح"}
             </button>
-            {apiKey && (
-              <p className="text-amber-600 text-xs font-semibold">
-                ⚠️ المفتاح القديم يُلغى عند التوليد الجديد
-              </p>
+          </div>
+        )}
+
+        {/* Main code card */}
+        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+
+          {/* Code block */}
+          <div className="bg-slate-900 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-slate-400 text-xs font-mono">كود التضمين</span>
+              {apiKey && (
+                <span className="bg-emerald-900 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full">
+                  ✓ مفتاحك موجود
+                </span>
+              )}
+            </div>
+            <pre className="text-emerald-400 font-mono text-xs leading-relaxed overflow-x-auto whitespace-pre-wrap" dir="ltr">
+              {embedCode}
+            </pre>
+          </div>
+
+          {/* Copy button */}
+          <div className="p-4 bg-slate-50 border-t border-slate-100">
+            <button
+              onClick={copy}
+              disabled={!apiKey}
+              className={`w-full py-3.5 rounded-xl font-black text-base transition ${
+                copied
+                  ? "bg-emerald-600 text-white"
+                  : apiKey
+                  ? "bg-slate-900 hover:bg-slate-700 text-white"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
+            >
+              {copied ? "✅ تم النسخ!" : !apiKey ? "احصل على المفتاح أولاً" : "📋 نسخ الكود"}
+            </button>
+            {!apiKey && (
+              <button
+                onClick={generateKey}
+                disabled={loading}
+                className="w-full mt-2 py-2.5 rounded-xl font-bold text-sm text-teal-700 bg-teal-50 hover:bg-teal-100 transition"
+              >
+                {loading ? "جاري التوليد..." : "✨ توليد مفتاح API"}
+              </button>
             )}
           </div>
         </div>
 
-        {/* Embed Code card */}
+        {/* Instructions */}
         <div className="bg-white border border-slate-100 rounded-2xl p-6">
-          <h2 className="font-black text-slate-900 mb-1">كود التضمين</h2>
-          <p className="text-slate-400 text-sm mb-4">انسخ هذا الكود وألصقه في موقعك حسب الطريقة المناسبة أدناه.</p>
-
-          <div className="bg-slate-900 text-emerald-400 rounded-xl p-4 font-mono text-sm mb-4 text-left whitespace-pre-wrap leading-relaxed" dir="ltr">
-            {embedCode}
+          <h2 className="font-black text-slate-900 mb-4">كيف تضيفه؟</h2>
+          <div className="space-y-4">
+            {[
+              { n: "1", t: "انسخ الكود", d: "اضغط زر \"نسخ الكود\" بالأعلى" },
+              { n: "2", t: "افتح إعدادات متجرك", d: "في سلة: الإعدادات ← إضافة كود للهيدر. في Shopify: Theme ← Edit Code." },
+              { n: "3", t: "الصق الكود", d: "ألصق الكود في أي مكان تريد ظهور الزر فيه — بجانب خيارات المقاس مثلاً" },
+              { n: "4", t: "احفظ وجرب", d: "افتح صفحة منتج وستجد الزر جاهزاً للاستخدام" },
+            ].map(s => (
+              <div key={s.n} className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-teal-50 border border-teal-200 text-teal-700 font-black text-sm flex items-center justify-center flex-shrink-0">
+                  {s.n}
+                </div>
+                <div className="pt-0.5">
+                  <p className="font-bold text-slate-800 text-sm">{s.t}</p>
+                  <p className="text-slate-400 text-xs mt-0.5">{s.d}</p>
+                </div>
+              </div>
+            ))}
           </div>
-
-          <button
-            onClick={copyCode}
-            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition ${
-              copied
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-900 hover:bg-slate-700 text-white"
-            }`}
-          >
-            {copied ? "✅ تم النسخ!" : "📋 نسخ الكود"}
-          </button>
         </div>
 
-        {/* Platform instructions */}
-        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
-          <div className="px-6 pt-6 pb-0">
-            <h2 className="font-black text-slate-900 mb-1">كيف تضيف الـ Widget؟</h2>
-            <p className="text-slate-400 text-sm mb-5">اختر المنصة التي تستخدمها واتبع الخطوات.</p>
+        {/* Preview */}
+        <div className="bg-white border border-slate-100 rounded-2xl p-6">
+          <h2 className="font-black text-slate-900 mb-1">معاينة الزر</h2>
+          <p className="text-slate-400 text-xs mb-5">هكذا سيظهر الزر في متجرك</p>
 
-            {/* Platform tabs */}
-            <div className="flex gap-2 flex-wrap">
-              {PLATFORMS.map(p => (
-                <button
-                  key={p.id}
-                  onClick={() => setActivePlatform(p.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition ${
-                    activePlatform === p.id
-                      ? "bg-teal-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  <span>{p.icon}</span>
-                  {p.label}
-                </button>
+          {/* Fake product page */}
+          <div className="border border-slate-200 rounded-xl p-5 bg-slate-50">
+            <div className="flex gap-2 mb-3 flex-wrap">
+              {["XS","S","M","L","XL"].map(s => (
+                <div key={s} className="w-12 h-10 border-2 border-slate-300 rounded-lg flex items-center justify-center text-sm font-bold text-slate-600 bg-white">
+                  {s}
+                </div>
               ))}
             </div>
-          </div>
-
-          {/* Steps */}
-          <div className="p-6">
-            <h3 className="font-black text-slate-800 mb-5 text-base">{current.title}</h3>
-            <ol className="space-y-4">
-              {current.steps.map((step, i) => (
-                <li key={i} className="flex gap-4">
-                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-black flex items-center justify-center">
-                    {i + 1}
-                  </span>
-                  <p className="text-slate-700 text-sm leading-relaxed pt-0.5"
-                    dangerouslySetInnerHTML={{ __html: step.replace(/(".*?")/g, '<span class="font-bold text-slate-900">$1</span>') }}
-                  />
-                </li>
-              ))}
-            </ol>
-
-            <div className="mt-6 bg-teal-50 border border-teal-100 rounded-xl p-4">
-              <p className="text-teal-700 text-sm font-semibold">
-                💡 بعد التضمين، افتح صفحة منتج في متجرك وتأكد من ظهور الـ Widget. إذا واجهت مشكلة تواصل معنا.
-              </p>
-            </div>
+            <button
+              className="inline-flex items-center gap-2 text-white font-bold text-sm px-5 py-2.5 rounded-lg"
+              style={{ background: "#0d9488" }}
+            >
+              📏 احسب مقاسي
+            </button>
+            <p className="text-slate-400 text-xs mt-3">↑ الزر يظهر هنا بجانب خيارات المقاس</p>
           </div>
         </div>
 

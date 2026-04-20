@@ -92,28 +92,8 @@
 
   function gid(id) { return document.getElementById(id); }
 
-  function isProductPage() {
-    const url = window.location.href.toLowerCase();
-    // URL patterns common across all platforms
-    const urlPatterns = ['/product', '/item/', '/p/', '/منتج', '/سلعة'];
-    if (urlPatterns.some(p => url.includes(p))) return true;
-    // DOM-based: add-to-cart button = product page
-    const cartSelectors = [
-      '[name="add"]', '.btn-add-to-cart', '[class*="add-to-cart" i]',
-      '[id*="add-to-cart" i]', '[id*="AddToCart" i]', '.product-form__submit',
-      '[class*="addtocart" i]', 'button[data-action*="cart" i]',
-    ];
-    return cartSelectors.some(sel => document.querySelector(sel));
-  }
-
-  function injectHTML() {
-    if (document.getElementById("ssm-trigger")) return;
-    if (!isProductPage()) return;
-
-    const btn = document.createElement("button");
-    btn.id = "ssm-trigger";
-    btn.innerHTML = `📏 احسب مقاسي`;
-
+  function setupModal() {
+    if (document.getElementById("ssm-overlay")) return;
     const overlay = document.createElement("div");
     overlay.id = "ssm-overlay";
     overlay.innerHTML = `
@@ -130,13 +110,9 @@
         </div>
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
-
-    document.body.appendChild(btn);
     document.body.appendChild(overlay);
-
-    btn.onclick = openModal;
     gid("ssm-close-btn").onclick = closeModal;
-    gid("ssm-overlay").onclick = e => { if (e.target === gid("ssm-overlay")) closeModal(); };
+    overlay.onclick = e => { if (e.target === overlay) closeModal(); };
   }
 
   function openModal() { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
@@ -203,10 +179,14 @@
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => setTimeout(injectHTML, 300));
+        document.addEventListener("DOMContentLoaded", setupModal);
       } else {
-        setTimeout(injectHTML, 300);
+        setupModal();
       }
+    },
+    open() {
+      setupModal();
+      openModal();
     }
   };
 })();
