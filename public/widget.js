@@ -3,15 +3,16 @@
     ? new URL(document.currentScript.src).origin
     : window.location.origin;
 
-  // ======= CSS =======
+  // ======= CSS (uses CSS variables for brand color) =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:#0d9488;color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;transition:all .2s;white-space:nowrap;line-height:1}
-#ssm-trigger:hover{background:#0f766e}
+:root{--ssm-c:#0d9488;--ssm-cd:#0a7060;--ssm-cl:#e6f7f5;--ssm-cb:#b2e4de}
+#ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:var(--ssm-c);color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;transition:all .2s;white-space:nowrap;line-height:1}
+#ssm-trigger:hover{background:var(--ssm-cd)}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
-.ssm-header{background:linear-gradient(135deg,#2c7da0,#4a6fa5);padding:20px 24px 16px;border-radius:20px 20px 0 0;color:#fff}
+.ssm-header{background:var(--ssm-c);padding:20px 24px 16px;border-radius:20px 20px 0 0;color:#fff}
 .ssm-header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .ssm-title{font-size:17px;font-weight:700}
 #ssm-close-btn{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.2s}
@@ -25,40 +26,65 @@
 .ssm-hint{font-size:13px;color:#6b7280;margin-bottom:22px}
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 .ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
-.ssm-card:hover{border-color:#2c7da0;background:#e8f4f8;transform:translateY(-2px)}
-.ssm-card.active{border-color:#2c7da0;background:#e8f4f8;box-shadow:0 0 0 3px rgba(44,125,160,.15)}
+.ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl);transform:translateY(-2px)}
+.ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
 .ssm-card .card-label{font-size:13px;font-weight:700;color:#1e2a3e}
 .ssm-card .card-sub{font-size:11px;color:#6b7280;margin-top:3px}
 .ssm-number-group{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
-.ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid #2c7da0;background:#fff;color:#2c7da0;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.2s}
-.ssm-num-btn:hover{background:#2c7da0;color:#fff}
+.ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.2s}
+.ssm-num-btn:hover{background:var(--ssm-c);color:#fff}
 .ssm-num-input{width:100px;text-align:center;font-size:26px;font-weight:700;color:#1e2a3e;border:2px solid #e5e7eb;border-radius:12px;padding:8px;outline:none}
-.ssm-num-input:focus{border-color:#2c7da0}
+.ssm-num-input:focus{border-color:var(--ssm-c)}
 .ssm-unit{font-size:16px;color:#6b7280;margin-right:4px}
 .ssm-gender-cards{display:flex;gap:16px;justify-content:center;margin-bottom:8px}
 .ssm-gender-card{flex:1;max-width:160px;border:2px solid #e5e7eb;border-radius:14px;padding:20px 10px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
-.ssm-gender-card:hover{border-color:#2c7da0;background:#e8f4f8}
-.ssm-gender-card.active{border-color:#2c7da0;background:#e8f4f8;box-shadow:0 0 0 3px rgba(44,125,160,.15)}
+.ssm-gender-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl)}
+.ssm-gender-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-gender-card svg{display:block;margin:0 auto 12px}
 .ssm-gender-card .g-label{font-size:15px;font-weight:700;color:#1e2a3e}
 .ssm-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid #f0f0f0}
-.ssm-btn-back{background:none;border:none;color:#2c7da0;cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;padding:8px 4px;border-radius:8px;transition:.2s}
-.ssm-btn-back:hover{background:#e8f4f8}
-.ssm-btn-next{background:#2c7da0;color:#fff;border:none;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;transition:.2s;box-shadow:0 3px 10px rgba(44,125,160,.3)}
-.ssm-btn-next:hover{background:#1e5f7a;transform:translateY(-1px)}
+.ssm-btn-back{background:none;border:none;color:var(--ssm-c);cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;padding:8px 4px;border-radius:8px;transition:.2s}
+.ssm-btn-back:hover{background:var(--ssm-cl)}
+.ssm-btn-next{background:var(--ssm-c);color:#fff;border:none;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;transition:.2s}
+.ssm-btn-next:hover{background:var(--ssm-cd);transform:translateY(-1px)}
 .ssm-result{text-align:center;padding:10px 0}
 .ssm-result-icon{font-size:56px;margin-bottom:12px}
 .ssm-result-label{font-size:15px;color:#6b7280;margin-bottom:8px}
-.ssm-result-size{font-size:72px;font-weight:900;color:#2c7da0;line-height:1;margin-bottom:16px}
+.ssm-result-size{font-size:72px;font-weight:900;color:var(--ssm-c);line-height:1;margin-bottom:16px}
 .ssm-result-msg{font-size:14px;color:#374151;line-height:1.6;margin-bottom:20px}
 .ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151;transition:.2s}
 .ssm-restart:hover{background:#e5e7eb}
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
-.ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#2c7da0;border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
+.ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
   `;
   document.head.appendChild(style);
+
+  // ======= Auto-detect brand color from cart button =======
+  function applyBrandColor(cartBtn) {
+    try {
+      const bg = window.getComputedStyle(cartBtn).backgroundColor;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return;
+      // Parse rgb(r,g,b)
+      const m = bg.match(/\d+/g);
+      if (!m) return;
+      const [r, g, b] = m.map(Number);
+      // Skip white/black/gray
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      if (max - min < 30) return; // too gray
+      if (r > 240 && g > 240 && b > 240) return; // too white
+      // Generate darker variant (-20%)
+      const dark = (v) => Math.max(0, Math.round(v * 0.8));
+      const light = (v) => Math.min(255, Math.round(255 - (255 - v) * 0.12));
+      const border = (v) => Math.min(255, Math.round(255 - (255 - v) * 0.35));
+      const root = document.documentElement;
+      root.style.setProperty('--ssm-c',  `rgb(${r},${g},${b})`);
+      root.style.setProperty('--ssm-cd', `rgb(${dark(r)},${dark(g)},${dark(b)})`);
+      root.style.setProperty('--ssm-cl', `rgb(${light(r)},${light(g)},${light(b)})`);
+      root.style.setProperty('--ssm-cb', `rgb(${border(r)},${border(g)},${border(b)})`);
+    } catch(e) {}
+  }
 
   // ======= SVGs =======
   const SVG = {
@@ -145,6 +171,8 @@
     if (document.getElementById("ssm-trigger")) return;
     const target = findCartButton();
     if (!target) return;
+
+    applyBrandColor(target);
 
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
