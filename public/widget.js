@@ -6,9 +6,8 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;cursor:pointer;font-size:14px;font-weight:700;color:#0d9488;font-family:'Segoe UI',Arial,sans-serif;text-decoration:underline;text-underline-offset:3px;transition:color .2s;margin-top:10px}
-#ssm-trigger:hover{color:#0f766e}
-#ssm-trigger-wrap{margin:8px 0 4px}
+#ssm-trigger{position:fixed;bottom:28px;left:28px;z-index:2147483647;background:#0d9488;color:#fff;border:none;padding:13px 22px 13px 18px;border-radius:50px;cursor:pointer;font-size:15px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;box-shadow:0 4px 20px rgba(13,148,136,.45);transition:all .25s;display:flex;align-items:center;gap:8px;white-space:nowrap;line-height:1}
+#ssm-trigger:hover{background:#0f766e;transform:translateY(-2px);box-shadow:0 6px 28px rgba(13,148,136,.55)}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -94,48 +93,26 @@
   function gid(id) { return document.getElementById(id); }
 
   function isProductPage() {
-    const url = window.location.pathname.toLowerCase();
-    const productPatterns = ['/product', '/products/', '/item/', '/p/', '/shop/', '/منتج', '/سلعة', '/store/'];
-    if (productPatterns.some(p => url.includes(p))) return true;
-    // Check for add-to-cart button (universal indicator of a product page)
+    const url = window.location.href.toLowerCase();
+    // URL patterns common across all platforms
+    const urlPatterns = ['/product', '/item/', '/p/', '/منتج', '/سلعة'];
+    if (urlPatterns.some(p => url.includes(p))) return true;
+    // DOM-based: add-to-cart button = product page
     const cartSelectors = [
-      '[name="add"]', '.btn-add-to-cart', '.add-to-cart', '.product-form__submit',
-      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]', '[class*="addtocart" i]',
-      '[id*="AddToCart" i]', 'button[data-action*="cart" i]',
+      '[name="add"]', '.btn-add-to-cart', '[class*="add-to-cart" i]',
+      '[id*="add-to-cart" i]', '[id*="AddToCart" i]', '.product-form__submit',
+      '[class*="addtocart" i]', 'button[data-action*="cart" i]',
     ];
     return cartSelectors.some(sel => document.querySelector(sel));
   }
 
-  function findInsertionPoint() {
-    // Try size selector first (best placement)
-    const sizeSelectors = [
-      '[name="Size"]', '[name="size"]', '[name="TAILLE"]', '[name="taille"]',
-      '.product-form__input', '.variant-input-wrap', '.swatch-wrapper',
-      '.product-variants', '.size-options', '.size-selector',
-      '.variations', '[data-option-name*="size" i]', '[data-option-name*="taille" i]',
-      '[data-option-name*="مقاس"]', '.product__variants',
-    ];
-    for (const sel of sizeSelectors) {
-      const el = document.querySelector(sel);
-      if (el) return el;
-    }
-    // Fallback: place before add-to-cart button
-    const cartSelectors = [
-      '[name="add"]', '.btn-add-to-cart', '.add-to-cart', '.product-form__submit',
-      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]', '[class*="addtocart" i]',
-      '[id*="AddToCart" i]',
-    ];
-    for (const sel of cartSelectors) {
-      const el = document.querySelector(sel);
-      if (el) return el.closest('div, form') || el;
-    }
-    return document.body;
-  }
-
   function injectHTML() {
+    if (document.getElementById("ssm-trigger")) return;
+    if (!isProductPage()) return;
+
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
-    btn.innerHTML = `📏 احسب مقاسك`;
+    btn.innerHTML = `📏 احسب مقاسي`;
 
     const overlay = document.createElement("div");
     overlay.id = "ssm-overlay";
@@ -154,15 +131,7 @@
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
 
-    // Only show on product pages
-    if (!isProductPage()) return;
-
-    const wrap = document.createElement("div");
-    wrap.id = "ssm-trigger-wrap";
-    wrap.appendChild(btn);
-
-    const anchor = findInsertionPoint();
-    anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
+    document.body.appendChild(btn);
     document.body.appendChild(overlay);
 
     btn.onclick = openModal;
