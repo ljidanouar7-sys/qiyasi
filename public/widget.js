@@ -93,41 +93,43 @@
 
   function gid(id) { return document.getElementById(id); }
 
-  function findSizeContainer() {
-    // 1) Common size selector patterns (Shopify, Salla, WooCommerce, generic)
+  function isProductPage() {
+    const url = window.location.pathname.toLowerCase();
+    const productPatterns = ['/product', '/products/', '/item/', '/p/', '/shop/', '/منتج', '/سلعة', '/store/'];
+    if (productPatterns.some(p => url.includes(p))) return true;
+    // Check for add-to-cart button (universal indicator of a product page)
+    const cartSelectors = [
+      '[name="add"]', '.btn-add-to-cart', '.add-to-cart', '.product-form__submit',
+      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]', '[class*="addtocart" i]',
+      '[id*="AddToCart" i]', 'button[data-action*="cart" i]',
+    ];
+    return cartSelectors.some(sel => document.querySelector(sel));
+  }
+
+  function findInsertionPoint() {
+    // Try size selector first (best placement)
     const sizeSelectors = [
       '[name="Size"]', '[name="size"]', '[name="TAILLE"]', '[name="taille"]',
       '.product-form__input', '.variant-input-wrap', '.swatch-wrapper',
       '.product-variants', '.size-options', '.size-selector',
-      '.variations', '.woocommerce-variation',
-      '[data-option-name*="size" i]', '[data-option-name*="taille" i]',
+      '.variations', '[data-option-name*="size" i]', '[data-option-name*="taille" i]',
       '[data-option-name*="مقاس"]', '.product__variants',
     ];
     for (const sel of sizeSelectors) {
       const el = document.querySelector(sel);
       if (el) return el;
     }
-    // 2) Find label/heading containing size keywords
-    const keywords = ['size', 'taille', 'مقاس', 'المقاس', 'القياس'];
-    for (const el of document.querySelectorAll('label, span, p, div')) {
-      const txt = el.textContent.trim();
-      if (keywords.some(k => txt.toLowerCase().includes(k)) && txt.length < 25 && el.children.length === 0) {
-        const container = el.closest('div, fieldset, section');
-        if (container) return container;
-      }
-    }
-    // 3) Fallback: place above "Add to cart" button
+    // Fallback: place before add-to-cart button
     const cartSelectors = [
-      '[name="add"]', '.btn-add-to-cart', '.add-to-cart',
-      'button[type="submit"]', '.product-form__submit',
-      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]',
-      '[class*="addtocart" i]', '[id*="AddToCart" i]',
+      '[name="add"]', '.btn-add-to-cart', '.add-to-cart', '.product-form__submit',
+      '[id*="add-to-cart" i]', '[class*="add-to-cart" i]', '[class*="addtocart" i]',
+      '[id*="AddToCart" i]',
     ];
     for (const sel of cartSelectors) {
       const el = document.querySelector(sel);
       if (el) return el.closest('div, form') || el;
     }
-    return null;
+    return document.body;
   }
 
   function injectHTML() {
@@ -152,15 +154,15 @@
         <div class="ssm-body" id="ssm-body"></div>
       </div>`;
 
-    // Only show on product pages (when size selector exists)
-    const sizeContainer = findSizeContainer();
-    if (!sizeContainer) return;
+    // Only show on product pages
+    if (!isProductPage()) return;
 
     const wrap = document.createElement("div");
     wrap.id = "ssm-trigger-wrap";
     wrap.appendChild(btn);
 
-    sizeContainer.parentNode.insertBefore(wrap, sizeContainer.nextSibling);
+    const anchor = findInsertionPoint();
+    anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
     document.body.appendChild(overlay);
 
     btn.onclick = openModal;
