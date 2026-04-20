@@ -14,33 +14,33 @@ const STEPS: Record<string, { title: string; steps: string[] }> = {
     title: "تضمين الـ Widget في Shopify",
     steps: [
       "سجّل دخولك إلى لوحة تحكم متجرك على Shopify.",
-      'اذهب إلى: Online Store → Themes.',
-      'اضغط على زر "..." بجانب الثيم الحالي ثم اختر "Edit code".',
-      'في الشريط الجانبي اختر ملف "theme.liquid" (داخل مجلد Layout).',
-      'ابحث عن الوسم </body> في نهاية الملف.',
-      'الصق كود التضمين أعلاه مباشرةً قبل </body>.',
-      'اضغط "Save" وافتح أي صفحة منتج للتأكد من ظهور الـ Widget.',
+      'اذهب إلى: Online Store → Themes → "Edit code".',
+      'افتح ملف "product.liquid" أو "main-product.liquid" (داخل مجلد Sections).',
+      'ابحث عن مكان خيارات المقاسات (كلمة size أو variant).',
+      'أضف هذا السطر بعد خيارات المقاسات مباشرةً: <div id="qiyasi-widget"></div>',
+      'افتح ملف "theme.liquid" والصق كود التضمين قبل </body>.',
+      'اضغط "Save" وافتح صفحة منتج — سيظهر زر "📏 احسب مقاسك" تحت المقاسات.',
     ],
   },
   wordpress: {
     title: "تضمين الـ Widget في WordPress",
     steps: [
       "سجّل دخولك إلى لوحة تحكم WordPress.",
-      'اذهب إلى: المظهر (Appearance) → محرر القوالب (Theme Editor).',
-      'اختر ملف "footer.php" أو "header.php" من القائمة على اليمين.',
-      'ابحث عن </body> وألصق كود التضمين قبله مباشرةً.',
-      'اضغط "تحديث الملف".',
-      "بديل أسهل: استخدم إضافة WPCode أو Header & Footer Scripts وألصق الكود فيها بدون تعديل ملفات القالب.",
+      'استخدم إضافة WPCode أو Header & Footer Scripts وألصق كود التضمين في قسم Footer.',
+      'في صفحة المنتج (WooCommerce)، اذهب إلى: المظهر → محرر القوالب → single-product.',
+      'بعد كود خيارات المقاسات أضف: <div id="qiyasi-widget"></div>',
+      'أو استخدم hook في functions.php: add_action("woocommerce_before_add_to_cart_button", ...)',
+      'احفظ وافتح صفحة منتج — سيظهر زر "📏 احسب مقاسك" تحت المقاسات.',
     ],
   },
   html: {
     title: "تضمين الـ Widget في HTML عادي",
     steps: [
       "افتح ملف HTML الخاص بصفحة المنتج في أي محرر نصوص.",
-      'ابحث عن الوسم </body> في نهاية الملف.',
-      'الصق كود التضمين مباشرةً قبل </body>.',
-      "احفظ الملف وارفعه إلى السيرفر.",
-      "افتح الصفحة في المتصفح وتأكد من ظهور زر أو Widget المقاسات.",
+      'ابحث عن مكان عرض خيارات المقاسات في الكود.',
+      'أضف هذا مباشرةً بعد خيارات المقاسات: <div id="qiyasi-widget"></div>',
+      'ابحث عن </body> في نهاية الملف وألصق كود التضمين قبله.',
+      "احفظ الملف وارفعه إلى السيرفر — سيظهر الزر تحت المقاسات مباشرةً.",
     ],
   },
   gtm: {
@@ -114,7 +114,10 @@ export default function EmbedPage() {
 
   const domain = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
-  const embedCode = `<!-- قياسي - Smart Size Matcher Widget -->
+  const embedCode = `<!-- 1) ضع هذا تحت خيارات المقاسات في صفحة المنتج -->
+<div id="qiyasi-widget"></div>
+
+<!-- 2) ضع هذا قبل </body> في نهاية الصفحة -->
 <script src="${domain}/widget.js"></script>
 <script>
   SizeMatcher.init({ apiKey: "${apiKey || "YOUR_API_KEY"}" });

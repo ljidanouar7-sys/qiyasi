@@ -6,8 +6,9 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-#ssm-trigger{background:#2c7da0;color:#fff;border:none;padding:14px 28px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;box-shadow:0 4px 15px rgba(44,125,160,.4);transition:all .2s;font-family:'Segoe UI',Arial,sans-serif}
-#ssm-trigger:hover{background:#1e5f7a;transform:translateY(-1px)}
+#ssm-trigger{display:inline-flex;align-items:center;gap:6px;background:none;color:#2c7da0;border:none;padding:0;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Arial,sans-serif;text-decoration:underline;text-underline-offset:3px;transition:color .2s}
+#ssm-trigger:hover{color:#1e5f7a}
+#qiyasi-widget{display:inline-block;margin-top:8px}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
 #ssm-modal{background:#fff;border-radius:20px;width:100%;max-width:500px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.25)}
@@ -93,27 +94,37 @@
   function gid(id) { return document.getElementById(id); }
 
   function injectHTML() {
-    const wrap = document.createElement("div");
-    wrap.innerHTML = `
-      <button id="ssm-trigger">📏 احسب مقاسك</button>
-      <div id="ssm-overlay">
-        <div id="ssm-modal">
-          <div class="ssm-header">
-            <div class="ssm-header-top">
-              <span class="ssm-title">🧥 محدد المقاس الذكي</span>
-              <button id="ssm-close-btn">✕</button>
-            </div>
-            <div class="ssm-progress-wrap">
-              <div class="ssm-progress-bar"><div class="ssm-progress-fill" id="ssm-fill"></div></div>
-              <span class="ssm-step-count" id="ssm-count"></span>
-            </div>
-          </div>
-          <div class="ssm-body" id="ssm-body"></div>
-        </div>
-      </div>`;
-    document.body.appendChild(wrap);
+    const btn = document.createElement("button");
+    btn.id = "ssm-trigger";
+    btn.innerHTML = `📏 احسب مقاسك`;
 
-    gid("ssm-trigger").onclick = openModal;
+    const overlay = document.createElement("div");
+    overlay.id = "ssm-overlay";
+    overlay.innerHTML = `
+      <div id="ssm-modal">
+        <div class="ssm-header">
+          <div class="ssm-header-top">
+            <span class="ssm-title">🧥 محدد المقاس الذكي</span>
+            <button id="ssm-close-btn">✕</button>
+          </div>
+          <div class="ssm-progress-wrap">
+            <div class="ssm-progress-bar"><div class="ssm-progress-fill" id="ssm-fill"></div></div>
+            <span class="ssm-step-count" id="ssm-count"></span>
+          </div>
+        </div>
+        <div class="ssm-body" id="ssm-body"></div>
+      </div>`;
+
+    // Place button inside #qiyasi-widget if it exists, else append to body
+    const target = document.getElementById("qiyasi-widget");
+    if (target) {
+      target.appendChild(btn);
+    } else {
+      document.body.appendChild(btn);
+    }
+    document.body.appendChild(overlay);
+
+    btn.onclick = openModal;
     gid("ssm-close-btn").onclick = closeModal;
     gid("ssm-overlay").onclick = e => { if (e.target === gid("ssm-overlay")) closeModal(); };
   }
