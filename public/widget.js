@@ -115,70 +115,43 @@
     overlay.onclick = e => { if (e.target === overlay) closeModal(); };
   }
 
-  // Keywords to identify the cart/buy button by its TEXT — works on ANY platform
   const CART_KEYWORDS = [
-    'add to cart', 'add to bag', 'buy now', 'purchase', 'order now',
-    'ajouter au panier', 'commander', 'acheter', 'ajouter',
-    'أضف للسلة', 'أضف إلى السلة', 'إضافة للسلة', 'إضافة إلى السلة',
-    'اشتر الآن', 'اطلب الآن', 'أضف', 'شراء', 'اشتري',
-    'agregar al carrito', 'comprar ahora',
-    'in den warenkorb', 'jetzt kaufen',
+    'add to cart','add to bag','buy now','purchase','order now',
+    'ajouter au panier','commander','acheter',
+    'أضف للسلة','أضف إلى السلة','إضافة للسلة','اشتر الآن','اطلب الآن','أضف','شراء',
+  ];
+
+  const CART_SELECTORS = [
+    'button[name="add"]', '.add-to-cart', '.single_add_to_cart_button',
+    '.product-form__submit', '.btn-add-to-cart', '[id*="AddToCart"]',
+    '[class*="add-to-cart"]', '[class*="addtocart"]', 'salla-add-to-cart button',
+    'button[type="submit"]',
   ];
 
   function findCartButton() {
-    // 1) Search by text content — platform-independent
-    const candidates = document.querySelectorAll('button, [role="button"], a.btn, input[type="submit"], input[type="button"]');
-    for (const el of candidates) {
-      const text = (el.textContent || el.value || el.getAttribute('aria-label') || '').toLowerCase().trim();
-      if (CART_KEYWORDS.some(k => text.includes(k)) && el.offsetParent !== null) return el;
-    }
-    // 2) Fallback: common CSS selectors
-    const cssFallbacks = [
-      '[name="add"]', '.product-form__submit', '[id*="AddToCart"]',
-      '.single_add_to_cart_button', '.btn-add-to-cart',
-      '[class*="add-to-cart"]', '[class*="addtocart"]',
-      'salla-add-to-cart button',
-    ];
-    for (const sel of cssFallbacks) {
+    // 1) by CSS selector
+    for (const sel of CART_SELECTORS) {
       try { const el = document.querySelector(sel); if (el) return el; } catch(e) {}
+    }
+    // 2) by text content — catches any platform
+    for (const el of document.querySelectorAll('button, [role="button"], input[type="submit"]')) {
+      const txt = (el.textContent || el.value || '').toLowerCase().trim();
+      if (CART_KEYWORDS.some(k => txt.includes(k))) return el;
     }
     return null;
   }
 
-  function isProductPage() {
-    const url = window.location.href.toLowerCase();
-    if (['/product', '/item/', '/p/', '/منتج', '/سلعة', '/detail'].some(p => url.includes(p))) return true;
-    return !!findCartButton();
-  }
+  function inject() {
+    if (document.getElementById("ssm-trigger")) return;
+    const target = findCartButton();
+    if (!target) return;
 
-  function createSsmBtn() {
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
     btn.type = "button";
     btn.innerHTML = "📏 احسب مقاسي";
     btn.onclick = () => { setupModal(); openModal(); };
-    return btn;
-  }
-
-  function injectButton() {
-    if (document.getElementById("ssm-trigger")) return;
-    const cartBtn = findCartButton();
-    if (cartBtn) {
-      const btn = createSsmBtn();
-      cartBtn.parentNode.insertBefore(btn, cartBtn);
-    } else if (isProductPage()) {
-      // Floating fallback — guaranteed to work
-      const btn = createSsmBtn();
-      btn.style.cssText = "position:fixed!important;bottom:24px!important;left:24px!important;z-index:2147483647!important;border-radius:50px!important;padding:14px 22px!important;box-shadow:0 4px 20px rgba(13,148,136,.5)!important";
-      document.body.appendChild(btn);
-    }
-  }
-
-  function tryInject(attempts) {
-    if (document.getElementById("ssm-trigger")) return;
-    if (findCartButton()) { injectButton(); return; }
-    if (attempts > 0) setTimeout(() => tryInject(attempts - 1), 700);
-    else if (isProductPage()) injectButton();
+    target.insertAdjacentElement("afterend", btn);
   }
 
   function openModal() { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
@@ -247,20 +220,11 @@
 
       function start() {
         setupModal();
-
-        // Try immediately
-        if (findCartButton()) { injectButton(); return; }
-
-        // Fast interval (200ms) — catches lazy-loaded buttons quickly
+        inject();
         let tries = 0;
-        const interval = setInterval(() => {
-          if (document.getElementById("ssm-trigger")) { clearInterval(interval); return; }
-          if (findCartButton()) { injectButton(); clearInterval(interval); return; }
-          tries++;
-          if (tries > 40) { // 8 seconds max
-            clearInterval(interval);
-            if (!document.getElementById("ssm-trigger") && isProductPage()) injectButton();
-          }
+        const iv = setInterval(() => {
+          inject();
+          if (document.getElementById("ssm-trigger") || ++tries > 40) clearInterval(iv);
         }, 200);
       }
 
