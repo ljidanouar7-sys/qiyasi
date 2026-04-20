@@ -233,7 +233,11 @@
     init(config) {
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
-      injectHTML();
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => setTimeout(injectHTML, 300));
+      } else {
+        setTimeout(injectHTML, 300);
+      }
     }
   };
 })();
