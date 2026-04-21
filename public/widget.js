@@ -407,9 +407,27 @@
   };
 
   function submit() {
-    gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>جاري حساب مقاسك...</p></div>`;
-    // Always calculate locally — size rules already fetched from API
-    setTimeout(() => showResult(calculateSize(answers)), 600);
+    gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>جاري حساب مقاسك بالذكاء الاصطناعي...</p></div>`;
+
+    if (_categoryId) {
+      fetch(`${API_BASE}/api/calculate-size`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: _categoryId, answers }),
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.size) {
+            showResult(data.size);
+          } else {
+            // Fallback to local calculation
+            showResult(calculateSize(answers));
+          }
+        })
+        .catch(() => showResult(calculateSize(answers)));
+    } else {
+      setTimeout(() => showResult(calculateSize(answers)), 600);
+    }
   }
 
   function showResult(size) {
