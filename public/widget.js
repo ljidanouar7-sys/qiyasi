@@ -195,66 +195,55 @@
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (data) {
-          _sizeChart     = data.sizeChart     || null;
-          _overrideRules = data.overrideRules || null;
-          _categoryId    = data.categoryId    || _categoryId;
+          _sizeChart  = data.sizeChart  || null;
+          _categoryId = data.categoryId || _categoryId;
         }
       })
       .catch(() => {});
   }
 
-  // ======= Step 1: find best size from dynamic chart =======
-  // chart format: { columns:[{id,label,quiz_field},...], rows:[{size, colId:{min,max},...},...] }
-  function findSizeFromChart(ans) {
-    if (!_sizeChart || !_sizeChart.rows || !_sizeChart.columns) return null;
+  // ======= Parse a cell value into {min, max} — supports both formats =======
+  // Object: { min: 145, max: 155 }  OR  String: "145-155"
+  function parseRange(cell) {
+    if (!cell) return { min: 0, max: 9999 };
+    if (typeof cell === 'string') {
+      const parts = cell.split('-').map(s => Number(s.trim())).filter(n => !isNaN(n));
+      if (parts.length === 2) return { min: parts[0], max: parts[1] };
+      if (parts.length === 1) return { min: parts[0], max: parts[0] };
+    }
+    return { min: Number(cell.min ?? 0), max: Number(cell.max ?? 9999) };
+  }
+
+  // ======= Find best size from chart (score-based matching) =======
+  // Returns ordered list of [size, score] so we can suggest next size if needed
+  function rankSizes(ans) {
+    if (!_sizeChart || !_sizeChart.rows || !_sizeChart.columns) return [];
     const matchCols = _sizeChart.columns.filter(c => c.quiz_field && ans[c.quiz_field] !== undefined);
-    if (matchCols.length === 0) return null;
+    if (matchCols.length === 0) return [];
 
-    let best = null, bestScore = -Infinity;
-
-    for (const row of _sizeChart.rows) {
-      let inRange = 0, dist = 0;
-      for (const col of matchCols) {
-        const val  = Number(ans[col.quiz_field]);
-        const cell = row[col.id];
-        if (!cell) continue;
-        const mn = Number(cell.min || 0), mx = Number(cell.max || 9999);
-        if (val >= mn && val <= mx) {
-          inRange++;
-        } else {
-          dist += val < mn ? (mn - val) : (val - mx);
+    return _sizeChart.rows
+      .map(row => {
+        let inRange = 0, dist = 0;
+        for (const col of matchCols) {
+          const val = Number(ans[col.quiz_field]);
+          const { min, max } = parseRange(row[col.id]);
+          if (val >= min && val <= max) { inRange++; }
+          else { dist += val < min ? (min - val) : (val - max); }
         }
-      }
-      // Score: maximize in-range fields, then minimize distance
-      const score = inRange * 10000 - dist;
-      if (score > bestScore) { bestScore = score; best = row.size; }
-    }
-    return best;
+        // Tie → prefer larger size (size up): use row index as tiebreaker (later = larger)
+        return { size: row.size, score: inRange * 10000 - dist };
+      })
+      .sort((a, b) => b.score - a.score);  // best match first
   }
 
-  // ======= Step 2: apply override rules on top of chart result =======
-  function applyOverrides(baseSize, ans) {
-    if (!_overrideRules || !_overrideRules.rules) return baseSize;
-    for (const rule of _overrideRules.rules) {
-      const conds = rule.conditions || {};
-      let match = true;
-      for (const [key, cond] of Object.entries(conds)) {
-        const val = Number(ans[key]);
-        if (cond.min !== undefined && val < cond.min) { match = false; break; }
-        if (cond.max !== undefined && val > cond.max) { match = false; break; }
-        if (cond.eq  !== undefined && ans[key] !== cond.eq)       { match = false; break; }
-        if (cond.in  !== undefined && !cond.in.includes(ans[key])){ match = false; break; }
-      }
-      if (match) return rule.size;
-    }
-    return baseSize;
+  function findSizeFromChart(ans) {
+    const ranked = rankSizes(ans);
+    return ranked.length ? ranked[0].size : null;
   }
 
-  // ======= Final calculation: chart → override → fallback =======
+  // ======= Final calculation =======
   function calculateSize(ans) {
-    const chartSize    = findSizeFromChart(ans) || fallbackSize(ans);
-    const finalSize    = applyOverrides(chartSize, ans);
-    return finalSize;
+    return findSizeFromChart(ans) || fallbackSize(ans);
   }
 
   function fallbackSize(ans) {
@@ -425,20 +414,32 @@
 
   function showResult(size) {
     const outOfStock = isSizeOutOfStock(size);
-    const icon  = outOfStock ? "😔" : "🎉";
-    const badge = outOfStock
-      ? `<div class="ssm-stock-warn">⚠️ هذا المقاس غير متوفر حالياً</div>`
-      : "";
-    const msg = outOfStock
-      ? `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر حالياً.<br/>تواصل مع المتجر أو اختر أقرب مقاس متاح.`
-      : `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
+
+    // If out of stock, find the next available size from the ranked list
+    let displaySize = size, stockBadge = "", msg = "";
+    if (outOfStock) {
+      const ranked = rankSizes(answers);
+      const next = ranked.slice(1).map(r => r.size).find(s => !isSizeOutOfStock(s));
+      if (next) {
+        displaySize = next;
+        stockBadge  = `<div class="ssm-stock-warn">⚠️ مقاسك الأصلي ${size} غير متوفر — نقترح ${next}</div>`;
+        msg         = `مقاسك هو <strong>${size}</strong> لكنه غير متوفر، لذا ننصح بـ <strong>${next}</strong> كبديل متاح.`;
+      } else {
+        stockBadge  = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
+        msg         = `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
+      }
+    } else {
+      msg = `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
+    }
+
+    const icon = outOfStock ? "😔" : "🎉";
 
     gid("ssm-body").innerHTML = `
       <div class="ssm-result">
         <div class="ssm-result-icon">${icon}</div>
         <div class="ssm-result-label">المقاس المناسب لك هو</div>
-        <div class="ssm-result-size">${size}</div>
-        ${badge}
+        <div class="ssm-result-size">${displaySize}</div>
+        ${stockBadge}
         <div class="ssm-result-msg">${msg}</div>
         <button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button>
       </div>`;

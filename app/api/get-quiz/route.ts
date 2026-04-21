@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Look up category by tag ─────────────────────────────────
   const { data: category } = await supabase
     .from("categories")
-    .select("id, name, tag, size_chart, override_rules")
+    .select("id, name, tag, size_chart")
     .eq("merchant_id", merchantId)
     .eq("tag", tag)
     .single();
@@ -69,14 +69,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Category has no size chart configured" }, { status: 422, headers: CORS });
   }
 
-  // ── 4. Return chart + override rules ───────────────────────────
-  // Quiz questions are fixed in the widget — never returned from API
+  // ── 4. Return size chart (quiz questions are fixed in the widget) ──
   return NextResponse.json(
     {
-      categoryId:     category.id,
-      categoryName:   category.name,
-      sizeChart:      category.size_chart,      // dynamic table for matching
-      overrideRules:  category.override_rules,  // logical rules that override the table
+      categoryId:   category.id,
+      categoryName: category.name,
+      sizeChart:    category.size_chart,
     },
     { headers: CORS }
   );
