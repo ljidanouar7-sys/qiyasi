@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Look up category by tag ─────────────────────────────────
   const { data: category } = await supabase
     .from("categories")
-    .select("id, name, tag, quiz_questions, size_rules")
+    .select("id, name, tag, size_rules")
     .eq("user_id", merchantId)
     .eq("tag", tag)
     .single();
@@ -68,17 +68,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Category not found for this tag" }, { status: 404, headers: CORS });
   }
 
-  if (!category.quiz_questions || !category.size_rules) {
-    return NextResponse.json({ error: "Category has no quiz or size rules configured" }, { status: 422, headers: CORS });
+  if (!category.size_rules) {
+    return NextResponse.json({ error: "Category has no size rules configured" }, { status: 422, headers: CORS });
   }
 
-  // ── 4. Return quiz data ────────────────────────────────────────
+  // ── 4. Return size rules only (quiz questions are fixed in the widget) ──
   return NextResponse.json(
     {
-      categoryId:     category.id,
-      categoryName:   category.name,
-      quiz:           category.quiz_questions,  // array of question objects
-      sizeRules:      category.size_rules,       // scoring rules
+      categoryId:   category.id,
+      categoryName: category.name,
+      sizeRules:    category.size_rules,
     },
     { headers: CORS }
   );
