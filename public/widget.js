@@ -53,6 +53,7 @@
 .ssm-result-label{font-size:15px;color:#6b7280;margin-bottom:8px}
 .ssm-result-size{font-size:72px;font-weight:900;color:var(--ssm-c);line-height:1;margin-bottom:16px}
 .ssm-result-msg{font-size:14px;color:#374151;line-height:1.6;margin-bottom:20px}
+.ssm-stock-warn{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;margin-bottom:16px}
 .ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151;transition:.2s}
 .ssm-restart:hover{background:#e5e7eb}
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
@@ -66,15 +67,12 @@
     try {
       const bg = window.getComputedStyle(cartBtn).backgroundColor;
       if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return;
-      // Parse rgb(r,g,b)
       const m = bg.match(/\d+/g);
       if (!m) return;
       const [r, g, b] = m.map(Number);
-      // Skip white/black/gray
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      if (max - min < 30) return; // too gray
-      if (r > 240 && g > 240 && b > 240) return; // too white
-      // Generate darker variant (-20%)
+      if (max - min < 30) return;
+      if (r > 240 && g > 240 && b > 240) return;
       const dark = (v) => Math.max(0, Math.round(v * 0.8));
       const light = (v) => Math.min(255, Math.round(255 - (255 - v) * 0.12));
       const border = (v) => Math.min(255, Math.round(255 - (255 - v) * 0.35));
@@ -104,7 +102,8 @@
     hipWide: `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="10" r="8" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M26 20 L54 20 L52 44 L28 44 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 44 Q10 50 10 65 L36 65 L40 44 L44 65 L70 65 Q70 50 52 44 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="26" y1="24" x2="16" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="54" y1="24" x2="64" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="23" y1="65" x2="20" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="57" y1="65" x2="60" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
   };
 
-  const STEPS = [
+  // ======= Default quiz steps (fallback when no tag/API) =======
+  const DEFAULT_STEPS = [
     { id: "gender", type: "gender", q: "ما هو جنسك؟", hint: "يساعدنا هذا في تحديد نموذج المقاس المناسب.", options: [{ v: "male", svg: SVG.man, label: "رجل" }, { v: "female", svg: SVG.woman, label: "امرأة" }] },
     { id: "height", type: "number", q: "كم طولك؟", hint: "أدخل طولك بالسنتيمتر.", unit: "سم", min: 130, max: 220, def: 165 },
     { id: "weight", type: "number", q: "كم وزنك؟", hint: "أدخل وزنك بالكيلوغرام.", unit: "كغ", min: 35, max: 200, def: 70 },
@@ -115,8 +114,102 @@
   ];
 
   let step = 0, answers = {}, _apiKey = "", _categoryId = "";
+  let _currentSteps = DEFAULT_STEPS;
+  let _sizeRules = null;
 
   function gid(id) { return document.getElementById(id); }
+
+  // ======= Tag extraction — reads product tag from page HTML =======
+  function extractProductTag() {
+    // 1. <meta name="product-tag" content="abaya">
+    const meta = document.querySelector('meta[name="product-tag"]');
+    if (meta) return meta.getAttribute("content");
+
+    // 2. <* data-product-tag="abaya">
+    const dataEl = document.querySelector('[data-product-tag]');
+    if (dataEl) return dataEl.getAttribute("data-product-tag");
+
+    // 3. <input type="hidden" name="product-tag" value="abaya"> or id="product-tag"
+    const hidden = document.querySelector('input[name="product-tag"], #product-tag');
+    if (hidden) return hidden.value;
+
+    // 4. <body class="... product-tag-abaya ...">
+    const m = document.body.className.match(/product-tag-([\w-]+)/);
+    if (m) return m[1];
+
+    return null;
+  }
+
+  // ======= Size calculation from JSONB rules =======
+  // sizeRules format: { default: "M", rules: [{ size: "XL", conditions: { height: { min: 175 }, weight: { min: 85 } } }, ...] }
+  function calculateSize(ans, rules) {
+    if (!rules || !rules.rules) return fallbackSize(ans);
+    for (const rule of rules.rules) {
+      const conds = rule.conditions || {};
+      let match = true;
+      for (const [key, cond] of Object.entries(conds)) {
+        const val = Number(ans[key]);
+        if (cond.min !== undefined && val < cond.min) { match = false; break; }
+        if (cond.max !== undefined && val > cond.max) { match = false; break; }
+        if (cond.eq  !== undefined && ans[key] !== cond.eq) { match = false; break; }
+        if (cond.in  !== undefined && !cond.in.includes(ans[key])) { match = false; break; }
+      }
+      if (match) return rule.size;
+    }
+    return rules.default || fallbackSize(ans);
+  }
+
+  function fallbackSize(ans) {
+    const h = ans.height || 165, w = ans.weight || 70;
+    const bmi = w / Math.pow(h / 100, 2);
+    return bmi < 18.5 ? "S" : bmi < 23 ? "M" : bmi < 27 ? "L" : "XL";
+  }
+
+  // ======= Stock availability check =======
+  function isSizeOutOfStock(size) {
+    const sizeStr = size.toString().toUpperCase().trim();
+    const candidates = document.querySelectorAll(
+      '[data-size], [data-value], .size-option, .variant-option, ' +
+      'salla-variants button, salla-product-options button, ' +
+      '[class*="size"] button, [class*="variant"] button, ' +
+      'label.swatch, .product-form__option button'
+    );
+    for (const el of candidates) {
+      const txt = (
+        el.textContent ||
+        el.getAttribute('data-size') ||
+        el.getAttribute('data-value') ||
+        el.getAttribute('value') ||
+        ''
+      ).trim().toUpperCase();
+      if (txt !== sizeStr) continue;
+      if (
+        el.disabled ||
+        el.getAttribute('aria-disabled') === 'true' ||
+        el.classList.contains('out-of-stock') ||
+        el.classList.contains('unavailable') ||
+        el.classList.contains('sold-out') ||
+        el.classList.contains('disabled') ||
+        (el.style.opacity && parseFloat(el.style.opacity) < 0.5)
+      ) return true;
+    }
+    return false;
+  }
+
+  // ======= Fetch dynamic quiz from API =======
+  function fetchAndCacheQuiz(tag) {
+    const url = `${API_BASE}/api/get-quiz?tag=${encodeURIComponent(tag)}&apiKey=${encodeURIComponent(_apiKey)}`;
+    fetch(url)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && Array.isArray(data.quiz) && data.quiz.length > 0 && data.sizeRules) {
+          _currentSteps = data.quiz;
+          _sizeRules = data.sizeRules;
+          _categoryId = data.categoryId || _categoryId;
+        }
+      })
+      .catch(() => {});
+  }
 
   function setupModal() {
     if (document.getElementById("ssm-overlay")) return;
@@ -155,11 +248,9 @@
   ];
 
   function findCartButton() {
-    // 1) by CSS selector
     for (const sel of CART_SELECTORS) {
       try { const el = document.querySelector(sel); if (el) return el; } catch(e) {}
     }
-    // 2) by text content — catches any platform
     for (const el of document.querySelectorAll('button, [role="button"], input[type="submit"]')) {
       const txt = (el.textContent || el.value || '').toLowerCase().trim();
       if (CART_KEYWORDS.some(k => txt.includes(k))) return el;
@@ -174,6 +265,10 @@
 
     applyBrandColor(target);
 
+    // Re-extract tag on every inject (product may have changed on SPA)
+    const tag = extractProductTag();
+    if (tag && _apiKey) fetchAndCacheQuiz(tag);
+
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
     btn.type = "button";
@@ -186,22 +281,22 @@
   function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
   function render() {
-    const s = STEPS[step];
-    gid("ssm-fill").style.width = ((step / STEPS.length) * 100) + "%";
-    gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
+    const s = _currentSteps[step];
+    gid("ssm-fill").style.width = ((step / _currentSteps.length) * 100) + "%";
+    gid("ssm-count").textContent = `الخطوة ${step + 1} من ${_currentSteps.length}`;
 
-    let html = `<div class="ssm-question">${s.q}</div><div class="ssm-hint">${s.hint}</div>`;
+    let html = `<div class="ssm-question">${s.q}</div><div class="ssm-hint">${s.hint || ""}</div>`;
 
     if (s.type === "gender") {
-      html += `<div class="ssm-gender-cards">${s.options.map(o => `<div class="ssm-gender-card ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">${o.svg}<div class="g-label">${o.label}</div></div>`).join("")}</div>`;
+      html += `<div class="ssm-gender-cards">${s.options.map(o => `<div class="ssm-gender-card ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">${o.svg || ""}<div class="g-label">${o.label}</div></div>`).join("")}</div>`;
     } else if (s.type === "number") {
-      const v = answers[s.id] || s.def;
-      html += `<div class="ssm-number-group"><button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',-1)">−</button><input class="ssm-num-input" id="numinput" type="number" value="${v}" min="${s.min}" max="${s.max}" oninput="window._ssm.setVal('${s.id}',+this.value)"/><button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',1)">+</button><span class="ssm-unit">${s.unit}</span></div>`;
+      const v = answers[s.id] || s.def || 0;
+      html += `<div class="ssm-number-group"><button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',-1)">−</button><input class="ssm-num-input" id="numinput" type="number" value="${v}" min="${s.min || 0}" max="${s.max || 9999}" oninput="window._ssm.setVal('${s.id}',+this.value)"/><button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',1)">+</button><span class="ssm-unit">${s.unit || ""}</span></div>`;
     } else if (s.type === "cards") {
-      html += `<div class="ssm-cards">${s.options.map(o => `<div class="ssm-card ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">${o.svg}<div class="card-label">${o.label}</div>${o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}</div>`).join("")}</div>`;
+      html += `<div class="ssm-cards">${s.options.map(o => `<div class="ssm-card ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">${o.svg || ""}<div class="card-label">${o.label}</div>${o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}</div>`).join("")}</div>`;
     }
 
-    const isLast = step === STEPS.length - 1;
+    const isLast = step === _currentSteps.length - 1;
     html += `<div class="ssm-nav"><button class="ssm-btn-back" onclick="window._ssm.back()">${step > 0 ? "&#8594; رجوع" : ""}</button><button class="ssm-btn-next" onclick="window._ssm.next()">${isLast ? "✨ احسب مقاسي" : "التالي &#8592;"}</button></div>`;
 
     gid("ssm-body").innerHTML = html;
@@ -209,34 +304,58 @@
 
   window._ssm = {
     pick(id, v) { answers[id] = v; render(); },
-    adj(id, d) { const s = STEPS[step]; const cur = answers[id] || s.def; answers[id] = Math.min(s.max, Math.max(s.min, cur + d)); const inp = gid("numinput"); if (inp) inp.value = answers[id]; },
+    adj(id, d) {
+      const s = _currentSteps[step];
+      const cur = answers[id] || s.def || 0;
+      answers[id] = Math.min(s.max || 9999, Math.max(s.min || 0, cur + d));
+      const inp = gid("numinput"); if (inp) inp.value = answers[id];
+    },
     setVal(id, v) { answers[id] = v; },
     back() { if (step > 0) { step--; render(); } },
     next() {
-      const s = STEPS[step];
-      if (s.type === "number") { const inp = gid("numinput"); if (inp) answers[s.id] = +inp.value; if (!answers[s.id]) { alert("رجاءً أدخل قيمة"); return; } }
+      const s = _currentSteps[step];
+      if (s.type === "number") {
+        const inp = gid("numinput"); if (inp) answers[s.id] = +inp.value;
+        if (!answers[s.id]) { alert("رجاءً أدخل قيمة"); return; }
+      }
       if ((s.type === "cards" || s.type === "gender") && !answers[s.id]) { alert("رجاءً اختر خياراً"); return; }
-      if (step < STEPS.length - 1) { step++; render(); } else { submit(); }
+      if (step < _currentSteps.length - 1) { step++; render(); } else { submit(); }
     }
   };
 
   function submit() {
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>جاري حساب مقاسك...</p></div>`;
+
+    // If we have dynamic size rules, calculate locally (no extra round-trip needed)
+    if (_sizeRules) {
+      const size = calculateSize(answers, _sizeRules);
+      showResult(size);
+      return;
+    }
+
+    // Fallback: call server-side size API
     fetch(`${API_BASE}/api/widget/size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...answers, apiKey: _apiKey, categoryId: _categoryId })
     })
-      .then(r => r.json()).then(d => showResult(d.size))
-      .catch(() => {
-        const h = answers.height || 165, w = answers.weight || 70;
-        const bmi = w / Math.pow(h / 100, 2);
-        showResult(bmi < 18.5 ? "S" : bmi < 23 ? "M" : bmi < 27 ? "L" : "XL");
-      });
+      .then(r => r.json())
+      .then(d => showResult(d.size))
+      .catch(() => showResult(fallbackSize(answers)));
   }
 
   function showResult(size) {
-    gid("ssm-body").innerHTML = `<div class="ssm-result"><div class="ssm-result-icon">🎉</div><div class="ssm-result-label">المقاس المناسب لك هو</div><div class="ssm-result-size">${size}</div><div class="ssm-result-msg">بناءً على إجاباتك، ننصحك باختيار مقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.</div><button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button></div>`;
+    const outOfStock = isSizeOutOfStock(size);
+
+    let stockBadge = '';
+    let msg = `بناءً على إجاباتك، ننصحك باختيار مقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
+
+    if (outOfStock) {
+      stockBadge = `<div class="ssm-stock-warn">⚠️ هذا المقاس غير متوفر حالياً</div>`;
+      msg = `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر حالياً.<br/>تواصل مع المتجر أو اختر أقرب مقاس متاح.`;
+    }
+
+    gid("ssm-body").innerHTML = `<div class="ssm-result"><div class="ssm-result-icon">${outOfStock ? "😔" : "🎉"}</div><div class="ssm-result-label">المقاس المناسب لك هو</div><div class="ssm-result-size">${size}</div>${stockBadge}<div class="ssm-result-msg">${msg}</div><button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button></div>`;
     window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
 
@@ -245,11 +364,16 @@
     init(config) {
       _apiKey = config.apiKey || "";
       _categoryId = config.categoryId || "";
+      _currentSteps = DEFAULT_STEPS;
+      _sizeRules = null;
+
+      // Try to load dynamic quiz immediately on init
+      const tag = extractProductTag();
+      if (tag && _apiKey) fetchAndCacheQuiz(tag);
 
       let currentIv = null;
 
       function startInject() {
-        // Remove old button if URL changed
         const old = document.getElementById("ssm-trigger");
         if (old) old.remove();
 
@@ -264,26 +388,36 @@
         }, 200);
       }
 
-      // Run on initial load
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", startInject);
       } else {
         startInject();
       }
 
-      // Re-run on SPA navigation (URL change without page reload)
+      // Re-run on SPA navigation
       let lastUrl = location.href;
       setInterval(() => {
         if (location.href !== lastUrl) {
           lastUrl = location.href;
+          // Reset quiz to default until new tag is fetched for new page
+          _currentSteps = DEFAULT_STEPS;
+          _sizeRules = null;
           setTimeout(startInject, 300);
         }
       }, 300);
 
-      // Also listen to history API (pushState / popstate)
       const _push = history.pushState.bind(history);
-      history.pushState = function (...a) { _push(...a); setTimeout(startInject, 300); };
-      window.addEventListener("popstate", () => setTimeout(startInject, 300));
+      history.pushState = function (...a) {
+        _push(...a);
+        _currentSteps = DEFAULT_STEPS;
+        _sizeRules = null;
+        setTimeout(startInject, 300);
+      };
+      window.addEventListener("popstate", () => {
+        _currentSteps = DEFAULT_STEPS;
+        _sizeRules = null;
+        setTimeout(startInject, 300);
+      });
     },
     open() { setupModal(); openModal(); }
   };
