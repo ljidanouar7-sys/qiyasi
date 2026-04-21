@@ -20,7 +20,6 @@ export default function DashboardPage() {
   }, []);
 
   const stats = [
-    { label: "المنتجات", val: "—", href: "/dashboard/products", icon: "🛍️" },
     { label: "الفئات", val: "—", href: "/dashboard/categories", icon: "📐" },
     { label: "الخطة", val: plan === "pro" ? "Pro ⭐" : "مجانية", href: "#", icon: "💎" },
     { label: "الحالة", val: status === "active" ? "مفعّل" : "موقوف", href: "#", icon: "✅" },
@@ -40,7 +39,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-10">
         {stats.map(s => (
           <Link key={s.label} href={s.href} className="bg-white border border-slate-100 rounded-2xl p-5 hover:border-teal-200 hover:shadow-sm transition">
             <p className="text-2xl mb-3">{s.icon}</p>
@@ -55,7 +54,6 @@ export default function DashboardPage() {
         <div className="space-y-3">
           {[
             { label: "أضف فئة جديدة", href: "/dashboard/categories", icon: "📐" },
-            { label: "أضف منتجاً جديداً", href: "/dashboard/products", icon: "🛍️" },
             { label: "احصل على كود التضمين", href: "/dashboard/embed", icon: "🔗" },
           ].map(a => (
             <Link key={a.href} href={a.href} className="flex items-center gap-3 p-4 bg-slate-50 hover:bg-teal-50 hover:text-teal-700 rounded-xl text-sm font-semibold text-slate-700 transition">
