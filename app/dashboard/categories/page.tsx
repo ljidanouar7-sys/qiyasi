@@ -35,13 +35,14 @@ interface Category {
   id:             string;
   name:           string;
   tag:            string;
+  niche:          string;
   size_chart:     unknown;
   override_rules: unknown;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const ALL_SIZES  = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+const ALL_SIZES  = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
 const FIELD_KEYS: QuizKey[] = ["height", "weight", "shoulders", "legs", "belly"];
 
 const FIELDS: Record<QuizKey, { label: string; type: "number" | "select"; unit?: string; options?: { v: string; label: string }[] }> = {
@@ -52,20 +53,34 @@ const FIELDS: Record<QuizKey, { label: string; type: "number" | "select"; unit?:
   belly:     { label: "شكل البطن",   type: "select", options: [{ v: "flat", label: "مسطحة" }, { v: "average", label: "متوسطة" }, { v: "big", label: "كبيرة" }] },
 };
 
+const NICHES = [
+  { value: "long_clothing", label: "👗 ملابس طويلة (عبايات، جلابيب)" },
+  { value: "kids",          label: "👶 ملابس أطفال" },
+  { value: "sports",        label: "🏃 ملابس رياضية" },
+  { value: "other",         label: "📦 أخرى" },
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function uid() { return Math.random().toString(36).slice(2, 8); }
 
+// Default template: international standards for long clothing (abayas / jalabiyas)
 const DEFAULT_COLS: ChartColumn[] = [
-  { id: "h", label: "الطول (سم)", quiz_field: "height" },
-  { id: "w", label: "الوزن (كغ)", quiz_field: "weight" },
+  { id: "h",  label: "الطول (سم)",  quiz_field: "height" },
+  { id: "w",  label: "الوزن (كغ)",  quiz_field: "weight" },
+  { id: "ch", label: "الصدر (سم)",  quiz_field: "" },
+  { id: "wa", label: "الخصر (سم)",  quiz_field: "" },
+  { id: "hi", label: "الورك (سم)",  quiz_field: "" },
 ];
 
 const DEFAULT_ROWS: ChartRow[] = [
-  { size: "S",  cells: { h: { min: "148", max: "158" }, w: { min: "45", max: "56" } } },
-  { size: "M",  cells: { h: { min: "158", max: "166" }, w: { min: "56", max: "68" } } },
-  { size: "L",  cells: { h: { min: "166", max: "173" }, w: { min: "68", max: "82" } } },
-  { size: "XL", cells: { h: { min: "173", max: "182" }, w: { min: "82", max: "98" } } },
+  { size: "XS / 50", cells: { h:{min:"145",max:"155"}, w:{min:"45",max:"55"},  ch:{min:"82",max:"88"},   wa:{min:"66",max:"72"},   hi:{min:"90",max:"96"}   } },
+  { size: "S / 52",  cells: { h:{min:"155",max:"163"}, w:{min:"55",max:"67"},  ch:{min:"88",max:"96"},   wa:{min:"72",max:"80"},   hi:{min:"96",max:"104"}  } },
+  { size: "M / 54",  cells: { h:{min:"163",max:"170"}, w:{min:"67",max:"78"},  ch:{min:"96",max:"104"},  wa:{min:"80",max:"88"},   hi:{min:"104",max:"112"} } },
+  { size: "L / 56",  cells: { h:{min:"170",max:"178"}, w:{min:"78",max:"90"},  ch:{min:"104",max:"112"}, wa:{min:"88",max:"96"},   hi:{min:"112",max:"120"} } },
+  { size: "XL / 58", cells: { h:{min:"178",max:"185"}, w:{min:"90",max:"102"}, ch:{min:"112",max:"120"}, wa:{min:"96",max:"104"},  hi:{min:"120",max:"128"} } },
+  { size: "XXL / 60",cells: { h:{min:"185",max:"193"}, w:{min:"102",max:"115"},ch:{min:"120",max:"128"}, wa:{min:"104",max:"112"}, hi:{min:"128",max:"136"} } },
+  { size: "3XL / 62",cells: { h:{min:"193",max:"200"}, w:{min:"115",max:"125"},ch:{min:"128",max:"136"}, wa:{min:"112",max:"120"}, hi:{min:"136",max:"144"} } },
 ];
 
 // ── Converters ────────────────────────────────────────────────────────────────
@@ -139,8 +154,9 @@ export default function CategoriesPage() {
   const [saving,     setSaving]     = useState(false);
 
   // Basic info
-  const [catName, setCatName] = useState("");
-  const [catTag,  setCatTag]  = useState("");
+  const [catName,  setCatName]  = useState("");
+  const [catTag,   setCatTag]   = useState("");
+  const [catNiche, setCatNiche] = useState("long_clothing");
 
   // Size chart
   const [cols,    setCols]    = useState<ChartColumn[]>(DEFAULT_COLS);
@@ -165,13 +181,13 @@ export default function CategoriesPage() {
   }
 
   async function fetchCategories(mid: string) {
-    const { data } = await supabase.from("categories").select("id, name, tag, size_chart, override_rules").eq("merchant_id", mid).order("created_at");
+    const { data } = await supabase.from("categories").select("id, name, tag, niche, size_chart, override_rules").eq("merchant_id", mid).order("created_at");
     if (data) setCategories(data as Category[]);
   }
 
   function openNew() {
     setEditingCat(null);
-    setCatName(""); setCatTag("");
+    setCatName(""); setCatTag(""); setCatNiche("long_clothing");
     setCols(DEFAULT_COLS); setRows(DEFAULT_ROWS);
     setOverrideRules([]); setDefaultSize("M");
     setActiveTab("chart"); setShowForm(true);
@@ -180,7 +196,7 @@ export default function CategoriesPage() {
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
-    setCatName(cat.name); setCatTag(cat.tag || "");
+    setCatName(cat.name); setCatTag(cat.tag || ""); setCatNiche(cat.niche || "long_clothing");
     const { cols: c, rows: r } = jsonToChart(cat.size_chart);
     setCols(c); setRows(r);
     const { rules, defaultSize: d } = jsonToRules(cat.override_rules);
@@ -200,6 +216,7 @@ export default function CategoriesPage() {
       merchant_id:    merchantId,
       name:           catName.trim(),
       tag:            catTag.trim().toLowerCase().replace(/\s+/g, "-"),
+      niche:          catNiche,
       size_chart:     chartToJson(cols, rows),
       override_rules: rulesToJson(overrideRules, defaultSize),
     };
@@ -318,6 +335,16 @@ export default function CategoriesPage() {
           </div>
 
           <div className="p-6 space-y-6">
+            {/* Template banner — shown only when creating new */}
+            {!editingCat && (
+              <div className="bg-teal-50 border border-teal-200 rounded-xl px-5 py-4">
+                <p className="text-sm font-black text-teal-800 mb-0.5">📋 جدول افتراضي جاهز</p>
+                <p className="text-xs text-teal-700 leading-relaxed">
+                  تم تعبئة الجدول تلقائياً بمعايير عالمية للملابس الطويلة (عبايات، جلابيب). يمكنك تعديل أي قيمة أو إضافة/حذف أعمدة وصفوف.
+                </p>
+              </div>
+            )}
+
             {/* Basic info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -339,6 +366,17 @@ export default function CategoriesPage() {
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-teal-400"
                 />
               </div>
+            </div>
+
+            {/* Niche */}
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1.5">نوع النيش</label>
+              <select
+                value={catNiche} onChange={e => setCatNiche(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white"
+              >
+                {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+              </select>
             </div>
 
             {/* Tabs */}
@@ -636,9 +674,10 @@ export default function CategoriesPage() {
               <div>
                 <p className="font-black text-slate-900">{cat.name}</p>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  {cat.tag && <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">#{cat.tag}</span>}
+                  {cat.tag   && <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">#{cat.tag}</span>}
+                  {cat.niche && <span className="bg-slate-100 text-slate-500 text-xs px-2.5 py-0.5 rounded-full">{NICHES.find(n => n.value === cat.niche)?.label ?? cat.niche}</span>}
                   {matchCols.length > 0 && <span className="text-slate-400 text-xs">📊 {matchCols.length} عمود حساب</span>}
-                  {rules.length > 0 && <span className="text-slate-400 text-xs">⚡ {rules.length} قاعدة استثناء</span>}
+                  {rules.length > 0     && <span className="text-slate-400 text-xs">⚡ {rules.length} قاعدة استثناء</span>}
                 </div>
               </div>
               <div className="flex items-center gap-3">
