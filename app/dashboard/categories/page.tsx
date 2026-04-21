@@ -404,16 +404,6 @@ export default function CategoriesPage() {
               </button>
             </div>
 
-            {/* JSON preview */}
-            <details className="bg-slate-50 border border-slate-200 rounded-xl">
-              <summary className="px-4 py-3 text-xs font-bold text-slate-500 cursor-pointer select-none">
-                معاينة JSON (للمطورين)
-              </summary>
-              <pre className="px-4 pb-4 text-xs text-slate-600 font-mono overflow-x-auto" dir="ltr">
-                {JSON.stringify(chartToJson(cols, rows), null, 2)}
-              </pre>
-            </details>
-
             {/* Actions */}
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               <button
@@ -486,24 +476,6 @@ export default function CategoriesPage() {
         })}
       </div>
 
-      {/* How to use tags */}
-      <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-5">
-        <h3 className="font-black text-slate-800 text-sm mb-3">🔗 كيف يعمل الـ Widget تلقائياً؟</h3>
-        <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
-          <p>
-            <strong>1.</strong> الـ Widget يقرأ عنوان المنتج من صفحتك تلقائياً.
-          </p>
-          <p>
-            <strong>2.</strong> يقارنه مع الـ Tags المحفوظة — إذا وجد تطابقاً، يحمّل جدول المقاسات الصحيح.
-          </p>
-          <p>
-            <strong>3.</strong> لا تحتاج لتعديل أي كود في متجرك — فقط أضف كود التضمين مرة واحدة في الـ Header.
-          </p>
-        </div>
-        <pre className="mt-3 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-mono text-slate-700 overflow-x-auto" dir="ltr">
-          {`<meta name="product-tag" content="TAG">  <!-- اختياري: للتحكم اليدوي -->`}
-        </pre>
-      </div>
     </div>
   );
 }
