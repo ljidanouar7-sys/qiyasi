@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// CORS headers — required because widget.js runs on external stores
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -39,8 +38,7 @@ export async function GET(req: NextRequest) {
 
   const merchantId = keyRow.merchant_id;
 
-  // ── 2. Domain verification (optional but recommended) ──────────
-  // Get the caller's origin from the request headers
+  // ── 2. Domain verification ─────────────────────────────────────
   const origin = req.headers.get("origin") || req.headers.get("referer") || "";
 
   const { data: domains } = await supabase
@@ -48,7 +46,6 @@ export async function GET(req: NextRequest) {
     .select("domain")
     .eq("user_id", merchantId);
 
-  // If merchant has registered domains, verify the caller is from one of them
   if (domains && domains.length > 0) {
     const isAllowed = domains.some(d => origin.includes(d.domain));
     if (!isAllowed) {
@@ -59,7 +56,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Look up category by tag ─────────────────────────────────
   const { data: category } = await supabase
     .from("categories")
-    .select("id, name, tag, size_rules")
+    .select("id, name, tag, size_chart, override_rules")
     .eq("merchant_id", merchantId)
     .eq("tag", tag)
     .single();
@@ -68,16 +65,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Category not found for this tag" }, { status: 404, headers: CORS });
   }
 
-  if (!category.size_rules) {
-    return NextResponse.json({ error: "Category has no size rules configured" }, { status: 422, headers: CORS });
+  if (!category.size_chart) {
+    return NextResponse.json({ error: "Category has no size chart configured" }, { status: 422, headers: CORS });
   }
 
-  // ── 4. Return size rules only (quiz questions are fixed in the widget) ──
+  // ── 4. Return chart + override rules ───────────────────────────
+  // Quiz questions are fixed in the widget — never returned from API
   return NextResponse.json(
     {
-      categoryId:   category.id,
-      categoryName: category.name,
-      sizeRules:    category.size_rules,
+      categoryId:     category.id,
+      categoryName:   category.name,
+      sizeChart:      category.size_chart,      // dynamic table for matching
+      overrideRules:  category.override_rules,  // logical rules that override the table
     },
     { headers: CORS }
   );

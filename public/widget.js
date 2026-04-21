@@ -132,7 +132,8 @@
     },
   ];
 
-  let step = 0, answers = {}, _apiKey = "", _categoryId = "", _sizeRules = null;
+  let step = 0, answers = {}, _apiKey = "", _categoryId = "";
+  let _sizeChart = null, _overrideRules = null;
 
   function gid(id) { return document.getElementById(id); }
 
@@ -140,50 +141,82 @@
   function extractProductTag() {
     const meta = document.querySelector('meta[name="product-tag"]');
     if (meta) return meta.getAttribute("content");
-
     const dataEl = document.querySelector('[data-product-tag]');
     if (dataEl) return dataEl.getAttribute("data-product-tag");
-
     const hidden = document.querySelector('input[name="product-tag"], #product-tag');
     if (hidden) return hidden.value;
-
     const m = document.body.className.match(/product-tag-([\w-]+)/);
     if (m) return m[1];
-
     return null;
   }
 
-  // ======= Fetch size rules from API (questions are fixed, never from DB) =======
-  function fetchSizeRules(tag) {
+  // ======= Fetch size chart + override rules from API =======
+  function fetchCategoryData(tag) {
     const url = `${API_BASE}/api/get-quiz?tag=${encodeURIComponent(tag)}&apiKey=${encodeURIComponent(_apiKey)}`;
     fetch(url)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data && data.sizeRules) {
-          _sizeRules    = data.sizeRules;
-          _categoryId   = data.categoryId || _categoryId;
+        if (data) {
+          _sizeChart     = data.sizeChart     || null;
+          _overrideRules = data.overrideRules || null;
+          _categoryId    = data.categoryId    || _categoryId;
         }
       })
       .catch(() => {});
   }
 
-  // ======= Calculate size from merchant's JSON rules =======
-  // Rule format: { default:"M", rules:[{ size:"XL", conditions:{ height:{min:175}, weight:{min:85} } }] }
-  function calculateSize(ans) {
-    if (!_sizeRules || !_sizeRules.rules) return fallbackSize(ans);
-    for (const rule of _sizeRules.rules) {
+  // ======= Step 1: find best size from dynamic chart =======
+  // chart format: { columns:[{id,label,quiz_field},...], rows:[{size, colId:{min,max},...},...] }
+  function findSizeFromChart(ans) {
+    if (!_sizeChart || !_sizeChart.rows || !_sizeChart.columns) return null;
+    const matchCols = _sizeChart.columns.filter(c => c.quiz_field && ans[c.quiz_field] !== undefined);
+    if (matchCols.length === 0) return null;
+
+    let best = null, bestScore = -Infinity;
+
+    for (const row of _sizeChart.rows) {
+      let inRange = 0, dist = 0;
+      for (const col of matchCols) {
+        const val  = Number(ans[col.quiz_field]);
+        const cell = row[col.id];
+        if (!cell) continue;
+        const mn = Number(cell.min || 0), mx = Number(cell.max || 9999);
+        if (val >= mn && val <= mx) {
+          inRange++;
+        } else {
+          dist += val < mn ? (mn - val) : (val - mx);
+        }
+      }
+      // Score: maximize in-range fields, then minimize distance
+      const score = inRange * 10000 - dist;
+      if (score > bestScore) { bestScore = score; best = row.size; }
+    }
+    return best;
+  }
+
+  // ======= Step 2: apply override rules on top of chart result =======
+  function applyOverrides(baseSize, ans) {
+    if (!_overrideRules || !_overrideRules.rules) return baseSize;
+    for (const rule of _overrideRules.rules) {
       const conds = rule.conditions || {};
       let match = true;
       for (const [key, cond] of Object.entries(conds)) {
         const val = Number(ans[key]);
         if (cond.min !== undefined && val < cond.min) { match = false; break; }
         if (cond.max !== undefined && val > cond.max) { match = false; break; }
-        if (cond.eq  !== undefined && ans[key] !== cond.eq)      { match = false; break; }
+        if (cond.eq  !== undefined && ans[key] !== cond.eq)       { match = false; break; }
         if (cond.in  !== undefined && !cond.in.includes(ans[key])){ match = false; break; }
       }
       if (match) return rule.size;
     }
-    return _sizeRules.default || fallbackSize(ans);
+    return baseSize;
+  }
+
+  // ======= Final calculation: chart → override → fallback =======
+  function calculateSize(ans) {
+    const chartSize    = findSizeFromChart(ans) || fallbackSize(ans);
+    const finalSize    = applyOverrides(chartSize, ans);
+    return finalSize;
   }
 
   function fallbackSize(ans) {
@@ -279,7 +312,7 @@
 
     // Refresh size rules for current product page
     const tag = extractProductTag();
-    if (tag && _apiKey) fetchSizeRules(tag);
+    if (tag && _apiKey) fetchCategoryData(tag);
 
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
@@ -383,7 +416,7 @@
 
       // Pre-fetch size rules for current page
       const tag = extractProductTag();
-      if (tag && _apiKey) fetchSizeRules(tag);
+      if (tag && _apiKey) fetchCategoryData(tag);
 
       let currentIv = null;
       function startInject() {
@@ -410,16 +443,16 @@
       setInterval(() => {
         if (location.href !== lastUrl) {
           lastUrl = location.href;
-          _sizeRules = null;
+          _sizeChart = null; _overrideRules = null;
           setTimeout(startInject, 300);
         }
       }, 300);
 
       const _push = history.pushState.bind(history);
       history.pushState = function (...a) {
-        _push(...a); _sizeRules = null; setTimeout(startInject, 300);
+        _push(...a); _sizeChart = null; _overrideRules = null; setTimeout(startInject, 300);
       };
-      window.addEventListener("popstate", () => { _sizeRules = null; setTimeout(startInject, 300); });
+      window.addEventListener("popstate", () => { _sizeChart = null; _overrideRules = null; setTimeout(startInject, 300); });
     },
     open() { setupModal(); openModal(); },
   };
