@@ -409,23 +409,35 @@
   function submit() {
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>جاري حساب مقاسك بالذكاء الاصطناعي...</p></div>`;
 
-    if (_categoryId) {
+    console.log("[SSM] submit called. categoryId:", _categoryId, "| sizeChart:", !!_sizeChart);
+
+    if (_sizeChart) {
+      const body = { answers, sizeChart: _sizeChart };
+      if (_categoryId) body.categoryId = _categoryId;
+
+      console.log("[SSM] Calling /api/calculate-size with sizeChart directly");
+
       fetch(`${API_BASE}/api/calculate-size`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categoryId: _categoryId, answers }),
+        body: JSON.stringify(body),
       })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
+          console.log("[SSM] AI response:", data);
           if (data && data.size) {
             showResult(data.size);
           } else {
-            // Fallback to local calculation
+            console.log("[SSM] AI failed, using local fallback");
             showResult(calculateSize(answers));
           }
         })
-        .catch(() => showResult(calculateSize(answers)));
+        .catch(err => {
+          console.log("[SSM] AI error, using local fallback:", err);
+          showResult(calculateSize(answers));
+        });
     } else {
+      console.log("[SSM] No sizeChart loaded, using local fallback");
       setTimeout(() => showResult(calculateSize(answers)), 600);
     }
   }
