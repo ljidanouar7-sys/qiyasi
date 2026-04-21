@@ -134,11 +134,40 @@
 
   let step = 0, answers = {}, _apiKey = "", _categoryId = "";
   let _sizeChart = null, _overrideRules = null;
+  let _merchantTags = [];   // [{ tag: "عباية", name: "عبايات" }, ...]
 
   function gid(id) { return document.getElementById(id); }
 
-  // ======= Extract product tag from page =======
+  // ======= Read product title from page =======
+  function readProductTitle() {
+    const selectors = [
+      'h1.product-title', 'h1.product__title', 'h1[class*="product"]',
+      '.product-title', '.product__title', '.product-name',
+      '[class*="product-title"]', '[class*="product-name"]',
+      '[itemprop="name"]', 'h1',
+    ];
+    for (const sel of selectors) {
+      try {
+        const el = document.querySelector(sel);
+        if (el && el.textContent.trim()) return el.textContent.trim();
+      } catch(e) {}
+    }
+    return document.title || '';
+  }
+
+  // ======= Match product title against merchant tags =======
+  function findTagFromTitle() {
+    if (!_merchantTags.length) return null;
+    const title = readProductTitle().toLowerCase();
+    for (const { tag } of _merchantTags) {
+      if (tag && title.includes(tag.toLowerCase())) return tag;
+    }
+    return null;
+  }
+
+  // ======= Extract product tag (meta first, then title matching) =======
   function extractProductTag() {
+    // 1. Explicit meta tag (fastest, most reliable)
     const meta = document.querySelector('meta[name="product-tag"]');
     if (meta) return meta.getAttribute("content");
     const dataEl = document.querySelector('[data-product-tag]');
@@ -147,7 +176,16 @@
     if (hidden) return hidden.value;
     const m = document.body.className.match(/product-tag-([\w-]+)/);
     if (m) return m[1];
-    return null;
+    // 2. Auto-detect from product title
+    return findTagFromTitle();
+  }
+
+  // ======= Fetch all merchant tags on init =======
+  function fetchMerchantTags() {
+    fetch(`${API_BASE}/api/get-tags?apiKey=${encodeURIComponent(_apiKey)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && data.tags) _merchantTags = data.tags; })
+      .catch(() => {});
   }
 
   // ======= Fetch size chart + override rules from API =======
@@ -310,7 +348,7 @@
 
     applyBrandColor(target);
 
-    // Refresh size rules for current product page
+    // Auto-detect category from product title
     const tag = extractProductTag();
     if (tag && _apiKey) fetchCategoryData(tag);
 
@@ -412,11 +450,16 @@
     init(config) {
       _apiKey     = config.apiKey || "";
       _categoryId = config.categoryId || "";
-      _sizeRules  = null;
+      _sizeChart = null; _overrideRules = null;
 
-      // Pre-fetch size rules for current page
-      const tag = extractProductTag();
-      if (tag && _apiKey) fetchCategoryData(tag);
+      // Load all merchant tags, then auto-detect current page
+      if (_apiKey) {
+        fetchMerchantTags();
+        setTimeout(() => {
+          const tag = extractProductTag();
+          if (tag) fetchCategoryData(tag);
+        }, 600);
+      }
 
       let currentIv = null;
       function startInject() {
