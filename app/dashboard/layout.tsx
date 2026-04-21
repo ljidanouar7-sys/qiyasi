@@ -8,7 +8,6 @@ const ADMIN_EMAIL = "ljidanouar7@gmail.com";
 
 const navLinks = [
   { href: "/dashboard", label: "الرئيسية", icon: "🏠" },
-  { href: "/dashboard/products", label: "المنتجات", icon: "🛍️" },
   { href: "/dashboard/categories", label: "الفئات", icon: "📐" },
   { href: "/dashboard/embed", label: "كود التضمين", icon: "🔗" },
 ];
