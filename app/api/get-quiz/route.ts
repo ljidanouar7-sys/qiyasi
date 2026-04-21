@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   const { data: category } = await supabase
     .from("categories")
     .select("id, name, tag, size_rules")
-    .eq("user_id", merchantId)
+    .eq("merchant_id", merchantId)
     .eq("tag", tag)
     .single();
 
