@@ -9,14 +9,26 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+// TODO: Add Upstash Redis rate limiting here when account is ready
+// import { Ratelimit } from "@upstash/ratelimit";
+// import { Redis } from "@upstash/redis";
 
-export async function OPTIONS() {
-  return new Response(null, { headers: CORS });
+function normalizeOrigin(raw: string): string {
+  try {
+    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return url.hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return raw.replace(/^www\./i, "").replace(/\/$/, "").toLowerCase();
+  }
+}
+
+function corsHeaders(origin: string) {
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
+  };
 }
 
 type SizeChart = {
@@ -24,68 +36,111 @@ type SizeChart = {
   rows: Record<string, unknown>[];
 };
 
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get("origin") || "*";
+  return new Response(null, { headers: corsHeaders(origin) });
+}
+
 export async function POST(req: NextRequest) {
+  const rawOrigin = req.headers.get("origin") || req.headers.get("referer") || "";
+  const normalizedOrigin = normalizeOrigin(rawOrigin);
+  const timestamp = new Date().toISOString();
+  const CORS = corsHeaders(rawOrigin);
+
+  // Parse body first
+  let tag: string, answers: Record<string, string>;
   try {
     const body = await req.json();
-    const { categoryId, answers, sizeChart: clientSizeChart } = body;
+    tag     = body.tag;
+    answers = body.answers;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
+  }
 
-    console.log("[calculate-size] answers:", JSON.stringify(answers));
-    console.log("[calculate-size] hasClientChart:", !!clientSizeChart, "| categoryId:", categoryId);
+  if (!tag || !answers) {
+    return NextResponse.json({ error: "tag and answers required" }, { status: 400, headers: CORS });
+  }
 
-    if (!answers) {
-      return NextResponse.json({ error: "answers required" }, { status: 400, headers: CORS });
-    }
+  // ══════════════════════════════════════════════════════════
+  // LAYER 1 — Domain Validation & Merchant Identification
+  // ══════════════════════════════════════════════════════════
+  const { data: domainRow } = await supabase
+    .from("merchant_domains")
+    .select("user_id")
+    .eq("domain", normalizedOrigin)
+    .single();
 
-    const apiKey = process.env.GOOGLE_AI_API_KEY;
-    if (!apiKey) {
-      console.error("[calculate-size] GOOGLE_AI_API_KEY missing!");
-      return NextResponse.json({ error: "AI not configured" }, { status: 500, headers: CORS });
-    }
+  if (!domainRow) {
+    console.log(`[${timestamp}] REJECTED — Unauthorized domain: "${normalizedOrigin}" (raw: "${rawOrigin}")`);
+    return NextResponse.json({ error: "Unauthorized domain" }, { status: 403, headers: CORS });
+  }
 
-    // Use client-provided chart first, fallback to DB
-    let sizeChart: SizeChart | null = clientSizeChart || null;
-    let categoryName = "عبايات";
+  const { data: merchant } = await supabase
+    .from("merchants")
+    .select("id")
+    .eq("user_id", domainRow.user_id)
+    .single();
 
-    if (!sizeChart && categoryId) {
-      const { data: category, error } = await supabase
-        .from("categories")
-        .select("size_chart, name")
-        .eq("id", categoryId)
-        .single();
-      if (error) console.error("[calculate-size] Supabase error:", error);
-      if (category?.size_chart) {
-        sizeChart = category.size_chart as SizeChart;
-        categoryName = category.name;
-      }
-    }
+  if (!merchant) {
+    console.log(`[${timestamp}] ERROR — No merchant for user_id: ${domainRow.user_id}`);
+    return NextResponse.json({ error: "Merchant not found" }, { status: 404, headers: CORS });
+  }
 
-    if (!sizeChart || !sizeChart.rows?.length) {
-      console.error("[calculate-size] No size chart available");
-      return NextResponse.json({ error: "Size chart not found" }, { status: 404, headers: CORS });
-    }
+  const merchantId = merchant.id;
+  console.log(`[${timestamp}] AUTHORIZED — domain: ${normalizedOrigin}, merchant: ${merchantId}`);
 
-    // Extract valid size names exactly as stored
-    const validSizes = sizeChart.rows.map(r => String(r.size));
-    console.log("[calculate-size] Valid sizes:", validSizes.join(", "));
+  // ══════════════════════════════════════════════════════════
+  // LAYER 2 — Rate Limiting (Upstash — add when ready)
+  // ══════════════════════════════════════════════════════════
+  // TODO: Uncomment when Upstash env vars are set
+  // const ratelimit = new Ratelimit({ redis: Redis.fromEnv(), limiter: Ratelimit.slidingWindow(50, "1 m") });
+  // const { success } = await ratelimit.limit(merchantId);
+  // if (!success) { console.log(`[${timestamp}] RATE LIMITED — ${merchantId}`); return 429; }
 
-    // Build readable chart table
-    const chartTable = sizeChart.rows.map(row => {
-      const cells = sizeChart!.columns.map(col => {
-        const cell = row[col.id] as { min: number; max: number } | undefined;
-        const range = cell ? `${cell.min}–${cell.max}` : "—";
-        return `${col.label}=${range}`;
-      });
-      return `"${row.size}" → ${cells.join(", ")}`;
-    }).join("\n");
+  // ══════════════════════════════════════════════════════════
+  // LAYER 3 — AI Calculation
+  // ══════════════════════════════════════════════════════════
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    console.error(`[${timestamp}] GOOGLE_AI_API_KEY missing`);
+    return NextResponse.json({ error: "AI not configured" }, { status: 500, headers: CORS });
+  }
 
-    const shouldersMap: Record<string, string> = { wide: "عريضة", average: "متوسطة", narrow: "ضيقة" };
-    const legsMap: Record<string, string>      = { long: "طويلة", average: "متوسطة", short: "قصيرة" };
-    const bellyMap: Record<string, string>     = { flat: "مسطحة", average: "متوسطة", big: "كبيرة" };
+  // Fetch size chart from DB (case-insensitive tag match)
+  const { data: category } = await supabase
+    .from("categories")
+    .select("size_chart, name")
+    .eq("merchant_id", merchantId)
+    .ilike("tag", tag)
+    .single();
 
-    const prompt = `You are a professional Abaya tailor. Choose the correct size for this customer.
+  if (!category?.size_chart) {
+    console.log(`[${timestamp}] NOT FOUND — tag: "${tag}", merchant: ${merchantId}`);
+    return NextResponse.json({ error: `No category for tag: ${tag}` }, { status: 404, headers: CORS });
+  }
 
-VALID SIZES (copy one of these exactly — no changes):
-${validSizes.map(s => `  "${s}"`).join("\n")}
+  const sizeChart = category.size_chart as SizeChart;
+  const validSizes = sizeChart.rows.map(r => String(r.size));
+
+  const chartTable = sizeChart.rows.map(row => {
+    const cells = sizeChart.columns.map(col => {
+      const cell = row[col.id] as { min: number; max: number } | undefined;
+      return `${col.label}: ${cell ? `${cell.min}–${cell.max}` : "—"}`;
+    });
+    return `"${row.size}" → ${cells.join(", ")}`;
+  }).join("\n");
+
+  const shouldersMap: Record<string, string> = { wide: "عريضة", average: "متوسطة", narrow: "ضيقة" };
+  const legsMap: Record<string, string>      = { long: "طويلة",  average: "متوسطة", short: "قصيرة" };
+  const bellyMap: Record<string, string>     = { flat: "مسطحة",  average: "متوسطة", big: "كبيرة"  };
+
+  const systemInstruction = `You are a Master Tailor specializing in Abayas and long modest wear.
+PRIORITY RULE — Width > Length: If weight suggests a larger size but height suggests smaller, prioritize the LARGER size for comfort.
+BOUNDARY RULE: When measurements fall between two sizes, ALWAYS choose the larger one.
+STRICT OUTPUT: Return ONLY the exact size name as written in the chart (e.g. "L / 56"). No greetings, no explanations.`;
+
+  const prompt = `VALID SIZES — copy one exactly:
+${validSizes.map(s => `"${s}"`).join(" | ")}
 
 CUSTOMER:
 - Height: ${answers.height} cm
@@ -94,68 +149,52 @@ CUSTOMER:
 - Legs: ${legsMap[answers.legs] || answers.legs}
 - Belly: ${bellyMap[answers.belly] || answers.belly}
 
-SIZE CHART:
+SIZE CHART (${category.name}):
 ${chartTable}
 
-RULES:
-1. Match height AND weight to the chart ranges above.
-2. If weight and height suggest different sizes → choose the size that fits the WEIGHT (abayas must not be tight).
-3. If the customer is between two sizes → choose the LARGER size.
-4. If belly is "كبيرة" or shoulders are "عريضة" → go one size UP.
-5. Your answer must be EXACTLY one of the valid sizes listed above. Copy it character by character.
+STEP-BY-STEP:
+1. Height ${answers.height} cm → fits which size(s)?
+2. Weight ${answers.weight} kg → fits which size(s)?
+3. Apply Priority Rule (Weight wins) → select size
+4. belly="${answers.belly}", shoulders="${answers.shoulders}" → adjust if needed
+5. If between sizes → go larger
 
-THINKING:
-- Height ${answers.height} fits: (check chart)
-- Weight ${answers.weight} fits: (check chart)
-- Weight-based size: ?
-- Body adjustments: ?
-- FINAL SIZE:`;
+FINAL SIZE (exact name only):`;
 
-    console.log("[calculate-size] Chart table:\n" + chartTable);
-    console.log("[calculate-size] Calling Gemini...");
+  console.log(`[${timestamp}] AI request — tag: ${tag}, answers: ${JSON.stringify(answers)}`);
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { temperature: 0.0, maxOutputTokens: 50 },
-    });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
+    systemInstruction,
+    generationConfig: { temperature: 0.0, maxOutputTokens: 50 },
+  });
 
-    const result = await model.generateContent(prompt);
-    const rawResponse = result.response.text().trim();
-    console.log("[calculate-size] Gemini raw:", rawResponse);
+  const result   = await model.generateContent(prompt);
+  const rawResp  = result.response.text().trim();
+  console.log(`[${timestamp}] Gemini raw: "${rawResp}"`);
 
-    // Extract last line (after FINAL SIZE:) or first valid match
-    const lines = rawResponse.split("\n").map(l => l.trim()).filter(Boolean);
-    let size = "";
+  // Validate: extract exact size from response
+  const lines = rawResp.split("\n").map((l: string) => l.trim()).filter(Boolean);
+  let size = "";
 
-    // Try to find exact match first
-    for (const line of [...lines].reverse()) {
-      const match = validSizes.find(s => line.includes(s));
-      if (match) { size = match; break; }
-    }
-
-    // Fuzzy match: normalize spaces/slashes
-    if (!size) {
-      const normalize = (s: string) => s.replace(/\s/g, "").toLowerCase();
-      const lastLine = lines[lines.length - 1] || "";
-      size = validSizes.find(s => normalize(lastLine).includes(normalize(s))) || "";
-    }
-
-    // Last resort: first valid size in raw response
-    if (!size) {
-      size = validSizes.find(s => rawResponse.includes(s)) || "";
-    }
-
-    console.log("[calculate-size] Final size:", size || "NOT FOUND — returning error");
-
-    if (!size) {
-      return NextResponse.json({ error: "AI returned invalid size" }, { status: 422, headers: CORS });
-    }
-
-    return NextResponse.json({ size }, { headers: CORS });
-
-  } catch (err) {
-    console.error("[calculate-size] Error:", err);
-    return NextResponse.json({ error: "Failed" }, { status: 500, headers: CORS });
+  for (const line of [...lines].reverse()) {
+    const match = validSizes.find(s => line.includes(s));
+    if (match) { size = match; break; }
   }
+  if (!size) {
+    const norm = (s: string) => s.replace(/[\s/]/g, "").toLowerCase();
+    const last = lines[lines.length - 1] || rawResp;
+    size = validSizes.find(s => norm(last).includes(norm(s))) || "";
+  }
+  if (!size) size = validSizes.find(s => rawResp.includes(s)) || "";
+
+  console.log(`[${timestamp}] Final size: "${size}"`);
+
+  if (!size) {
+    return NextResponse.json({ error: "AI returned invalid size" }, { status: 422, headers: CORS });
+  }
+
+  // Return size + sizeChart (for widget out-of-stock fallback)
+  return NextResponse.json({ size, sizeChart }, { headers: CORS });
 }

@@ -132,9 +132,9 @@
     },
   ];
 
-  let step = 0, answers = {}, _apiKey = "", _categoryId = "";
-  let _sizeChart = null, _overrideRules = null;
-  let _merchantTags = [];   // [{ tag: "عباية", name: "عبايات" }, ...]
+  let step = 0, answers = {};
+  let _sizeChart = null; // received from API for out-of-stock fallback
+  let _merchantTags = [];   // [{ tag, name }] loaded via domain auth
 
   function gid(id) { return document.getElementById(id); }
 
@@ -180,25 +180,11 @@
     return findTagFromTitle();
   }
 
-  // ======= Fetch all merchant tags on init =======
+  // ======= Fetch merchant tags via domain auth (no API key needed) =======
   function fetchMerchantTags() {
-    fetch(`${API_BASE}/api/get-tags?apiKey=${encodeURIComponent(_apiKey)}`)
+    fetch(`${API_BASE}/api/get-tags`)
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && data.tags) _merchantTags = data.tags; })
-      .catch(() => {});
-  }
-
-  // ======= Fetch size chart + override rules from API =======
-  function fetchCategoryData(tag) {
-    const url = `${API_BASE}/api/get-quiz?tag=${encodeURIComponent(tag)}&apiKey=${encodeURIComponent(_apiKey)}`;
-    fetch(url)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          _sizeChart  = data.sizeChart  || null;
-          _categoryId = data.categoryId || _categoryId;
-        }
-      })
       .catch(() => {});
   }
 
@@ -407,39 +393,37 @@
   };
 
   function submit() {
-    gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>جاري حساب مقاسك بالذكاء الاصطناعي...</p></div>`;
+    gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>الخياط الذكي يحلل مقاسك...</p></div>`;
 
-    console.log("[SSM] submit called. categoryId:", _categoryId, "| sizeChart:", !!_sizeChart);
+    const tag = extractProductTag();
+    console.log("[SSM] submit — tag:", tag, "| answers:", JSON.stringify(answers));
 
-    if (_sizeChart) {
-      const body = { answers, sizeChart: _sizeChart };
-      if (_categoryId) body.categoryId = _categoryId;
-
-      console.log("[SSM] Calling /api/calculate-size with sizeChart directly");
-
-      fetch(`${API_BASE}/api/calculate-size`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          console.log("[SSM] AI response:", data);
-          if (data && data.size) {
-            showResult(data.size);
-          } else {
-            console.log("[SSM] AI failed, using local fallback");
-            showResult(calculateSize(answers));
-          }
-        })
-        .catch(err => {
-          console.log("[SSM] AI error, using local fallback:", err);
-          showResult(calculateSize(answers));
-        });
-    } else {
-      console.log("[SSM] No sizeChart loaded, using local fallback");
-      setTimeout(() => showResult(calculateSize(answers)), 600);
+    if (!tag) {
+      console.log("[SSM] No tag found — using BMI fallback");
+      setTimeout(() => showResult(fallbackSize(answers)), 600);
+      return;
     }
+
+    fetch(`${API_BASE}/api/calculate-size`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag, answers }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        console.log("[SSM] AI response:", data);
+        if (data && data.size) {
+          if (data.sizeChart) _sizeChart = data.sizeChart; // store for out-of-stock ranking
+          showResult(data.size);
+        } else {
+          console.log("[SSM] AI failed — using BMI fallback");
+          showResult(fallbackSize(answers));
+        }
+      })
+      .catch(err => {
+        console.log("[SSM] Error:", err, "— using BMI fallback");
+        showResult(fallbackSize(answers));
+      });
   }
 
   function showResult(size) {
@@ -478,24 +462,16 @@
 
   // ======= Public API =======
   window.SizeMatcher = {
-    init(config) {
-      _apiKey     = config.apiKey || "";
-      _categoryId = config.categoryId || "";
-      _sizeChart = null; _overrideRules = null;
-
-      // Load all merchant tags, then auto-detect current page
-      if (_apiKey) {
-        fetchMerchantTags();
-        setTimeout(() => {
-          const tag = extractProductTag();
-          if (tag) fetchCategoryData(tag);
-        }, 600);
-      }
+    init(config = {}) {
+      // config.apiKey accepted for backward compat but no longer required
+      _sizeChart = null;
+      fetchMerchantTags();
 
       let currentIv = null;
       function startInject() {
         const old = document.getElementById("ssm-trigger");
         if (old) old.remove();
+        _sizeChart = null;
         setupModal();
         inject();
         if (currentIv) clearInterval(currentIv);
@@ -512,21 +488,21 @@
         startInject();
       }
 
-      // SPA navigation — reset size rules on page change
+      // SPA navigation
       let lastUrl = location.href;
       setInterval(() => {
         if (location.href !== lastUrl) {
           lastUrl = location.href;
-          _sizeChart = null; _overrideRules = null;
+          _sizeChart = null;
           setTimeout(startInject, 300);
         }
       }, 300);
 
       const _push = history.pushState.bind(history);
       history.pushState = function (...a) {
-        _push(...a); _sizeChart = null; _overrideRules = null; setTimeout(startInject, 300);
+        _push(...a); _sizeChart = null; setTimeout(startInject, 300);
       };
-      window.addEventListener("popstate", () => { _sizeChart = null; _overrideRules = null; setTimeout(startInject, 300); });
+      window.addEventListener("popstate", () => { _sizeChart = null; setTimeout(startInject, 300); });
     },
     open() { setupModal(); openModal(); },
   };

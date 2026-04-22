@@ -12,33 +12,62 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+function normalizeOrigin(raw: string): string {
+  try {
+    const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
+    return url.hostname.replace(/^www\./i, "").toLowerCase();
+  } catch {
+    return raw.replace(/^www\./i, "").replace(/\/$/, "").toLowerCase();
+  }
+}
+
 export async function OPTIONS() {
   return new Response(null, { headers: CORS });
 }
 
 export async function GET(req: NextRequest) {
-  const apiKey = new URL(req.url).searchParams.get("apiKey");
+  const apiKey       = new URL(req.url).searchParams.get("apiKey");
+  const rawOrigin    = req.headers.get("origin") || req.headers.get("referer") || "";
+  const normalOrigin = normalizeOrigin(rawOrigin);
 
-  if (!apiKey) {
-    return NextResponse.json({ error: "apiKey required" }, { status: 400, headers: CORS });
+  let merchantId: string | null = null;
+
+  // ── Method 1: Domain auth (new, preferred) ─────────────────
+  if (normalOrigin) {
+    const { data: domainRow } = await supabase
+      .from("merchant_domains")
+      .select("user_id")
+      .eq("domain", normalOrigin)
+      .single();
+
+    if (domainRow) {
+      const { data: merchant } = await supabase
+        .from("merchants")
+        .select("id")
+        .eq("user_id", domainRow.user_id)
+        .single();
+      if (merchant) merchantId = merchant.id;
+    }
   }
 
-  // Verify API key
-  const { data: keyRow } = await supabase
-    .from("api_keys")
-    .select("merchant_id, is_active")
-    .eq("key", apiKey)
-    .single();
-
-  if (!keyRow?.is_active) {
-    return NextResponse.json({ error: "Invalid or inactive API key" }, { status: 403, headers: CORS });
+  // ── Method 2: API key fallback (backward compat) ────────────
+  if (!merchantId && apiKey) {
+    const { data: keyRow } = await supabase
+      .from("api_keys")
+      .select("merchant_id, is_active")
+      .eq("key", apiKey)
+      .single();
+    if (keyRow?.is_active) merchantId = keyRow.merchant_id;
   }
 
-  // Return all category tags for this merchant (lightweight — no chart data)
+  if (!merchantId) {
+    return NextResponse.json({ tags: [] }, { headers: CORS });
+  }
+
   const { data: categories } = await supabase
     .from("categories")
     .select("tag, name")
-    .eq("merchant_id", keyRow.merchant_id)
+    .eq("merchant_id", merchantId)
     .not("tag", "is", null);
 
   return NextResponse.json(
