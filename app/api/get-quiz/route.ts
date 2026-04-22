@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     .from("categories")
     .select("id, name, tag, size_chart")
     .eq("merchant_id", merchantId)
-    .eq("tag", tag)
+    .ilike("tag", tag)
     .single();
 
   if (!category) {

@@ -397,7 +397,7 @@
 
     if (!tag) {
       console.log("[SSM] No tag found — using BMI fallback");
-      setTimeout(() => showResult(fallbackSize(answers)), 600);
+      setTimeout(() => showResult(fallbackSize(answers), true), 600);
       return;
     }
 
@@ -411,24 +411,27 @@
         console.log("[SSM] AI response:", data);
         if (data && data.size) {
           if (data.sizeChart) _sizeChart = data.sizeChart; // store for out-of-stock ranking
-          showResult(data.size);
+          showResult(data.size, false);
         } else {
           console.log("[SSM] AI failed — using BMI fallback");
-          showResult(fallbackSize(answers));
+          showResult(fallbackSize(answers), true);
         }
       })
       .catch(err => {
         console.log("[SSM] Error:", err, "— using BMI fallback");
-        showResult(fallbackSize(answers));
+        showResult(fallbackSize(answers), true);
       });
   }
 
-  function showResult(size) {
+  function showResult(size, isFallback) {
     const outOfStock = isSizeOutOfStock(size);
 
     // If out of stock, find the next available size from the ranked list
     let displaySize = size, stockBadge = "", msg = "";
-    if (outOfStock) {
+    if (isFallback) {
+      stockBadge = `<div class="ssm-stock-warn">⚠️ تقدير تقريبي — راجع جدول المقاسات للتأكد</div>`;
+      msg = `بناءً على وزنك وطولك، المقاس التقريبي هو <strong>${size}</strong>.<br/>للحصول على نتيجة دقيقة، تواصل مع المتجر.`;
+    } else if (outOfStock) {
       const ranked = rankSizes(answers);
       const next = ranked.slice(1).map(r => r.size).find(s => !isSizeOutOfStock(s));
       if (next) {
