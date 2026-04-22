@@ -323,9 +323,6 @@
 
     applyBrandColor(target);
 
-    // Auto-detect category from product title
-    const tag = extractProductTag();
-    if (tag && _apiKey) fetchCategoryData(tag);
 
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
