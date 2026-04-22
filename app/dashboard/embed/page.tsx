@@ -8,7 +8,6 @@ export default function EmbedPage() {
   const [savedDomain, setSavedDomain] = useState("");
   const [savingDomain, setSavingDomain] = useState(false);
   const [domainToast, setDomainToast]   = useState("");
-  const [userId, setUserId]             = useState<string | null>(null);
 
   const appOrigin = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
@@ -21,8 +20,6 @@ export default function EmbedPage() {
   async function initPage() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) { window.location.href = "/auth"; return; }
-    setUserId(userData.user.id);
-
     let { data: merchant } = await supabase
       .from("merchants").select("id").eq("user_id", userData.user.id).single();
 
@@ -46,26 +43,31 @@ export default function EmbedPage() {
   }
 
   async function saveDomain() {
-    if (!domain.trim() || !userId) return;
+    if (!domain.trim()) return;
     setSavingDomain(true);
-    const normalized = domain.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/$/, "").toLowerCase();
-
-    // Upsert domain
-    const { error } = await supabase
-      .from("merchant_domains")
-      .upsert({ user_id: userId, domain: normalized }, { onConflict: "user_id" });
-
-    if (!error) {
-      setSavedDomain(normalized);
-      setDomain(normalized);
+    const { data: s } = await supabase.auth.getSession();
+    const res = await fetch("/api/merchants/save-domain", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${s.session?.access_token}`,
+      },
+      body: JSON.stringify({ domain: domain.trim() }),
+    });
+    const data = await res.json();
+    if (data.domain) {
+      setSavedDomain(data.domain);
+      setDomain(data.domain);
       setDomainToast("✅ تم حفظ الدومين");
+      setTimeout(() => setDomainToast(""), 3000);
+    } else {
+      setDomainToast("❌ خطأ في الحفظ — حاول مجدداً");
       setTimeout(() => setDomainToast(""), 3000);
     }
     setSavingDomain(false);
   }
 
   function copy() {
-    if (!savedDomain) { alert("سجّل دومين متجرك أولاً"); return; }
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
