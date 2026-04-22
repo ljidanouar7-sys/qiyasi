@@ -277,7 +277,7 @@ export default function LandingPage() {
             <Link href="/auth" className="hidden sm:block text-sm text-slate-500 hover:text-slate-900 font-medium transition px-3 py-1.5">
               {t.nav.login}
             </Link>
-            <Link href="/auth" className="bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition">
+            <Link href="/signup" className="bg-slate-900 hover:bg-slate-700 text-white text-sm font-bold px-5 py-2 rounded-lg transition">
               {isAr ? "ابدأ مجاناً" : "Get Started"}
             </Link>
           </div>
@@ -317,7 +317,7 @@ export default function LandingPage() {
                   {t.hero.cta2}
                 </a>
                 <Link
-                  href="/auth"
+                  href="/signup"
                   className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-8 py-3.5 rounded-full transition text-base shadow-lg"
                 >
                   {isAr ? "ابدأ مجاناً ←" : "Start Free →"}
@@ -741,7 +741,7 @@ export default function LandingPage() {
           <h2 className="text-4xl md:text-6xl font-black leading-tight tracking-tight mb-6">
             {t.cta.h2}
           </h2>
-          <Link href="/auth" className="inline-block bg-white text-slate-900 hover:bg-slate-100 font-black text-lg px-10 py-4 rounded-xl transition">
+          <Link href="/signup" className="inline-block bg-white text-slate-900 hover:bg-slate-100 font-black text-lg px-10 py-4 rounded-xl transition">
             {isAr ? "اشتركوا الآن ←" : "Sign Up Now →"}
           </Link>
           <p className="text-slate-600 text-sm mt-8">{t.cta.note}</p>

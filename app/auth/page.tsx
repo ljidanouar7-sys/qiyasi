@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "../../lib/supabase";
 
 export default function AuthPage() {
@@ -7,7 +8,6 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [message, setMessage]   = useState("");
   const [loading, setLoading]   = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.search.includes("blocked=1")) {
@@ -20,17 +20,25 @@ export default function AuthPage() {
     setLoading(true);
     setMessage("");
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) setMessage("خطأ في التسجيل — " + error.message);
-      else setMessage("✅ تم إنشاء الحساب! تحقق من بريدك الإلكتروني للتأكيد.");
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) setMessage("البريد الإلكتروني أو كلمة المرور غير صحيحة");
-      else window.location.href = "/dashboard";
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      setMessage("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    // Check if onboarding is complete
+    const { data: merchant } = await supabase
+      .from("merchants")
+      .select("store_name")
+      .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
+      .single();
+
+    if (!merchant?.store_name || merchant.store_name === "متجري") {
+      window.location.href = "/welcome";
+    } else {
+      window.location.href = "/dashboard";
+    }
   }
 
   return (
@@ -41,19 +49,15 @@ export default function AuthPage() {
           <span className="font-black text-slate-900 text-lg">قياسي</span>
         </div>
 
-        <h1 className="text-2xl font-black text-slate-900 text-center mb-2">
-          {isSignUp ? "إنشاء حساب جديد" : "تسجيل الدخول"}
-        </h1>
-        <p className="text-slate-400 text-sm text-center mb-8">
-          {isSignUp ? "أدخل بياناتك لإنشاء حساب تاجر" : "أدخل بيانات حسابك للمتابعة"}
-        </p>
+        <h1 className="text-2xl font-black text-slate-900 text-center mb-2">تسجيل الدخول</h1>
+        <p className="text-slate-400 text-sm text-center mb-8">أدخل بيانات حسابك للمتابعة</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
             placeholder="البريد الإلكتروني"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             className="border border-slate-200 rounded-xl p-3.5 text-right text-sm focus:outline-none focus:border-teal-400 transition"
             required
           />
@@ -61,34 +65,28 @@ export default function AuthPage() {
             type="password"
             placeholder="كلمة المرور"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             className="border border-slate-200 rounded-xl p-3.5 text-right text-sm focus:outline-none focus:border-teal-400 transition"
             required
-            minLength={6}
           />
           <button
             type="submit"
             disabled={loading}
-            className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-3.5 font-bold text-sm transition mt-1"
+            className="bg-slate-900 hover:bg-slate-700 text-white rounded-xl p-3.5 font-bold text-sm transition disabled:opacity-60"
           >
-            {loading ? "جاري التحميل..." : isSignUp ? "إنشاء الحساب ←" : "دخول ←"}
+            {loading ? "جاري التحميل..." : "دخول ←"}
           </button>
         </form>
 
         {message && (
-          <p className={`mt-4 text-center text-sm ${message.startsWith("✅") ? "text-emerald-600" : "text-red-500"}`}>
-            {message}
-          </p>
+          <p className="mt-4 text-center text-sm text-red-500">{message}</p>
         )}
 
         <p className="mt-6 text-center text-xs text-slate-400">
-          {isSignUp ? "لديك حساب بالفعل؟" : "ليس لديك حساب؟"}{" "}
-          <button
-            onClick={() => { setIsSignUp(!isSignUp); setMessage(""); }}
-            className="text-teal-600 font-bold hover:underline"
-          >
-            {isSignUp ? "تسجيل الدخول" : "سجّل الآن"}
-          </button>
+          ليس لديك حساب؟{" "}
+          <Link href="/signup" className="text-teal-600 font-bold hover:underline">
+            سجّل الآن
+          </Link>
         </p>
       </div>
     </div>
