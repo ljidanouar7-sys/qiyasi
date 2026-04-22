@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 export const runtime = "nodejs";
 
@@ -9,9 +11,15 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// TODO: Add Upstash Redis rate limiting here when account is ready
-// import { Ratelimit } from "@upstash/ratelimit";
-// import { Redis } from "@upstash/redis";
+const ratelimit = new Ratelimit({
+  redis: new Redis({
+    url:   process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  }),
+  limiter:  Ratelimit.slidingWindow(50, "1 m"),
+  analytics: true,
+  prefix:   "qiyasi_rl",
+});
 
 function normalizeOrigin(raw: string): string {
   try {
@@ -90,12 +98,16 @@ export async function POST(req: NextRequest) {
   console.log(`[${timestamp}] AUTHORIZED — domain: ${normalizedOrigin}, merchant: ${merchantId}`);
 
   // ══════════════════════════════════════════════════════════
-  // LAYER 2 — Rate Limiting (Upstash — add when ready)
+  // LAYER 2 — Rate Limiting (50 requests/minute per merchant)
   // ══════════════════════════════════════════════════════════
-  // TODO: Uncomment when Upstash env vars are set
-  // const ratelimit = new Ratelimit({ redis: Redis.fromEnv(), limiter: Ratelimit.slidingWindow(50, "1 m") });
-  // const { success } = await ratelimit.limit(merchantId);
-  // if (!success) { console.log(`[${timestamp}] RATE LIMITED — ${merchantId}`); return 429; }
+  const { success, limit, remaining } = await ratelimit.limit(merchantId);
+  if (!success) {
+    console.log(`[${timestamp}] RATE LIMITED — merchant: ${merchantId}, origin: ${normalizedOrigin}`);
+    return NextResponse.json(
+      { error: "الكثير من الطلبات — حاول بعد دقيقة" },
+      { status: 429, headers: { ...CORS, "X-RateLimit-Limit": String(limit), "X-RateLimit-Remaining": String(remaining) } }
+    );
+  }
 
   // ══════════════════════════════════════════════════════════
   // LAYER 3 — AI Calculation
