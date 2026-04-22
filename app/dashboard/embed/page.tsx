@@ -31,14 +31,13 @@ export default function EmbedPage() {
     }
 
     if (merchant) {
-      // Load existing domain
-      const { data: domainRow } = await supabase
-        .from("merchant_domains")
-        .select("domain")
-        .eq("user_id", userData.user.id)
-        .limit(1)
-        .single();
-      if (domainRow) { setDomain(domainRow.domain); setSavedDomain(domainRow.domain); }
+      // Load existing domain via service role API
+      const { data: s } = await supabase.auth.getSession();
+      const res = await fetch("/api/merchants/get-domain", {
+        headers: { Authorization: `Bearer ${s.session?.access_token}` },
+      });
+      const json = await res.json();
+      if (json.domain) { setDomain(json.domain); setSavedDomain(json.domain); }
     }
   }
 
