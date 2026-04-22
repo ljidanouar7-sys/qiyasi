@@ -159,7 +159,7 @@ export default function CategoriesPage() {
     const payload = {
       merchant_id: merchantId,
       name:        catName.trim(),
-      tag:         catTag.trim().toLowerCase().replace(/\s+/g, "-"),
+      tag:         catTag.trim().replace(/\s+/g, "-"),
       niche:       catNiche,
       size_chart:  chartToJson(cols, rows),
     };
@@ -287,7 +287,7 @@ export default function CategoriesPage() {
               <label className="block text-xs font-bold text-slate-500 mb-1.5">الـ Tag</label>
               <input
                 type="text" placeholder="مثال: silk-abayas" dir="ltr"
-                value={catTag} onChange={e => setCatTag(e.target.value.replace(/\s/g, "-").toLowerCase())}
+                value={catTag} onChange={e => setCatTag(e.target.value.replace(/\s/g, "-"))}
                 className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-teal-400 transition"
               />
               {/* Tag tip */}
