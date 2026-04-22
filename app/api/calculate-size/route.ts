@@ -182,8 +182,14 @@ FINAL SIZE (exact name only):`;
     generationConfig: { temperature: 0.0, maxOutputTokens: 50 },
   });
 
-  const result   = await model.generateContent(prompt);
-  const rawResp  = result.response.text().trim();
+  let rawResp: string;
+  try {
+    const result = await model.generateContent(prompt);
+    rawResp = result.response.text().trim();
+  } catch (aiErr) {
+    console.error(`[${timestamp}] Gemini error:`, aiErr);
+    return NextResponse.json({ error: "AI request failed" }, { status: 502, headers: CORS });
+  }
   console.log(`[${timestamp}] Gemini raw: "${rawResp}"`);
 
   // Validate: extract exact size from response
