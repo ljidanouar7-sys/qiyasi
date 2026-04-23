@@ -177,7 +177,7 @@ FINAL SIZE (exact name only):`;
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: "gemma-4-31b-it",
     systemInstruction,
     generationConfig: { temperature: 0.0, maxOutputTokens: 50 },
   });
