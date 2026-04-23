@@ -107,6 +107,13 @@ export default function CategoriesPage() {
   const [cols,     setCols]     = useState<ChartColumn[]>(DEFAULT_COLS);
   const [rows,     setRows]     = useState<ChartRow[]>(DEFAULT_ROWS);
 
+  // Test modal state
+  const [testCat,     setTestCat]     = useState<Category | null>(null);
+  const [testAnswers, setTestAnswers] = useState({ height: "165", weight: "65", shoulders: "average", legs: "average", belly: "average" });
+  const [testResult,  setTestResult]  = useState<{ size: string; status: string; message: string } | null>(null);
+  const [testError,   setTestError]   = useState("");
+  const [testing,     setTesting]     = useState(false);
+
   useEffect(() => { init(); }, []);
 
   async function init() {
@@ -209,6 +216,20 @@ export default function CategoriesPage() {
     setRows(r => r.map((row, i) =>
       i !== ri ? row : { ...row, cells: { ...row.cells, [colId]: { ...row.cells[colId], [field]: value } } }
     ));
+  }
+
+  async function handleTest() {
+    if (!testCat) return;
+    setTesting(true); setTestResult(null); setTestError("");
+    const res = await fetch("/api/merchant/test-size", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tag: testCat.tag, answers: testAnswers }),
+    });
+    const data = await res.json();
+    if (!res.ok) setTestError(data.error || "حدث خطأ");
+    else setTestResult(data);
+    setTesting(false);
   }
 
   return (
@@ -500,6 +521,12 @@ export default function CategoriesPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button
+                    onClick={() => { setTestCat(cat); setTestResult(null); setTestError(""); }}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-lg transition"
+                  >
+                    🧪 جرّب
+                  </button>
+                  <button
                     onClick={() => openEdit(cat)}
                     className="bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition"
                   >
@@ -517,6 +544,90 @@ export default function CategoriesPage() {
           );
         })}
       </div>
+
+      {/* ── TEST MODAL ── */}
+      {testCat && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setTestCat(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm" dir="rtl" onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <p className="font-black text-slate-900 text-sm">🧪 تجربة الأداة</p>
+                <p className="text-xs text-slate-400 mt-0.5">{testCat.name}</p>
+              </div>
+              <button onClick={() => setTestCat(null)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+            </div>
+
+            {/* Form */}
+            <div className="p-5 space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">الطول (سم)</label>
+                  <input type="number" value={testAnswers.height}
+                    onChange={e => setTestAnswers(a => ({ ...a, height: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1">الوزن (كغ)</label>
+                  <input type="number" value={testAnswers.weight}
+                    onChange={e => setTestAnswers(a => ({ ...a, weight: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">الكتفين</label>
+                <select value={testAnswers.shoulders} onChange={e => setTestAnswers(a => ({ ...a, shoulders: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
+                  <option value="wide">عريضة</option>
+                  <option value="average">متوسطة</option>
+                  <option value="narrow">ضيقة</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">الأرجل</label>
+                <select value={testAnswers.legs} onChange={e => setTestAnswers(a => ({ ...a, legs: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
+                  <option value="long">طويلة</option>
+                  <option value="average">متوسطة</option>
+                  <option value="short">قصيرة</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">البطن</label>
+                <select value={testAnswers.belly} onChange={e => setTestAnswers(a => ({ ...a, belly: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
+                  <option value="flat">مسطحة</option>
+                  <option value="average">متوسطة</option>
+                  <option value="big">بارزة</option>
+                </select>
+              </div>
+
+              {/* Result */}
+              {testResult && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-center">
+                  <p className="text-xs text-teal-600 font-bold mb-1">المقاس الموصى به</p>
+                  <p className="text-3xl font-black text-teal-700">{testResult.size}</p>
+                  {testResult.message && <p className="text-xs text-slate-600 mt-2">{testResult.message}</p>}
+                </div>
+              )}
+
+              {testError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
+                  <p className="text-xs text-red-600 font-bold">❌ {testError}</p>
+                </div>
+              )}
+
+              <button onClick={handleTest} disabled={testing}
+                className="w-full bg-slate-900 hover:bg-slate-700 text-white font-black py-3 rounded-xl text-sm transition disabled:opacity-50">
+                {testing ? "⏳ جاري الحساب..." : "احسب المقاس"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
