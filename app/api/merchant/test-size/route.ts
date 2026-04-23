@@ -103,7 +103,7 @@ OUTPUT (strict JSON only):
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemma-4-31b-it",
+    model: "gemini-2.0-flash",
     systemInstruction,
     generationConfig: { temperature: 0.0, maxOutputTokens: 200 },
   });
