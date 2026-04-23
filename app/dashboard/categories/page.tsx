@@ -36,7 +36,6 @@ const NICHES = [
   { value: "other",         label: "📦 أخرى"                        },
 ];
 
-// Industry-standard template for long clothing
 const DEFAULT_COLS: ChartColumn[] = [
   { id: "h",  label: "الطول (سم)", quiz_field: "height" },
   { id: "w",  label: "الوزن (كغ)", quiz_field: "weight" },
@@ -102,7 +101,6 @@ export default function CategoriesPage() {
   const [toast,      setToast]      = useState("");
   const [saving,     setSaving]     = useState(false);
 
-  // Form fields
   const [catName,  setCatName]  = useState("");
   const [catTag,   setCatTag]   = useState("");
   const [catNiche, setCatNiche] = useState("long_clothing");
@@ -181,8 +179,6 @@ export default function CategoriesPage() {
     if (merchantId) fetchCategories(merchantId);
   }
 
-  // ── Chart handlers ─────────────────────────────────────────────────────────
-
   function addColumn() {
     const id = uid();
     setCols(c => [...c, { id, label: "قياس جديد", quiz_field: "" }]);
@@ -215,25 +211,23 @@ export default function CategoriesPage() {
     ));
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div dir="rtl">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">الفئات</p>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">فئات المنتجات</h1>
-        <p className="text-slate-400 text-sm mt-1">أنشئ فئة لكل مجموعة منتجات تشترك في نفس جدول المقاسات</p>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">فئات المنتجات</h1>
+        <p className="text-slate-400 text-xs md:text-sm mt-1">أنشئ فئة لكل مجموعة منتجات تشترك في نفس جدول المقاسات</p>
       </div>
 
       {toast && (
-        <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm px-5 py-3 rounded-xl">
+        <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm px-4 py-3 rounded-xl">
           {toast}
         </div>
       )}
 
       {!showForm && (
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mb-5">
           <button onClick={openNew} className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition">
             + فئة جديدة
           </button>
@@ -242,91 +236,90 @@ export default function CategoriesPage() {
 
       {/* ── FORM ── */}
       {showForm && (
-        <div id="form-top" className="bg-white border border-slate-100 rounded-2xl shadow-sm mb-8 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-black text-slate-900 text-lg">{editingCat ? `تعديل: ${editingCat.name}` : "فئة جديدة"}</h2>
+        <div id="form-top" className="bg-white border border-slate-100 rounded-2xl shadow-sm mb-6 overflow-hidden">
+          <div className="px-4 md:px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="font-black text-slate-900 text-base md:text-lg">
+              {editingCat ? `تعديل: ${editingCat.name}` : "فئة جديدة"}
+            </h2>
             <button onClick={cancelForm} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">✕</button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-4 md:p-6 space-y-5">
 
-            {/* Template banner — new categories only */}
             {!editingCat && (
-              <div className="bg-teal-50 border border-teal-200 rounded-xl px-5 py-4">
+              <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3">
                 <p className="text-sm font-black text-teal-800 mb-0.5">📋 جدول افتراضي جاهز</p>
                 <p className="text-xs text-teal-700 leading-relaxed">
-                  تم تعبئة الجدول تلقائياً بمعايير عالمية للملابس الطويلة (عبايات، جلابيب).
-                  يمكنك تعديل أي قيمة أو إضافة / حذف أعمدة وصفوف.
+                  تم تعبئة الجدول تلقائياً بمعايير عالمية للملابس الطويلة. يمكنك تعديل أي قيمة أو إضافة / حذف أعمدة وصفوف.
                 </p>
               </div>
             )}
 
-            {/* Basic info */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Basic info — stacked on mobile, 2 cols on sm+ */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">اسم الفئة</label>
                 <input
                   type="text" placeholder="مثال: عبايات حرير فاخرة"
                   value={catName} onChange={e => setCatName(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 transition"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 transition"
                 />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">نوع النيش</label>
                 <select
                   value={catNiche} onChange={e => setCatNiche(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
                 >
                   {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </select>
               </div>
             </div>
 
-            {/* Tag field with tip */}
+            {/* Tag */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-1.5">الـ Tag</label>
               <input
                 type="text" placeholder="مثال: silk-abayas" dir="ltr"
                 value={catTag} onChange={e => setCatTag(e.target.value.replace(/\s/g, "-"))}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-teal-400 transition"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-teal-400 transition"
               />
-              {/* Tag tip */}
               <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                 <p className="text-xs font-black text-amber-800 mb-1">💡 نصيحة مهمة حول الـ Tag</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
                   <strong>لا تستخدم اسم المنتج</strong> كـ Tag. استخدم اسم الفئة ليشمل كل المنتجات التي تشترك في نفس جدول المقاسات.<br/>
-                  مثال صحيح: <code className="bg-amber-100 px-1 rounded font-mono">silk-abayas</code> — يُضاف لجميع العبايات الحريرية.<br/>
-                  مثال خاطئ: <code className="bg-amber-100 px-1 rounded font-mono">عباية-زرقاء-2024</code> — خاص بمنتج واحد فقط.
+                  مثال صحيح: <code className="bg-amber-100 px-1 rounded font-mono">silk-abayas</code>
                 </p>
               </div>
             </div>
 
-            {/* Size chart builder */}
+            {/* Size chart */}
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="font-black text-slate-900 text-sm">📊 جدول المقاسات</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">
                     الأعمدة المحددة بـ "🔗 يطابق..." تُستخدم في حساب المقاس — الباقي للعرض فقط
                   </p>
                 </div>
                 <button
                   onClick={addColumn}
-                  className="text-teal-600 hover:text-teal-800 text-xs font-bold border border-teal-200 hover:border-teal-400 px-3 py-1.5 rounded-lg transition"
+                  className="text-teal-600 hover:text-teal-800 text-xs font-bold border border-teal-200 hover:border-teal-400 px-3 py-1.5 rounded-lg transition flex-shrink-0"
                 >
                   + عمود
                 </button>
               </div>
 
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
+              {/* Table — scrollable on mobile */}
+              <div className="overflow-x-auto rounded-xl border border-slate-200 -mx-1">
                 <table className="w-full border-collapse text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      <th className="text-right px-3 py-2.5 text-xs font-bold text-slate-500 w-32 border-b border-slate-200">
+                      <th className="text-right px-3 py-2.5 text-xs font-bold text-slate-500 w-28 border-b border-slate-200 sticky right-0 bg-slate-50 z-10">
                         المقاس
                       </th>
                       {cols.map(col => (
-                        <th key={col.id} className="px-2 py-2 min-w-[170px] border-b border-slate-200">
+                        <th key={col.id} className="px-2 py-2 min-w-[160px] border-b border-slate-200">
                           <div className="space-y-1.5">
                             <input
                               type="text"
@@ -338,7 +331,7 @@ export default function CategoriesPage() {
                               <select
                                 value={col.quiz_field}
                                 onChange={e => updateColumn(col.id, { quiz_field: e.target.value as QuizField })}
-                                className="flex-1 border border-slate-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
+                                className="flex-1 border border-slate-200 rounded-lg px-1 py-1 text-xs focus:outline-none focus:border-teal-400 bg-white"
                               >
                                 <option value="">📋 للعرض فقط</option>
                                 <option value="height">🔗 يطابق الطول</option>
@@ -346,7 +339,7 @@ export default function CategoriesPage() {
                               </select>
                               <button
                                 onClick={() => removeColumn(col.id)}
-                                className="text-slate-300 hover:text-red-500 font-bold text-base leading-none transition"
+                                className="text-slate-300 hover:text-red-500 font-bold text-base leading-none transition flex-shrink-0"
                               >✕</button>
                             </div>
                           </div>
@@ -358,17 +351,17 @@ export default function CategoriesPage() {
                   <tbody className="divide-y divide-slate-100">
                     {rows.map((row, ri) => (
                       <tr key={ri} className="hover:bg-slate-50 transition">
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1.5">
+                        <td className="px-2 py-2 sticky right-0 bg-white z-10 border-l border-slate-100">
+                          <div className="flex items-center gap-1">
                             <select
                               value={row.size}
                               onChange={e => updateRowSize(ri, e.target.value)}
-                              className="border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[90px]"
+                              className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
                             >
                               {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                               <option value={row.size}>{row.size}</option>
                             </select>
-                            <button onClick={() => removeRow(ri)} className="text-slate-200 hover:text-red-400 transition">🗑</button>
+                            <button onClick={() => removeRow(ri)} className="text-slate-200 hover:text-red-400 transition text-sm">🗑</button>
                           </div>
                         </td>
                         {cols.map(col => (
@@ -378,14 +371,14 @@ export default function CategoriesPage() {
                                 type="number" placeholder="من"
                                 value={row.cells[col.id]?.min ?? ""}
                                 onChange={e => updateCell(ri, col.id, "min", e.target.value)}
-                                className="w-16 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-teal-400"
+                                className="w-14 border border-slate-200 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-teal-400"
                               />
                               <span className="text-slate-300 text-xs">—</span>
                               <input
                                 type="number" placeholder="إلى"
                                 value={row.cells[col.id]?.max ?? ""}
                                 onChange={e => updateCell(ri, col.id, "max", e.target.value)}
-                                className="w-16 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-center focus:outline-none focus:border-teal-400"
+                                className="w-14 border border-slate-200 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-teal-400"
                               />
                             </div>
                           </td>
@@ -408,11 +401,11 @@ export default function CategoriesPage() {
             <div className="flex gap-3 pt-2 border-t border-slate-100">
               <button
                 onClick={handleSave} disabled={saving}
-                className="bg-slate-900 hover:bg-slate-700 text-white px-8 py-3 rounded-xl font-black text-sm transition"
+                className="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-sm transition flex-1 sm:flex-none"
               >
                 {saving ? "جاري الحفظ..." : editingCat ? "حفظ التعديلات" : "حفظ الفئة"}
               </button>
-              <button onClick={cancelForm} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-6 py-3 rounded-xl font-bold text-sm transition">
+              <button onClick={cancelForm} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-3 rounded-xl font-bold text-sm transition">
                 إلغاء
               </button>
             </div>
@@ -423,7 +416,7 @@ export default function CategoriesPage() {
       {/* ── Category List ── */}
       <div className="space-y-3">
         {categories.length === 0 && !showForm && (
-          <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
+          <div className="bg-white border border-slate-100 rounded-2xl p-10 md:p-12 text-center">
             <p className="text-4xl mb-3">📐</p>
             <p className="text-slate-500 font-bold mb-1">لا توجد فئات بعد</p>
             <p className="text-slate-400 text-sm mb-5">أنشئ فئة لكل مجموعة منتجات تشترك في نفس جدول المقاسات</p>
@@ -438,44 +431,45 @@ export default function CategoriesPage() {
           const matchCols = c.filter(col => col.quiz_field).length;
           const niche = NICHES.find(n => n.value === cat.niche);
           return (
-            <div key={cat.id} className="bg-white border border-slate-100 rounded-2xl px-5 py-4 flex items-center justify-between shadow-sm">
-              <div>
-                <p className="font-black text-slate-900">{cat.name}</p>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  {cat.tag && (
-                    <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">
-                      #{cat.tag}
-                    </span>
-                  )}
-                  {niche && (
-                    <span className="bg-slate-100 text-slate-500 text-xs px-2.5 py-0.5 rounded-full">
-                      {niche.label}
-                    </span>
-                  )}
-                  {matchCols > 0 && (
-                    <span className="text-slate-400 text-xs">📊 {matchCols} عمود حساب</span>
-                  )}
+            <div key={cat.id} className="bg-white border border-slate-100 rounded-2xl px-4 py-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-black text-slate-900 truncate">{cat.name}</p>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    {cat.tag && (
+                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">
+                        #{cat.tag}
+                      </span>
+                    )}
+                    {niche && (
+                      <span className="bg-slate-100 text-slate-500 text-xs px-2.5 py-0.5 rounded-full">
+                        {niche.label}
+                      </span>
+                    )}
+                    {matchCols > 0 && (
+                      <span className="text-slate-400 text-xs">📊 {matchCols} عمود</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => openEdit(cat)}
-                  className="bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 text-xs font-bold px-4 py-2 rounded-lg transition"
-                >
-                  تعديل
-                </button>
-                <button
-                  onClick={() => handleDelete(cat.id)}
-                  className="text-slate-300 hover:text-red-500 text-xs font-bold px-3 py-2 rounded-lg transition"
-                >
-                  حذف
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => openEdit(cat)}
+                    className="bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    onClick={() => handleDelete(cat.id)}
+                    className="text-slate-300 hover:text-red-500 text-sm px-2 py-2 rounded-lg transition"
+                  >
+                    🗑
+                  </button>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
-
     </div>
   );
 }

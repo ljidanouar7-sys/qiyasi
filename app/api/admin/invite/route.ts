@@ -42,10 +42,11 @@ export async function POST(req: NextRequest) {
   // Check duplicate email
   const { data: existing } = await admin
     .from("merchants")
-    .select("id")
+    .select("id, invitation_accepted_at")
     .eq("email", email)
     .maybeSingle();
-  if (existing) {
+
+  if (existing?.invitation_accepted_at) {
     return NextResponse.json({ error: "هذا البريد الإلكتروني مسجّل بالفعل" }, { status: 409 });
   }
 
@@ -53,18 +54,34 @@ export async function POST(req: NextRequest) {
   const now      = new Date();
   const expires  = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 days
 
-  const { error } = await admin.from("merchants").insert({
-    email,
-    store_name,
-    authorized_domains: domain ? [domain] : [],
-    invitation_token:      token,
-    invitation_sent_at:    now.toISOString(),
-    invitation_expires_at: expires.toISOString(),
-    status: "invited",
-  });
+  if (existing) {
+    // Re-invite: update token and expiry on the existing pending merchant record
+    const { error } = await admin.from("merchants").update({
+      store_name,
+      authorized_domains: domain ? [domain] : [],
+      invitation_token:      token,
+      invitation_sent_at:    now.toISOString(),
+      invitation_expires_at: expires.toISOString(),
+      status: "invited",
+    }).eq("id", existing.id);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  } else {
+    const { error } = await admin.from("merchants").insert({
+      email,
+      store_name,
+      authorized_domains: domain ? [domain] : [],
+      invitation_token:      token,
+      invitation_sent_at:    now.toISOString(),
+      invitation_expires_at: expires.toISOString(),
+      status: "invited",
+    });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   }
 
   const link = `${APP_URL}/accept-invitation?token=${token}`;

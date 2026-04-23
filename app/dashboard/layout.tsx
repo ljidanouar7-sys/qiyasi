@@ -7,15 +7,16 @@ import { supabase } from "../../lib/supabase";
 const ADMIN_EMAIL = "ljidanouar7@gmail.com";
 
 const navLinks = [
-  { href: "/dashboard", label: "الرئيسية", icon: "🏠" },
-  { href: "/dashboard/categories", label: "الفئات", icon: "📐" },
-  { href: "/dashboard/embed", label: "كود التضمين", icon: "🔗" },
+  { href: "/dashboard",            label: "الرئيسية",     icon: "🏠" },
+  { href: "/dashboard/categories", label: "الفئات",       icon: "📐" },
+  { href: "/dashboard/embed",      label: "كود التضمين",  icon: "🔗" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
+  const router   = useRouter();
   const pathname = usePathname();
-  const [email, setEmail] = useState("");
+  const [email,      setEmail]      = useState("");
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     async function check() {
@@ -34,24 +35,118 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     check();
   }, [router]);
 
+  // Close drawer on route change
+  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
+
   async function logout() {
     await supabase.auth.signOut();
     router.replace("/auth");
   }
 
   return (
-    <div className="min-h-screen flex bg-slate-50" dir="rtl">
-      {/* Sidebar */}
-      <aside className="w-60 bg-white border-l border-slate-100 flex flex-col fixed h-full z-10">
-        {/* Logo */}
+    <div className="min-h-screen bg-slate-50" dir="rtl">
+
+      {/* ===== MOBILE TOP HEADER ===== */}
+      <header className="lg:hidden fixed top-0 right-0 left-0 z-20 bg-white border-b border-slate-100 flex items-center justify-between px-4 h-14">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center text-white font-black text-xs">ق</div>
+          <span className="font-black text-slate-900">قياسي</span>
+        </Link>
+
+        {/* Hamburger button */}
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="flex flex-col gap-1.5 p-2 rounded-lg hover:bg-slate-100 transition"
+          aria-label="القائمة"
+        >
+          <span className="block h-0.5 w-5 bg-slate-700 rounded" />
+          <span className="block h-0.5 w-5 bg-slate-700 rounded" />
+          <span className="block h-0.5 w-5 bg-slate-700 rounded" />
+        </button>
+      </header>
+
+      {/* ===== BACKDROP ===== */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* ===== SLIDE-OVER DRAWER (mobile) ===== */}
+      <div
+        className={`fixed top-0 right-0 h-full w-72 bg-white z-40 shadow-2xl
+          flex flex-col transition-transform duration-300 ease-in-out lg:hidden
+          ${drawerOpen ? "translate-x-0" : "translate-x-full"}`}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+          <Link
+            href="/dashboard"
+            onClick={() => setDrawerOpen(false)}
+            className="flex items-center gap-2.5"
+          >
+            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center text-white font-black text-xs">ق</div>
+            <span className="font-black text-slate-900">قياسي</span>
+          </Link>
+          <button
+            onClick={() => setDrawerOpen(false)}
+            className="text-slate-400 hover:text-slate-600 text-2xl leading-none p-1"
+            aria-label="إغلاق"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Drawer nav */}
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {navLinks.map(l => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setDrawerOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition min-h-[44px] ${
+                pathname === l.href
+                  ? "bg-teal-50 text-teal-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <span className="text-base">{l.icon}</span>
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Drawer footer */}
+        <div className="p-3 border-t border-slate-100">
+          <div className="px-4 py-2 mb-1">
+            <p className="text-xs text-slate-400 truncate">{email}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 transition min-h-[44px]"
+          >
+            <span>🚪</span>
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+
+      {/* ===== DESKTOP SIDEBAR ===== */}
+      <aside className="hidden lg:flex w-60 bg-white border-l border-slate-100 flex-col fixed h-full z-10">
         <div className="px-5 py-5 border-b border-slate-100">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href="/dashboard" className="flex items-center gap-2.5">
             <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center text-white font-black text-xs">ق</div>
             <span className="font-black text-slate-900">قياسي</span>
           </Link>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5">
           {navLinks.map(l => (
             <Link
@@ -69,7 +164,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        {/* User + Logout */}
         <div className="p-3 border-t border-slate-100">
           <div className="px-3 py-2 mb-1">
             <p className="text-xs text-slate-400 truncate">{email}</p>
@@ -84,10 +178,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 mr-60 p-8 min-h-screen">
+      {/* ===== MAIN CONTENT ===== */}
+      <main className="lg:mr-60 pt-14 lg:pt-0 p-4 lg:p-8 min-h-screen">
         {children}
       </main>
+
     </div>
   );
 }
