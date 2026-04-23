@@ -111,7 +111,7 @@ OUTPUT (strict JSON only):
   let rawResp: string;
   try {
     const completion = await groq.chat.completions.create({
-      model:       "gemma2-9b-it",
+      model:       "llama-3.3-70b-versatile",
       messages:    [
         { role: "system", content: systemInstruction },
         { role: "user",   content: prompt },
