@@ -226,7 +226,7 @@ export default function CategoriesPage() {
           <h3 className="text-base font-black text-blue-800 mb-2">🔗 كيف تربط منتجاتك بجدول المقاسات؟</h3>
           <p className="text-sm text-slate-700 mb-3">
             كل فئة مقاسات لها <strong>رمز خاص</strong> (مثلاً <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-xs">abayas</code>).
-            هذا الرمز هو ما يخبر الـ widget بأي جدول مقاسات يجب استخدامه.
+            هذا الرمز هو ما يخبر الأداة بأي جدول مقاسات يجب استخدامه.
           </p>
 
           <div className="bg-white p-3 rounded-xl border border-blue-100 mb-3 space-y-1.5">
@@ -241,7 +241,7 @@ export default function CategoriesPage() {
             <p className="text-sm text-slate-700">
               الآن في متجرك، ضع نفس الرمز{" "}
               <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">abayas</code>{" "}
-              على كل منتج من هذه العبايات — ويعرف الـ widget تلقائياً أي جدول مقاسات يستخدم.
+              على كل منتج من هذه العبايات — وتعرف الأداة تلقائياً أي جدول مقاسات تستخدم.
             </p>
           </div>
 
