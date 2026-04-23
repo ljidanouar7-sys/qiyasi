@@ -78,7 +78,10 @@ export async function POST(req: NextRequest) {
     userId = authData.user.id;
   }
 
-  // Link merchant to auth user
+  // Delete any old merchant record linked to this user (from auto-trigger on signup)
+  await admin.from("merchants").delete().eq("user_id", userId).neq("id", merchantId);
+
+  // Link invitation merchant to auth user
   const { error: updateError } = await admin
     .from("merchants")
     .update({
