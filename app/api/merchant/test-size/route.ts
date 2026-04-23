@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
 
   const sizeChart  = category.size_chart as SizeChart;
   const validSizes = sizeChart.rows.map(r => String(r.size));
+  console.log("[test-size] tag:", tag, "| validSizes:", validSizes, "| chartRows:", sizeChart.rows.length);
   const chartTable = sizeChart.rows.map(row => {
     const cells = sizeChart.columns.map(col => {
       const cell = row[col.id] as { min: number; max: number } | undefined;
@@ -111,8 +112,11 @@ OUTPUT (strict JSON only):
   try {
     const result = await model.generateContent(prompt);
     rawResp = result.response.text().trim();
-  } catch {
-    return NextResponse.json({ error: "AI request failed" }, { status: 502 });
+    console.log("[test-size] Gemma raw:", rawResp);
+  } catch (aiErr) {
+    const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+    console.error("[test-size] Gemma error:", aiErr);
+    return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
   }
 
   let parsed: { recommendedSize: string; status: string; message: string };
