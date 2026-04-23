@@ -311,7 +311,7 @@ export default function CategoriesPage() {
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-0.5">رمز الفئة</label>
               <p className="text-xs text-slate-400 mb-1.5">
-                كود قصير تضيفه على منتجات متجرك — الـ AI يستخدمه باش يعرف أي جدول مقاسات يطبّق
+                كود قصير تضيفه على منتجات متجرك — لكي يعرف الـ AI أي جدول مقاسات يطبّق
               </p>
               <input
                 type="text" placeholder="مثال: silk-abayas" dir="ltr"
@@ -388,17 +388,14 @@ export default function CategoriesPage() {
                     {rows.map((row, ri) => (
                       <tr key={ri} className="hover:bg-slate-50 transition">
                         <td className="px-2 py-2 sticky right-0 bg-white z-10 border-l border-slate-100">
-                          <div className="flex items-center gap-1">
-                            <select
-                              value={row.size}
-                              onChange={e => updateRowSize(ri, e.target.value)}
-                              className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
-                            >
-                              {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                              <option value={row.size}>{row.size}</option>
-                            </select>
-                            <button onClick={() => removeRow(ri)} className="text-slate-200 hover:text-red-400 transition text-sm">🗑</button>
-                          </div>
+                          <select
+                            value={row.size}
+                            onChange={e => updateRowSize(ri, e.target.value)}
+                            className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
+                          >
+                            {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                            <option value={row.size}>{row.size}</option>
+                          </select>
                         </td>
                         {cols.map(col => (
                           <td key={col.id} className="px-2 py-2">
