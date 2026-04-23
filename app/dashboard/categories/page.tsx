@@ -386,8 +386,8 @@ export default function CategoriesPage() {
 
                   <tbody className="divide-y divide-slate-100">
                     {rows.map((row, ri) => (
-                      <tr key={ri} className="hover:bg-slate-50 transition">
-                        <td className="px-2 py-2 sticky right-0 bg-white z-10 border-l border-slate-100">
+                      <tr key={ri} className="group hover:bg-slate-50 transition">
+                        <td className="px-2 py-2 sticky right-0 bg-white group-hover:bg-slate-50 z-10 border-l border-slate-100 transition">
                           <div className="flex items-center gap-1">
                             <select
                               value={row.size}
@@ -397,7 +397,10 @@ export default function CategoriesPage() {
                               {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
                               <option value={row.size}>{row.size}</option>
                             </select>
-                            <button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 font-black text-base leading-none transition">✕</button>
+                            <button
+                              onClick={() => removeRow(ri)}
+                              className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 font-black text-base leading-none transition"
+                            >✕</button>
                           </div>
                         </td>
                         {cols.map(col => (
