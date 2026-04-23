@@ -401,46 +401,39 @@
       return;
     }
 
+    const stock_info = window._ssm_stock || null;
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag, answers }),
+      body: JSON.stringify({ tag, answers, stock_info }),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         console.log("[SSM] AI response:", data);
         if (data && data.size) {
-          if (data.sizeChart) _sizeChart = data.sizeChart; // store for out-of-stock ranking
-          showResult(data.size, false);
+          if (data.sizeChart) _sizeChart = data.sizeChart;
+          const isOutOfStock = data.status === "out_of_stock";
+          showResult(data.size, false, isOutOfStock, data.message || "");
         } else {
           console.log("[SSM] AI failed — using BMI fallback");
-          showResult(fallbackSize(answers), true);
+          showResult(fallbackSize(answers), true, false, "");
         }
       })
       .catch(err => {
         console.log("[SSM] Error:", err, "— using BMI fallback");
-        showResult(fallbackSize(answers), true);
+        showResult(fallbackSize(answers), true, false, "");
       });
   }
 
-  function showResult(size, isFallback) {
-    const outOfStock = isSizeOutOfStock(size);
+  function showResult(size, isFallback, forceOutOfStock, apiMessage) {
+    const outOfStock = forceOutOfStock || isSizeOutOfStock(size);
 
-    // If out of stock, find the next available size from the ranked list
     let displaySize = size, stockBadge = "", msg = "";
     if (outOfStock) {
-      const ranked = rankSizes(answers);
-      const next = ranked.slice(1).map(r => r.size).find(s => !isSizeOutOfStock(s));
-      if (next) {
-        displaySize = next;
-        stockBadge  = `<div class="ssm-stock-warn">⚠️ مقاسك الأصلي ${size} غير متوفر — نقترح ${next}</div>`;
-        msg         = `مقاسك هو <strong>${size}</strong> لكنه غير متوفر، لذا ننصح بـ <strong>${next}</strong> كبديل متاح.`;
-      } else {
-        stockBadge  = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
-        msg         = `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
-      }
+      stockBadge = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
+      msg = apiMessage || `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
     } else {
-      msg = `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
+      msg = apiMessage || `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
     }
 
     const icon = outOfStock ? "😔" : "🎉";
