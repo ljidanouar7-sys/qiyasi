@@ -6,12 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
-
 function normalizeOrigin(raw: string): string {
   try {
     const url = new URL(raw.startsWith("http") ? raw : `https://${raw}`);
@@ -21,18 +15,29 @@ function normalizeOrigin(raw: string): string {
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, { headers: CORS });
+function corsHeaders(origin: string) {
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
+  };
+}
+
+export async function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get("origin") || "*";
+  return new Response(null, { headers: corsHeaders(origin) });
 }
 
 export async function GET(req: NextRequest) {
-  const apiKey       = new URL(req.url).searchParams.get("apiKey");
-  const rawOrigin    = req.headers.get("origin") || req.headers.get("referer") || "";
+  const rawOrigin  = req.headers.get("origin") || req.headers.get("referer") || "";
   const normalOrigin = normalizeOrigin(rawOrigin);
+  const CORS       = corsHeaders(rawOrigin);
+  const apiKey     = new URL(req.url).searchParams.get("apiKey");
 
   let merchantId: string | null = null;
 
-  // ── Method 1: Domain auth (new, preferred) ─────────────────
+  // ── Method 1: Domain auth (preferred) ──────────────────────
   if (normalOrigin) {
     const { data: domainRow } = await supabase
       .from("merchant_domains")
@@ -50,7 +55,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ── Method 2: API key fallback (backward compat) ────────────
+  // ── Method 2: API key fallback ──────────────────────────────
   if (!merchantId && apiKey) {
     const { data: keyRow } = await supabase
       .from("api_keys")
@@ -61,7 +66,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!merchantId) {
-    return NextResponse.json({ tags: [] }, { headers: CORS });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403, headers: CORS });
   }
 
   const { data: categories } = await supabase
