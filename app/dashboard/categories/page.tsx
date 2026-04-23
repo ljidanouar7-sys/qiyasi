@@ -278,17 +278,22 @@ export default function CategoriesPage() {
 
             {/* Tag */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 mb-1.5">الـ Tag</label>
+              <label className="block text-xs font-bold text-slate-500 mb-0.5">رمز الفئة</label>
+              <p className="text-xs text-slate-400 mb-1.5">
+                كود قصير تضيفه على منتجات متجرك — الـ AI يستخدمه باش يعرف أي جدول مقاسات يطبّق
+              </p>
               <input
                 type="text" placeholder="مثال: silk-abayas" dir="ltr"
                 value={catTag} onChange={e => setCatTag(e.target.value.replace(/\s/g, "-"))}
                 className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-teal-400 transition"
               />
               <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <p className="text-xs font-black text-amber-800 mb-1">💡 نصيحة مهمة حول الـ Tag</p>
+                <p className="text-xs font-black text-amber-800 mb-1">📌 كيف تستخدم رمز الفئة؟</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
-                  <strong>لا تستخدم اسم المنتج</strong> كـ Tag. استخدم اسم الفئة ليشمل كل المنتجات التي تشترك في نفس جدول المقاسات.<br/>
-                  مثال صحيح: <code className="bg-amber-100 px-1 rounded font-mono">silk-abayas</code>
+                  عندك 20 عباية حريرية؟ حط عليهم كلهم رمز واحد في متجرك مثل{" "}
+                  <code className="bg-amber-100 px-1 rounded font-mono">silk-abayas</code>{" "}
+                  — قياسي يجيب جدول مقاساتهم تلقائياً.<br/>
+                  <strong>لا تستخدم اسم منتج واحد</strong> — الرمز يجب يغطي مجموعة كاملة.
                 </p>
               </div>
             </div>
@@ -437,8 +442,8 @@ export default function CategoriesPage() {
                   <p className="font-black text-slate-900 truncate">{cat.name}</p>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     {cat.tag && (
-                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">
-                        #{cat.tag}
+                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono" title="رمز الفئة">
+                        {cat.tag}
                       </span>
                     )}
                     {niche && (
