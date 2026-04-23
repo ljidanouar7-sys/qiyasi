@@ -465,28 +465,37 @@ export default function CategoriesPage() {
         )}
 
         {categories.map(cat => {
-          const { cols: c } = jsonToChart(cat.size_chart);
-          const matchCols = c.filter(col => col.quiz_field).length;
-          const niche = NICHES.find(n => n.value === cat.niche);
+          const { cols: c, rows: r } = jsonToChart(cat.size_chart);
+          const matchCols  = c.filter(col => col.quiz_field).length;
+          const hasRows    = r.length > 0;
+          const hasTag     = !!cat.tag?.trim();
+          const isReady    = hasTag && matchCols > 0 && hasRows;
+          const niche      = NICHES.find(n => n.value === cat.niche);
           return (
-            <div key={cat.id} className="bg-white border border-slate-100 rounded-2xl px-4 py-4 shadow-sm">
+            <div key={cat.id} className={`bg-white border rounded-2xl px-4 py-4 shadow-sm ${isReady ? "border-slate-100" : "border-amber-200"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-black text-slate-900 truncate">{cat.name}</p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    {cat.tag && (
-                      <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono" title="رمز الفئة">
-                        {cat.tag}
-                      </span>
-                    )}
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-black text-slate-900 truncate">{cat.name}</p>
+                    {isReady
+                      ? <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0">✅ جاهزة</span>
+                      : <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex-shrink-0">⚠️ تحتاج إعداد</span>
+                    }
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    {hasTag
+                      ? <span className="bg-teal-50 text-teal-700 text-xs font-bold px-2.5 py-0.5 rounded-full font-mono">{cat.tag}</span>
+                      : <span className="bg-red-50 text-red-500 text-xs font-bold px-2.5 py-0.5 rounded-full">❌ بدون رمز</span>
+                    }
                     {niche && (
                       <span className="bg-slate-100 text-slate-500 text-xs px-2.5 py-0.5 rounded-full">
                         {niche.label}
                       </span>
                     )}
-                    {matchCols > 0 && (
-                      <span className="text-slate-400 text-xs">📊 {matchCols} عمود</span>
-                    )}
+                    {matchCols > 0
+                      ? <span className="text-slate-400 text-xs">📊 {matchCols} عمود حساب</span>
+                      : <span className="text-amber-500 text-xs font-semibold">⚠️ لا يوجد عمود حساب</span>
+                    }
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
