@@ -27,7 +27,7 @@ interface Category {
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const ALL_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
+const ALL_SIZES = ["XS / 50", "S / 52", "M / 54", "L / 56", "XL / 58", "XXL / 60", "3XL / 62", "4XL / 64"];
 
 const NICHES = [
   { value: "long_clothing", label: "👗 ملابس طويلة (عبايات، جلابيب)" },
@@ -196,7 +196,7 @@ export default function CategoriesPage() {
 
   function addSizeRow() {
     const emptyCells = Object.fromEntries(cols.map(c => [c.id, { min: "", max: "" }]));
-    setRows(r => [...r, { size: "جديد", cells: emptyCells }]);
+    setRows(r => [...r, { size: ALL_SIZES[0], cells: emptyCells }]);
   }
 
   function removeRow(i: number) { setRows(r => r.filter((_, j) => j !== i)); }
@@ -395,7 +395,6 @@ export default function CategoriesPage() {
                               className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
                             >
                               {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                              <option value={row.size}>{row.size}</option>
                             </select>
                             <button
                               onClick={() => removeRow(ri)}
