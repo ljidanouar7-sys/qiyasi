@@ -388,14 +388,17 @@ export default function CategoriesPage() {
                     {rows.map((row, ri) => (
                       <tr key={ri} className="hover:bg-slate-50 transition">
                         <td className="px-2 py-2 sticky right-0 bg-white z-10 border-l border-slate-100">
-                          <select
-                            value={row.size}
-                            onChange={e => updateRowSize(ri, e.target.value)}
-                            className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
-                          >
-                            {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
-                            <option value={row.size}>{row.size}</option>
-                          </select>
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={row.size}
+                              onChange={e => updateRowSize(ri, e.target.value)}
+                              className="border border-slate-200 rounded-lg px-1 py-1.5 text-xs font-black text-teal-700 focus:outline-none focus:border-teal-400 w-[80px]"
+                            >
+                              {ALL_SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                              <option value={row.size}>{row.size}</option>
+                            </select>
+                            <button onClick={() => removeRow(ri)} className="text-red-400 hover:text-red-600 font-black text-base leading-none transition">✕</button>
+                          </div>
                         </td>
                         {cols.map(col => (
                           <td key={col.id} className="px-2 py-2">
