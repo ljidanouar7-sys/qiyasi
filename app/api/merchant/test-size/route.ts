@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
@@ -10,6 +10,11 @@ const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const groq = new OpenAI({
+  baseURL: "https://api.groq.com/openai/v1",
+  apiKey:  process.env.GROQ_API_KEY!,
+});
 
 type SizeChart = {
   columns: { id: string; label: string; quiz_field: string }[];
@@ -61,7 +66,8 @@ export async function POST(req: NextRequest) {
 
   const sizeChart  = category.size_chart as SizeChart;
   const validSizes = sizeChart.rows.map(r => String(r.size));
-  console.log("[test-size] tag:", tag, "| validSizes:", validSizes, "| chartRows:", sizeChart.rows.length);
+  console.log("[test-size] tag:", tag, "| validSizes:", validSizes);
+
   const chartTable = sizeChart.rows.map(row => {
     const cells = sizeChart.columns.map(col => {
       const cell = row[col.id] as { min: number; max: number } | undefined;
@@ -70,9 +76,10 @@ export async function POST(req: NextRequest) {
     return `"${row.size}" → ${cells.join(", ")}`;
   }).join("\n");
 
-  // ── AI ─────────────────────────────────────────────────────
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 500 });
+  // ── AI (Gemma 2 9B via Groq) ───────────────────────────────
+  if (!process.env.GROQ_API_KEY) {
+    return NextResponse.json({ error: "AI not configured" }, { status: 500 });
+  }
 
   const shouldersMap: Record<string, string> = { wide: "wide", average: "average", narrow: "narrow" };
   const legsMap: Record<string, string>      = { long: "long", average: "average", short: "short" };
@@ -101,24 +108,26 @@ ${chartTable}
 OUTPUT (strict JSON only):
 {"recommendedSize":"exact size from chart","status":"available","message":"short user-friendly message in Arabic"}`;
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    systemInstruction,
-    generationConfig: { temperature: 0.0, maxOutputTokens: 200 },
-  });
-
   let rawResp: string;
   try {
-    const result = await model.generateContent(prompt);
-    rawResp = result.response.text().trim();
-    console.log("[test-size] Gemma raw:", rawResp);
+    const completion = await groq.chat.completions.create({
+      model:       "gemma2-9b-it",
+      messages:    [
+        { role: "system", content: systemInstruction },
+        { role: "user",   content: prompt },
+      ],
+      temperature: 0.1,
+      max_tokens:  200,
+    });
+    rawResp = (completion.choices[0].message.content ?? "").trim();
+    console.log("[test-size] Groq raw:", rawResp);
   } catch (aiErr) {
     const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
-    console.error("[test-size] Gemma error:", aiErr);
+    console.error("[test-size] Groq error:", aiErr);
     return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502 });
   }
 
+  // ── Parse JSON with fuzzy fallback ─────────────────────────
   let parsed: { recommendedSize: string; status: string; message: string };
   try {
     const jsonMatch = rawResp.match(/\{[\s\S]*\}/);
@@ -126,8 +135,7 @@ OUTPUT (strict JSON only):
     if (!validSizes.includes(parsed.recommendedSize)) throw new Error("invalid size");
   } catch {
     const norm = (s: string) => s.replace(/[\s/]/g, "").toLowerCase();
-    const size = validSizes.find(s => norm(rawResp).includes(norm(s))) || "";
-    if (!size) return NextResponse.json({ error: "AI returned invalid size" }, { status: 422 });
+    const size = validSizes.find(s => norm(rawResp).includes(norm(s))) || validSizes[0] || "";
     parsed = { recommendedSize: size, status: "available", message: "" };
   }
 

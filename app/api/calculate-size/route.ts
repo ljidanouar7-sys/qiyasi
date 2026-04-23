@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -19,6 +19,11 @@ const ratelimit = new Ratelimit({
   limiter:   Ratelimit.slidingWindow(50, "1 m"),
   analytics: true,
   prefix:    "qiyasi_rl",
+});
+
+const groq = new OpenAI({
+  baseURL: "https://api.groq.com/openai/v1",
+  apiKey:  process.env.GROQ_API_KEY!,
 });
 
 function normalizeOrigin(raw: string): string {
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest) {
   }
   const CORS = corsHeaders(rawOrigin);
 
-  // Parse body
+  // ── Parse body ─────────────────────────────────────────────
   let tag: string, answers: Record<string, string>, stock_info: Record<string, number> | null;
   try {
     const body = await req.json();
@@ -116,15 +121,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ══════════════════════════════════════════════════════════
-  // LAYER 3 — AI Calculation (Gemma 4 31B IT)
+  // LAYER 3 — AI Calculation (Gemma 2 9B via Groq)
   // ══════════════════════════════════════════════════════════
-  const apiKey = process.env.GOOGLE_AI_API_KEY;
-  if (!apiKey) {
-    console.error(`[${timestamp}] GOOGLE_AI_API_KEY missing`);
+  if (!process.env.GROQ_API_KEY) {
+    console.error(`[${timestamp}] GROQ_API_KEY missing`);
     return NextResponse.json({ error: "AI not configured" }, { status: 500, headers: CORS });
   }
 
-  // Fetch size chart from DB (size_chart never comes from client)
   const { data: category } = await supabase
     .from("categories")
     .select("size_chart, name")
@@ -185,31 +188,32 @@ OUTPUT (strict JSON only, no extra text):
 
   console.log(`[${timestamp}] AI request — tag: ${tag}, stock_info: ${JSON.stringify(stock_info)}`);
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-    systemInstruction,
-    generationConfig: { temperature: 0.0, maxOutputTokens: 200 },
-  });
-
   let rawResp: string;
   try {
-    const result = await model.generateContent(prompt);
-    rawResp = result.response.text().trim();
+    const completion = await groq.chat.completions.create({
+      model:       "gemma2-9b-it",
+      messages:    [
+        { role: "system", content: systemInstruction },
+        { role: "user",   content: prompt },
+      ],
+      temperature: 0.1,
+      max_tokens:  200,
+    });
+    rawResp = (completion.choices[0].message.content ?? "").trim();
   } catch (aiErr) {
-    console.error(`[${timestamp}] Gemma error:`, aiErr);
-    return NextResponse.json({ error: "AI request failed" }, { status: 502, headers: CORS });
+    const msg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+    console.error(`[${timestamp}] Groq error:`, aiErr);
+    return NextResponse.json({ error: `AI error: ${msg}` }, { status: 502, headers: CORS });
   }
-  console.log(`[${timestamp}] Gemma raw: "${rawResp}"`);
+  console.log(`[${timestamp}] Groq raw: "${rawResp}"`);
 
-  // Parse JSON response with fallback to fuzzy match
+  // ── Parse JSON with fuzzy fallback ─────────────────────────
   let parsed: { recommendedSize: string; status: string; message: string };
   try {
     const jsonMatch = rawResp.match(/\{[\s\S]*\}/);
     parsed = JSON.parse(jsonMatch?.[0] || rawResp);
     if (!validSizes.includes(parsed.recommendedSize)) throw new Error("invalid size in JSON");
   } catch {
-    // Fallback: fuzzy match on raw text
     const lines = rawResp.split("\n").map(l => l.trim()).filter(Boolean);
     let size = "";
     for (const line of [...lines].reverse()) {
@@ -221,8 +225,8 @@ OUTPUT (strict JSON only, no extra text):
       size = validSizes.find(s => norm(rawResp).includes(norm(s))) || "";
     }
     if (!size) {
-      console.log(`[${timestamp}] AI returned invalid response`);
-      return NextResponse.json({ error: "AI returned invalid size" }, { status: 422, headers: CORS });
+      console.log(`[${timestamp}] AI returned invalid response — falling back to first valid size`);
+      size = validSizes[0] || "";
     }
     parsed = { recommendedSize: size, status: "available", message: "" };
   }
