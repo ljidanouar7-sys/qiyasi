@@ -54,7 +54,8 @@ export async function POST(req: NextRequest) {
 
   const { id: merchantId, email } = result.data!;
 
-  // Create auth user (auto-confirmed, no email needed)
+  // Try to create auth user — if already exists, fetch and link existing one
+  let userId: string;
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
@@ -62,19 +63,28 @@ export async function POST(req: NextRequest) {
   });
 
   if (authError) {
-    if (authError.message.includes("already")) {
-      return NextResponse.json({ error: "هذا البريد الإلكتروني مسجّل بالفعل في Supabase Auth" }, { status: 409 });
+    if (authError.message.toLowerCase().includes("already")) {
+      // User exists — update their password and get their ID
+      const { data: listData } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const existing = listData?.users?.find(u => u.email === email);
+      if (!existing) return NextResponse.json({ error: "خطأ في التحقق من المستخدم" }, { status: 500 });
+      // Update password for existing user
+      await admin.auth.admin.updateUserById(existing.id, { password });
+      userId = existing.id;
+    } else {
+      return NextResponse.json({ error: authError.message }, { status: 500 });
     }
-    return NextResponse.json({ error: authError.message }, { status: 500 });
+  } else {
+    userId = authData.user.id;
   }
 
-  // Link merchant to new auth user
+  // Link merchant to auth user
   const { error: updateError } = await admin
     .from("merchants")
     .update({
-      user_id:                   authData.user.id,
-      status:                    "active",
-      invitation_accepted_at:    new Date().toISOString(),
+      user_id:                userId,
+      status:                 "active",
+      invitation_accepted_at: new Date().toISOString(),
     })
     .eq("id", merchantId);
 
