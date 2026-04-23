@@ -220,6 +220,37 @@ export default function CategoriesPage() {
         <p className="text-slate-400 text-xs md:text-sm mt-1">أنشئ فئة لكل مجموعة منتجات تشترك في نفس جدول المقاسات</p>
       </div>
 
+      {/* ── How-it-works banner ── */}
+      {!showForm && (
+        <div className="bg-blue-50 border-r-4 border-blue-500 p-4 rounded-xl mb-6">
+          <h3 className="text-base font-black text-blue-800 mb-2">🔗 كيف تربط منتجاتك بجدول المقاسات؟</h3>
+          <p className="text-sm text-slate-700 mb-3">
+            كل فئة مقاسات لها <strong>رمز خاص</strong> (مثلاً <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-xs">abayas</code>).
+            هذا الرمز هو ما يخبر الـ widget بأي جدول مقاسات يجب استخدامه.
+          </p>
+
+          <div className="bg-white p-3 rounded-xl border border-blue-100 mb-3 space-y-1.5">
+            <p className="font-bold text-slate-800 text-sm">📌 مثال عملي:</p>
+            <p className="text-sm text-slate-700">
+              لديك <strong>20 منتجاً من العبايات</strong> (سوداء، زرقاء، مخملية...).
+            </p>
+            <p className="text-sm text-slate-700">
+              أنشأت فئة اسمها <strong className="text-emerald-700">"عبايات نسائية"</strong> وأعطيتها الرمز{" "}
+              <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">abayas</code>.
+            </p>
+            <p className="text-sm text-slate-700">
+              الآن في متجرك، ضع نفس الرمز{" "}
+              <code className="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">abayas</code>{" "}
+              على كل منتج من هذه العبايات — ويعرف الـ widget تلقائياً أي جدول مقاسات يستخدم.
+            </p>
+          </div>
+
+          <p className="text-xs text-slate-500">
+            💡 <strong>ملاحظة:</strong> لا تحتاج جدول مقاسات لكل منتج — رمز واحد يكفي لجميع المنتجات المتشابهة.
+          </p>
+        </div>
+      )}
+
       {toast && (
         <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm px-4 py-3 rounded-xl">
           {toast}
