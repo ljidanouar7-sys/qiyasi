@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
   const rawOrigin = req.headers.get("origin") || req.headers.get("referer") || "";
   const normalizedOrigin = normalizeOrigin(rawOrigin);
   const timestamp = new Date().toISOString();
+
+  if (!req.headers.get("origin")) {
+    const ip = req.headers.get("x-forwarded-for") || "unknown";
+    console.warn(`[${timestamp}] WARNING — no Origin header (possible curl/script), IP: ${ip}`);
+  }
   const CORS = corsHeaders(rawOrigin);
 
   // Parse body

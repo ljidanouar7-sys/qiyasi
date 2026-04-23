@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const ADMIN_EMAIL = "ljidanouar7@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
 export async function PATCH(
   req: Request,
@@ -24,6 +24,13 @@ export async function PATCH(
   }
 
   const body = await req.json();
+  const { plan, status } = body;
+  const allowed: Record<string, unknown> = {};
+  if (plan   !== undefined) allowed.plan   = plan;
+  if (status !== undefined) allowed.status = status;
+  if (Object.keys(allowed).length === 0) {
+    return NextResponse.json({ error: "No valid fields" }, { status: 400 });
+  }
 
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,7 +38,7 @@ export async function PATCH(
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { error } = await admin.from("users").update(body).eq("id", id);
+  const { error } = await admin.from("users").update(allowed).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });

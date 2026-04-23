@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const ADMIN_EMAIL = "ljidanouar7@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
 
 export async function GET() {
   const cookieStore = await cookies();
