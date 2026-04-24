@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
 Rules:
 1. Priority to WIDTH (weight) over height — if weight suggests a larger size, choose larger.
 2. When between two sizes, ALWAYS size up.
-3. Check stock_info: if quantity > 0 → status "available", else "out_of_stock".
+3. Check stock_info: if quantity > 0 → status "available", else "out_of_stock". Stock keys may be short (e.g. "XS" matches "XS / 50", "M" matches "M / 54") — match by letter prefix or number.
 4. Do NOT suggest an alternative size. If the recommended size is out of stock, set status "out_of_stock" and DO NOT propose another size.
 5. Output ONLY a JSON object. No markdown, no extra text.`;
 

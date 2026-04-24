@@ -238,9 +238,24 @@
     return bmi < 18.5 ? "S" : bmi < 23 ? "M" : bmi < 27 ? "L" : "XL";
   }
 
+  // ======= Size normalization — handles "XS / 50" vs "XS" vs "50" =======
+  function normalizeSize(s) {
+    const str = s.toString().toUpperCase().trim();
+    const letterMatch = str.match(/\b(4XL|3XL|XXL|XL|XS|S|M|L)\b/);
+    const numMatch    = str.match(/\b(\d{2,3})\b/);
+    return { letter: letterMatch ? letterMatch[1] : null, num: numMatch ? numMatch[1] : null, raw: str };
+  }
+
+  function sizesMatch(a, b) {
+    const na = normalizeSize(a), nb = normalizeSize(b);
+    if (na.raw === nb.raw) return true;
+    if (na.letter && nb.letter && na.letter === nb.letter) return true;
+    if (na.num   && nb.num   && na.num   === nb.num)   return true;
+    return false;
+  }
+
   // ======= Check if recommended size is out of stock =======
   function isSizeOutOfStock(size) {
-    const s = size.toString().toUpperCase().trim();
     const els = document.querySelectorAll(
       '[data-size],[data-value],.size-option,.variant-option,' +
       'salla-variants button,salla-product-options button,' +
@@ -253,8 +268,8 @@
         el.getAttribute('data-size') ||
         el.getAttribute('data-value') ||
         el.getAttribute('value') || ''
-      ).trim().toUpperCase();
-      if (txt !== s) continue;
+      ).trim();
+      if (!sizesMatch(txt, size)) continue;
       if (
         el.disabled ||
         el.getAttribute('aria-disabled') === 'true' ||
@@ -266,6 +281,35 @@
       ) return true;
     }
     return false;
+  }
+
+  // ======= Auto-detect stock from DOM before API call =======
+  function buildStockFromDOM() {
+    const stock = {};
+    const els = document.querySelectorAll(
+      '[data-size],[data-value],.size-option,.variant-option,' +
+      'salla-variants button,salla-product-options button,' +
+      '[class*="size"] button,[class*="variant"] button,' +
+      'label.swatch,.product-form__option button'
+    );
+    for (const el of els) {
+      const txt = (
+        el.textContent ||
+        el.getAttribute('data-size') ||
+        el.getAttribute('data-value') ||
+        el.getAttribute('value') || ''
+      ).trim();
+      if (!txt || txt.length > 25) continue;
+      const isOOS = el.disabled ||
+        el.getAttribute('aria-disabled') === 'true' ||
+        el.classList.contains('out-of-stock') ||
+        el.classList.contains('unavailable') ||
+        el.classList.contains('sold-out') ||
+        el.classList.contains('disabled') ||
+        (el.style.opacity && parseFloat(el.style.opacity) < 0.5);
+      stock[txt] = isOOS ? 0 : 1;
+    }
+    return Object.keys(stock).length > 0 ? stock : null;
   }
 
   // ======= Modal =======
@@ -401,7 +445,7 @@
       return;
     }
 
-    const stock_info = window._ssm_stock || null;
+    const stock_info = window._ssm_stock || buildStockFromDOM();
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -432,6 +476,8 @@
     if (outOfStock) {
       stockBadge = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
       msg = apiMessage || `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
+    } else if (isFallback) {
+      msg = `مقاس تقديري: <strong>${size}</strong> — بناءً على طولك ووزنك.<br/><span style="color:#9ca3af;font-size:12px">للدقة الكاملة: تأكد أن المنتج عنده رمز فئة في متجرك</span>`;
     } else {
       msg = apiMessage || `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
     }

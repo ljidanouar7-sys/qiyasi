@@ -160,6 +160,11 @@ export default function CategoriesPage() {
     if (!catName.trim()) { alert("أدخل اسم الفئة"); return; }
     if (!catTag.trim())  { alert("أدخل الـ Tag"); return; }
     if (!merchantId) return;
+    const sizeNames = rows.map(r => r.size);
+    if (new Set(sizeNames).size !== sizeNames.length) {
+      alert("يوجد مقاسات مكررة في الجدول — تأكد من أن كل صف له مقاس مختلف");
+      return;
+    }
     setSaving(true);
     const payload = {
       merchant_id: merchantId,
