@@ -6,13 +6,13 @@ import Link from "next/link";
 const T = {
   en: {
     dir: "ltr" as const,
-    nav: { logo: "Qiyasi", demo: "Request Demo", login: "Sign in" },
+    nav: { logo: "Qiyasi", demo: "Request Demo", login: "Merchant Login" },
     hero: {
       badge: "AI-Powered Size Intelligence",
       h1a: "Stop Losing Revenue",
       h1b: "to Wrong Sizes.",
       sub: "The smart sizing layer for fashion brands. Help customers find their perfect fit — reduce returns, increase conversions, and build lasting trust.",
-      cta1: "Request Demo",
+      cta1: "Request Demo →",
       cta2: "See How It Works",
       trust: "Trusted by 200+ fashion brands · No credit card required",
     },
@@ -100,8 +100,25 @@ const T = {
     cta: {
       h2: "Ready to eliminate sizing errors?",
       sub: "Book a 20-minute demo. See Qiyasi live on your store.",
-      btn: "Book a Demo",
+      btn: "Book a Demo →",
       note: "Free 14-day trial · Cancel anytime · No setup fees",
+    },
+    demo: {
+      label: "Get Early Access",
+      h2: "See Qiyasi on your store.",
+      sub: "Fill in the form and we'll set up a personalized demo within 24 hours.",
+      name: "Full Name",
+      namePlaceholder: "Ahmed Al-Rashidi",
+      email: "Work Email",
+      emailPlaceholder: "ahmed@yourstore.com",
+      storeUrl: "Store URL",
+      storeUrlPlaceholder: "https://yourstore.com",
+      message: "Message (Optional)",
+      messagePlaceholder: "Tell us about your store, product category, or any questions...",
+      cta: "Request Demo →",
+      note: "We'll reply within 24 hours. No spam, ever.",
+      success: "Request received! We'll be in touch within 24 hours.",
+      error: "Something went wrong. Please try again or email us at support@qiyasi.net",
     },
     footer: {
       tagline: "AI-powered sizing for fashion brands.",
@@ -112,13 +129,13 @@ const T = {
 
   ar: {
     dir: "rtl" as const,
-    nav: { logo: "قياسي", demo: "احجز عرضاً", login: "تسجيل الدخول" },
+    nav: { logo: "قياسي", demo: "احجز عرضاً", login: "دخول التاجر" },
     hero: {
       badge: "ذكاء اصطناعي لتحديد المقاس",
       h1a: "توقف عن خسارة أرباحك",
       h1b: "بسبب مقاسات خاطئة.",
       sub: "طبقة المقاسات الذكية لمتاجر الملابس. ساعد زبائنك في إيجاد المقاس المثالي — قلل المرتجعات، وزد المبيعات، وابنِ ثقة تدوم.",
-      cta1: "احجز عرضاً",
+      cta1: "← احجز عرضاً",
       cta2: "شاهد كيف يعمل",
       trust: "موثوق من أكثر من 200 علامة تجارية · بدون بطاقة ائتمان",
     },
@@ -206,8 +223,25 @@ const T = {
     cta: {
       h2: "جاهز لإنهاء مشكلة المقاسات؟",
       sub: "احجز جلسة تعريفية لمدة 20 دقيقة. شاهد قياسي على متجرك مباشرة.",
-      btn: "احجز عرضاً",
+      btn: "← احجز عرضاً",
       note: "تجربة مجانية 14 يوماً · إلغاء في أي وقت · بدون رسوم تفعيل",
+    },
+    demo: {
+      label: "احصل على الوصول المبكر",
+      h2: "شاهد قياسي على متجرك.",
+      sub: "أدخل بياناتك وسنتواصل معك خلال 24 ساعة لإعداد عرض مخصص لمتجرك.",
+      name: "الاسم الكامل",
+      namePlaceholder: "أحمد الرشيدي",
+      email: "البريد الإلكتروني",
+      emailPlaceholder: "ahmed@yourstore.com",
+      storeUrl: "رابط المتجر",
+      storeUrlPlaceholder: "https://yourstore.com",
+      message: "رسالة (اختياري)",
+      messagePlaceholder: "أخبرنا عن متجرك، الفئة التي تبيعها، أو أي استفسار...",
+      cta: "← احجز عرضاً",
+      note: "سنرد خلال 24 ساعة. لا رسائل مزعجة أبداً.",
+      success: "تم الاستلام! سنتواصل معك خلال 24 ساعة.",
+      error: "حدث خطأ، يرجى المحاولة مجدداً أو راسلنا على support@qiyasi.net",
     },
     footer: {
       tagline: "ذكاء اصطناعي لمقاسات علامات الموضة.",
@@ -241,8 +275,30 @@ export default function LandingPage() {
   const [lang, setLang] = useState<Lang>("en");
   const [activeOpt, setActiveOpt] = useState<string | null>(null);
   const [showResult, setShowResult] = useState(false);
+
+  // Demo form state
+  const [form, setForm] = useState({ name: "", email: "", storeUrl: "", message: "" });
+  const [formStatus, setFormStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+
   const t = T[lang];
   const isAr = lang === "ar";
+
+  async function handleDemoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormStatus("loading");
+    try {
+      const res = await fetch("/api/demo-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) throw new Error("request failed");
+      setFormStatus("success");
+      setForm({ name: "", email: "", storeUrl: "", message: "" });
+    } catch {
+      setFormStatus("error");
+    }
+  }
 
   return (
     <div dir={t.dir} className="min-h-screen bg-white text-slate-900">
@@ -259,11 +315,11 @@ export default function LandingPage() {
 
           <div className="hidden md:flex items-center gap-8 text-sm text-slate-500 font-medium">
             {[
-              { href: "/how-it-works", label: isAr ? "كيف يعمل" : "How it works" },
-              { href: "/features",     label: isAr ? "الميزات"  : "Features" },
-              { href: "/pricing",      label: isAr ? "التسعير"  : "Pricing" },
-            ].map(l => (
-              <Link key={l.href} href={l.href} className="hover:text-slate-900 transition">{l.label}</Link>
+              { href: "#solution",  label: isAr ? "كيف يعمل" : "How it works" },
+              { href: "#demo",      label: isAr ? "التسعير"  : "Pricing" },
+              { href: "#demo",      label: isAr ? "تواصل معنا" : "Contact" },
+            ].map((l, i) => (
+              <a key={i} href={l.href} className="hover:text-slate-900 transition">{l.label}</a>
             ))}
           </div>
 
@@ -274,12 +330,18 @@ export default function LandingPage() {
             >
               {isAr ? "EN" : "عربي"}
             </button>
-            <Link href="/auth" className="hidden sm:block text-sm text-slate-500 hover:text-slate-900 font-medium transition px-3 py-1.5">
+            <Link
+              href="/auth"
+              className="hidden sm:block text-sm text-slate-500 hover:text-slate-900 font-medium transition px-3 py-1.5 border border-slate-200 rounded-lg"
+            >
               {t.nav.login}
             </Link>
-            <span className="bg-teal-600 text-white text-xs font-bold px-4 py-2 rounded-lg">
-              {isAr ? "بيتا مغلقة — بالدعوة فقط" : "Exclusive Beta"}
-            </span>
+            <a
+              href="#demo"
+              className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+            >
+              {t.nav.demo}
+            </a>
           </div>
         </div>
       </nav>
@@ -311,14 +373,17 @@ export default function LandingPage() {
 
               <div className="flex flex-wrap gap-3 mb-8">
                 <a
+                  href="#demo"
+                  className="bg-slate-900 hover:bg-slate-700 text-white font-bold px-8 py-3.5 rounded-full transition text-base"
+                >
+                  {t.hero.cta1}
+                </a>
+                <a
                   href="#solution"
                   className="bg-white/40 hover:bg-white/60 backdrop-blur-sm text-slate-800 font-semibold px-8 py-3.5 rounded-full transition text-base border border-white/50"
                 >
                   {t.hero.cta2}
                 </a>
-                <span className="bg-slate-900 text-white font-bold px-8 py-3.5 rounded-full text-base opacity-70 cursor-default">
-                  {isAr ? "بالدعوة فقط 🔒" : "Invitation Only 🔒"}
-                </span>
               </div>
 
               <p className="text-sm text-slate-600">{t.hero.trust}</p>
@@ -455,11 +520,11 @@ export default function LandingPage() {
           {/* CTA buttons */}
           <div className="flex flex-wrap gap-4">
             <a href="#demo" className="flex items-center gap-2 bg-white text-slate-900 font-bold px-7 py-3.5 rounded-xl hover:bg-slate-100 transition text-sm">
-              {isAr ? "شاهد الأداة في العمل" : "See Size Tool in Action"} →
+              {isAr ? "← احجز عرضاً مجانياً" : "Request Free Demo →"}
             </a>
-            <Link href="/auth" className="flex items-center gap-2 border border-white/20 text-white font-bold px-7 py-3.5 rounded-xl hover:bg-white/10 transition text-sm">
-              {isAr ? "تواصل مع المبيعات" : "Contact Sales"}
-            </Link>
+            <a href="#solution" className="flex items-center gap-2 border border-white/20 text-white font-bold px-7 py-3.5 rounded-xl hover:bg-white/10 transition text-sm">
+              {isAr ? "شاهد كيف يعمل" : "See How It Works"}
+            </a>
           </div>
         </div>
       </section>
@@ -732,15 +797,134 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── DEMO REQUEST FORM ── */}
+      <section id="demo" className="py-28 px-6 bg-white border-b border-slate-100">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+
+            {/* Left: copy */}
+            <div>
+              <Label>{t.demo.label}</Label>
+              <SectionHeading className="mb-6">{t.demo.h2}</SectionHeading>
+              <p className="text-slate-500 text-lg leading-relaxed mb-10">{t.demo.sub}</p>
+
+              {/* Trust signals */}
+              <div className="space-y-4">
+                {[
+                  { icon: "⚡", en: "Setup takes under 10 minutes", ar: "الإعداد في أقل من 10 دقائق" },
+                  { icon: "🔒", en: "No credit card required", ar: "بدون بطاقة ائتمان" },
+                  { icon: "📈", en: "See ROI in your first week",  ar: "عائد استثمار من الأسبوع الأول" },
+                ].map(i => (
+                  <div key={i.en} className={`flex items-center gap-3 text-slate-600 text-sm ${isAr ? "flex-row-reverse" : ""}`}>
+                    <span className="text-xl">{i.icon}</span>
+                    <span>{isAr ? i.ar : i.en}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: form */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8">
+              {formStatus === "success" ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-5">
+                    <svg className="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 mb-2">
+                    {isAr ? "تم إرسال طلبك!" : "Request Sent!"}
+                  </h3>
+                  <p className="text-slate-500 text-sm leading-relaxed">{t.demo.success}</p>
+                </div>
+              ) : (
+                <form onSubmit={handleDemoSubmit} className="space-y-5" dir={t.dir}>
+                  {/* Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">{t.demo.name}</label>
+                    <input
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder={t.demo.namePlaceholder}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 bg-white transition"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">{t.demo.email}</label>
+                    <input
+                      type="email"
+                      required
+                      value={form.email}
+                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder={t.demo.emailPlaceholder}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 bg-white transition"
+                    />
+                  </div>
+
+                  {/* Store URL */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">{t.demo.storeUrl}</label>
+                    <input
+                      type="url"
+                      required
+                      value={form.storeUrl}
+                      onChange={e => setForm(f => ({ ...f, storeUrl: e.target.value }))}
+                      placeholder={t.demo.storeUrlPlaceholder}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 bg-white transition"
+                    />
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">{t.demo.message}</label>
+                    <textarea
+                      rows={3}
+                      value={form.message}
+                      onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                      placeholder={t.demo.messagePlaceholder}
+                      className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 bg-white transition resize-none"
+                    />
+                  </div>
+
+                  {formStatus === "error" && (
+                    <p className="text-red-500 text-xs">{t.demo.error}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={formStatus === "loading"}
+                    className="w-full bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl text-sm transition"
+                  >
+                    {formStatus === "loading"
+                      ? (isAr ? "جارٍ الإرسال..." : "Sending...")
+                      : t.demo.cta}
+                  </button>
+
+                  <p className="text-center text-xs text-slate-400">{t.demo.note}</p>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ── */}
       <section className="py-36 px-6 bg-slate-900 text-white text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl md:text-6xl font-black leading-tight tracking-tight mb-6">
             {t.cta.h2}
           </h2>
-          <Link href="/auth" className="inline-block bg-white text-slate-900 hover:bg-slate-100 font-black text-lg px-10 py-4 rounded-xl transition">
-            {isAr ? "تسجيل الدخول ←" : "Sign In →"}
-          </Link>
+          <p className="text-slate-400 text-lg mb-10">{t.cta.sub}</p>
+          <a
+            href="#demo"
+            className="inline-block bg-white text-slate-900 hover:bg-slate-100 font-black text-lg px-10 py-4 rounded-xl transition"
+          >
+            {t.cta.btn}
+          </a>
           <p className="text-slate-600 text-sm mt-8">{t.cta.note}</p>
         </div>
       </section>
@@ -759,10 +943,10 @@ export default function LandingPage() {
             {[
               ["/how-it-works", t.footer.links[0]],
               ["/features",     t.footer.links[1]],
-              ["/pricing",      t.footer.links[2]],
+              ["#demo",         t.footer.links[2]],
               ["/embed-demo",   t.footer.links[3]],
             ].map(([href, label]) => (
-              <Link key={href} href={href} className="hover:text-white transition">{label}</Link>
+              <a key={href} href={href} className="hover:text-white transition">{label}</a>
             ))}
           </div>
           <div className="flex flex-col items-center gap-2">
