@@ -74,20 +74,37 @@ export async function POST(req: NextRequest) {
 
   const userId = invite.user.id;
 
-  // ── Insert merchant record ─────────────────────────────────
-  const { error: merchantErr } = await admin.from("merchants").insert({
-    email,
-    store_name,
-    user_id:                userId,
-    status:                 "active",
-    invitation_accepted_at: new Date().toISOString(),
-    subscription_status:    "active",
-    subscription_provider,
-  });
+  // ── Check if a merchant already exists with this user_id ──
+  const { data: existingByUserId } = await admin
+    .from("merchants")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-  if (merchantErr) {
-    console.error("[subscription-webhook] Insert merchant failed:", merchantErr);
-    return NextResponse.json({ error: merchantErr.message }, { status: 500 });
+  if (existingByUserId) {
+    // Auth user existed before — just update the merchant record
+    await admin.from("merchants").update({
+      subscription_status:   "active",
+      subscription_provider,
+      status:                "active",
+      store_name,
+    }).eq("id", existingByUserId.id);
+  } else {
+    // ── Insert new merchant record ─────────────────────────
+    const { error: merchantErr } = await admin.from("merchants").insert({
+      email,
+      store_name,
+      user_id:                userId,
+      status:                 "active",
+      invitation_accepted_at: new Date().toISOString(),
+      subscription_status:    "active",
+      subscription_provider,
+    });
+
+    if (merchantErr) {
+      console.error("[subscription-webhook] Insert merchant failed:", merchantErr);
+      return NextResponse.json({ error: merchantErr.message }, { status: 500 });
+    }
   }
 
   // ── Create users record (controls dashboard access) ───────
