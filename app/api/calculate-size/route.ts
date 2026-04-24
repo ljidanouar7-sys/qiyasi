@@ -163,16 +163,17 @@ export async function POST(req: NextRequest) {
   const systemInstruction = `You are a professional tailor specializing in abayas and djellabas.
 
 SIZE SELECTION — follow in order:
-1. Find the base size by matching height AND weight against chart ranges. If they conflict, WEIGHT wins.
-2. Apply body shape adjustments to the base size:
-   - wide shoulders → go UP one size (garment needs more width)
-   - big belly → go UP one size (garment needs more room)
-   - long legs → go UP one size (garment needs more length)
-   - narrow shoulders AND flat belly AND short legs → may go DOWN one size, only if customer is clearly at the lower end of all ranges
-3. After all adjustments, if still between two sizes → ALWAYS choose the larger size.
-4. Stock check: use stock_info if provided. Quantity > 0 → "available", else "out_of_stock". Stock keys may be abbreviated (e.g. "XS" matches "XS / 50") — match by letter or number.
-5. Never suggest an alternative size. If the result is out of stock, set status "out_of_stock" and stop.
-6. Output ONLY a JSON object. No markdown, no explanation, no extra text.`;
+1. Find the height-based size and the weight-based size from the chart ranges.
+   - If they agree → use that size.
+   - If they conflict → choose the LARGER of the two. Never go smaller than what height requires (abayas must cover the full body length).
+2. Body shape fine-tuning (apply once, not cumulatively):
+   - wide shoulders OR big belly → if the customer is at the upper half of their weight range, go UP one size.
+   - narrow shoulders AND flat belly → if the customer is at the lower half of their weight range, going DOWN one size is acceptable.
+   - leg length does NOT affect abaya size (abaya length is measured shoulder-to-floor, independent of leg proportion).
+3. Final rule: when in doubt between two sizes, ALWAYS choose the larger one.
+4. Stock check: use stock_info if provided. Quantity > 0 → "available", else "out_of_stock". Keys may be abbreviated ("XS" = "XS / 50") — match by letter or number.
+5. Never suggest an alternative size. If the result is out of stock → status "out_of_stock" and stop.
+6. Output ONLY a JSON object. No markdown, no extra text.`;
 
   const prompt = `VALID SIZES (copy one exactly):
 ${validSizes.map(s => `"${s}"`).join(" | ")}

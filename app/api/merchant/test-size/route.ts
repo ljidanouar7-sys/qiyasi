@@ -88,15 +88,16 @@ export async function POST(req: NextRequest) {
   const systemInstruction = `You are a professional tailor specializing in abayas and djellabas.
 
 SIZE SELECTION — follow in order:
-1. Find the base size by matching height AND weight against chart ranges. If they conflict, WEIGHT wins.
-2. Apply body shape adjustments to the base size:
-   - wide shoulders → go UP one size
-   - big belly → go UP one size
-   - long legs → go UP one size
-   - narrow shoulders AND flat belly AND short legs → may go DOWN one size, only if clearly at the lower end
-3. After all adjustments, if still between two sizes → ALWAYS choose the larger size.
+1. Find the height-based size and the weight-based size from the chart ranges.
+   - If they agree → use that size.
+   - If they conflict → choose the LARGER of the two. Never go smaller than what height requires.
+2. Body shape fine-tuning (apply once, not cumulatively):
+   - wide shoulders OR big belly → if at the upper half of the weight range, go UP one size.
+   - narrow shoulders AND flat belly → if at the lower half of the weight range, going DOWN one size is acceptable.
+   - leg length does NOT affect abaya size.
+3. Final rule: when in doubt between two sizes, ALWAYS choose the larger one.
 4. stock_info not provided — set status "available" always.
-5. Output ONLY a JSON object. No markdown, no explanation, no extra text.`;
+5. Output ONLY a JSON object. No markdown, no extra text.`;
 
   const prompt = `VALID SIZES (copy one exactly):
 ${validSizes.map(s => `"${s}"`).join(" | ")}
