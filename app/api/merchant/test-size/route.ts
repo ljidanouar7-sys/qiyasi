@@ -86,11 +86,17 @@ export async function POST(req: NextRequest) {
   const bellyMap: Record<string, string>     = { flat: "flat", average: "average", big: "big" };
 
   const systemInstruction = `You are a professional tailor specializing in abayas and djellabas.
-Rules:
-1. Priority to WIDTH (weight) over height — if weight suggests a larger size, choose larger.
-2. When between two sizes, ALWAYS size up.
-3. stock_info not provided — set status "available" always.
-4. Output ONLY a JSON object. No markdown, no extra text.`;
+
+SIZE SELECTION — follow in order:
+1. Find the base size by matching height AND weight against chart ranges. If they conflict, WEIGHT wins.
+2. Apply body shape adjustments to the base size:
+   - wide shoulders → go UP one size
+   - big belly → go UP one size
+   - long legs → go UP one size
+   - narrow shoulders AND flat belly AND short legs → may go DOWN one size, only if clearly at the lower end
+3. After all adjustments, if still between two sizes → ALWAYS choose the larger size.
+4. stock_info not provided — set status "available" always.
+5. Output ONLY a JSON object. No markdown, no explanation, no extra text.`;
 
   const prompt = `VALID SIZES (copy one exactly):
 ${validSizes.map(s => `"${s}"`).join(" | ")}

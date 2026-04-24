@@ -66,12 +66,13 @@ export async function POST(req: NextRequest) {
   const CORS = corsHeaders(rawOrigin);
 
   // ── Parse body ─────────────────────────────────────────────
-  let tag: string, answers: Record<string, string>, stock_info: Record<string, number> | null;
+  let tag: string, answers: Record<string, string>, stock_info: Record<string, number> | null, lang: string;
   try {
     const body = await req.json();
     tag        = body.tag;
     answers    = body.answers;
     stock_info = body.stock_info || null;
+    lang       = (body.lang || "ar").toLowerCase().startsWith("ar") ? "Arabic" : "English";
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
   }
@@ -160,12 +161,18 @@ export async function POST(req: NextRequest) {
   const bellyMap: Record<string, string>     = { flat: "flat", average: "average", big: "big" };
 
   const systemInstruction = `You are a professional tailor specializing in abayas and djellabas.
-Rules:
-1. Priority to WIDTH (weight) over height — if weight suggests a larger size, choose larger.
-2. When between two sizes, ALWAYS size up.
-3. Check stock_info: if quantity > 0 → status "available", else "out_of_stock". Stock keys may be short (e.g. "XS" matches "XS / 50", "M" matches "M / 54") — match by letter prefix or number.
-4. Do NOT suggest an alternative size. If the recommended size is out of stock, set status "out_of_stock" and DO NOT propose another size.
-5. Output ONLY a JSON object. No markdown, no extra text.`;
+
+SIZE SELECTION — follow in order:
+1. Find the base size by matching height AND weight against chart ranges. If they conflict, WEIGHT wins.
+2. Apply body shape adjustments to the base size:
+   - wide shoulders → go UP one size (garment needs more width)
+   - big belly → go UP one size (garment needs more room)
+   - long legs → go UP one size (garment needs more length)
+   - narrow shoulders AND flat belly AND short legs → may go DOWN one size, only if customer is clearly at the lower end of all ranges
+3. After all adjustments, if still between two sizes → ALWAYS choose the larger size.
+4. Stock check: use stock_info if provided. Quantity > 0 → "available", else "out_of_stock". Stock keys may be abbreviated (e.g. "XS" matches "XS / 50") — match by letter or number.
+5. Never suggest an alternative size. If the result is out of stock, set status "out_of_stock" and stop.
+6. Output ONLY a JSON object. No markdown, no explanation, no extra text.`;
 
   const prompt = `VALID SIZES (copy one exactly):
 ${validSizes.map(s => `"${s}"`).join(" | ")}
@@ -184,7 +191,7 @@ STOCK INFO:
 ${stockLines}
 
 OUTPUT (strict JSON only, no extra text):
-{"recommendedSize":"exact size from chart","status":"available|out_of_stock","message":"short user-friendly message in Arabic"}`;
+{"recommendedSize":"exact size from chart","status":"available|out_of_stock","message":"short user-friendly message in ${lang}"}`;
 
   console.log(`[${timestamp}] AI request — tag: ${tag}, stock_info: ${JSON.stringify(stock_info)}`);
 

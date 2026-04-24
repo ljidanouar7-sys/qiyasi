@@ -188,50 +188,6 @@
       .catch(() => {});
   }
 
-  // ======= Parse a cell value into {min, max} — supports both formats =======
-  // Object: { min: 145, max: 155 }  OR  String: "145-155"
-  function parseRange(cell) {
-    if (!cell) return { min: 0, max: 9999 };
-    if (typeof cell === 'string') {
-      const parts = cell.split('-').map(s => Number(s.trim())).filter(n => !isNaN(n));
-      if (parts.length === 2) return { min: parts[0], max: parts[1] };
-      if (parts.length === 1) return { min: parts[0], max: parts[0] };
-    }
-    return { min: Number(cell.min ?? 0), max: Number(cell.max ?? 9999) };
-  }
-
-  // ======= Find best size from chart (score-based matching) =======
-  // Returns ordered list of [size, score] so we can suggest next size if needed
-  function rankSizes(ans) {
-    if (!_sizeChart || !_sizeChart.rows || !_sizeChart.columns) return [];
-    const matchCols = _sizeChart.columns.filter(c => c.quiz_field && ans[c.quiz_field] !== undefined);
-    if (matchCols.length === 0) return [];
-
-    return _sizeChart.rows
-      .map(row => {
-        let inRange = 0, dist = 0;
-        for (const col of matchCols) {
-          const val = Number(ans[col.quiz_field]);
-          const { min, max } = parseRange(row[col.id]);
-          if (val >= min && val <= max) { inRange++; }
-          else { dist += val < min ? (min - val) : (val - max); }
-        }
-        // Tie → prefer larger size (size up): use row index as tiebreaker (later = larger)
-        return { size: row.size, score: inRange * 10000 - dist };
-      })
-      .sort((a, b) => b.score - a.score);  // best match first
-  }
-
-  function findSizeFromChart(ans) {
-    const ranked = rankSizes(ans);
-    return ranked.length ? ranked[0].size : null;
-  }
-
-  // ======= Final calculation =======
-  function calculateSize(ans) {
-    return findSizeFromChart(ans) || fallbackSize(ans);
-  }
-
   function fallbackSize(ans) {
     const h = ans.height || 165, w = ans.weight || 70;
     const bmi = w / Math.pow(h / 100, 2);
@@ -446,10 +402,11 @@
     }
 
     const stock_info = window._ssm_stock || buildStockFromDOM();
+    const lang = document.documentElement.lang || navigator.language || 'ar';
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag, answers, stock_info }),
+      body: JSON.stringify({ tag, answers, stock_info, lang }),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
