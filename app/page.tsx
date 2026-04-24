@@ -755,7 +755,7 @@ export default function LandingPage() {
             <span className="font-black text-white">{t.nav.logo}</span>
             <span className="text-slate-600 text-sm">— {t.footer.tagline}</span>
           </div>
-          <div className="flex gap-6 text-sm text-slate-500">
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-500">
             {[
               ["/how-it-works", t.footer.links[0]],
               ["/features",     t.footer.links[1]],
@@ -765,7 +765,14 @@ export default function LandingPage() {
               <Link key={href} href={href} className="hover:text-white transition">{label}</Link>
             ))}
           </div>
-          <p className="text-slate-600 text-xs">{t.footer.copy}</p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-slate-600 text-xs">{t.footer.copy}</p>
+            <div className="flex gap-4 text-xs text-slate-600">
+              <Link href="/terms"   className="hover:text-slate-400 transition">{isAr ? "شروط الخدمة" : "Terms"}</Link>
+              <Link href="/privacy" className="hover:text-slate-400 transition">{isAr ? "الخصوصية" : "Privacy"}</Link>
+              <Link href="/refund"  className="hover:text-slate-400 transition">{isAr ? "الاسترداد" : "Refund"}</Link>
+            </div>
+          </div>
         </div>
       </footer>
 
