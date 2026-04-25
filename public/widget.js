@@ -338,7 +338,7 @@
     const s = STEPS[step];
 
     // Update header progress — smooth width transition via CSS
-    gid("ssm-fill").style.width = ((step / STEPS.length) * 100) + "%";
+    gid("ssm-fill").style.width = (((step + 1) / STEPS.length) * 100) + "%";
     gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
 
     let html = `<div class="ssm-question">${s.q}</div><div class="ssm-hint">${s.hint}</div>`;

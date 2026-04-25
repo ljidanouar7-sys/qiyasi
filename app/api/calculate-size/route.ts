@@ -53,10 +53,12 @@ function corsHeaders(origin: string): Record<string, string> {
 
 // ── Stock normalization ────────────────────────────────────
 function normalizeSize(s: string) {
+  const upper = s.trim().toUpperCase();
+  const letterMatch = upper.match(/\b(4XL|3XL|XXL|XL|XS|S|M|L)\b/);
   return {
-    letter: s.match(/[A-Z]+/i)?.[0]?.toUpperCase() ?? "",
-    num:    s.match(/\d+/)?.[0] ?? "",
-    raw:    s.trim().toUpperCase(),
+    letter: letterMatch?.[1] ?? upper.match(/[A-Z]+/)?.[0] ?? "",
+    num:    upper.match(/\d+/)?.[0] ?? "",
+    raw:    upper,
   };
 }
 function sizesMatch(a: string, b: string): boolean {
@@ -69,14 +71,16 @@ function sizesMatch(a: string, b: string): boolean {
 // ── Sizing helpers ─────────────────────────────────────────
 
 // Returns -1 if value doesn't fit this row's range.
-// The 95% edge triggers "next size up" to avoid tight fits.
+// Pushes values in the top 5% of the range SPAN to the next size (not 95% of max).
 function findSizeIndex(rows: SizeChartRow[], colId: string, value: number): number {
   return rows.findIndex(row => {
     const range = row[colId] as Range | undefined;
     if (!range) return false;
-    if (value > range.max)         return false;
-    if (value >= range.max * 0.95) return false; // near upper edge → push to next size
-    return value >= range.min;
+    if (value < range.min || value > range.max) return false;
+    // Top 5% of the span → push up (e.g. height=170 in M[163-170] → goes to L)
+    const span = range.max - range.min;
+    if (span > 0 && (value - range.min) / span >= 0.95) return false;
+    return true;
   });
 }
 

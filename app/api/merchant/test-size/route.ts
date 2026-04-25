@@ -35,9 +35,11 @@ function findSizeIndex(rows: SizeChartRow[], colId: string, value: number): numb
   return rows.findIndex(row => {
     const range = row[colId] as Range | undefined;
     if (!range) return false;
-    if (value > range.max)         return false;
-    if (value >= range.max * 0.95) return false; // near upper edge → push to next size
-    return value >= range.min;
+    if (value < range.min || value > range.max) return false;
+    // Top 5% of the span → push up (e.g. height=170 in M[163-170] → goes to L)
+    const span = range.max - range.min;
+    if (span > 0 && (value - range.min) / span >= 0.95) return false;
+    return true;
   });
 }
 
