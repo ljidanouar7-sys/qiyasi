@@ -22,13 +22,17 @@
 .ssm-progress-fill{background:#fff;height:5px;border-radius:99px;transition:width .4s ease}
 .ssm-step-count{font-size:12px;opacity:.85;white-space:nowrap}
 .ssm-body{padding:24px;direction:rtl}
+@keyframes ssm-slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ssm-body-anim{animation:ssm-slide-in .2s ease both}
 .ssm-question{font-size:19px;font-weight:700;color:#1e2a3e;margin-bottom:6px;line-height:1.4}
 .ssm-hint{font-size:13px;color:#6b7280;margin-bottom:22px}
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 .ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
+.ssm-card.ssm-card-emoji{min-width:90px;max-width:130px}
 .ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl);transform:translateY(-2px)}
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
+.ssm-card .card-emoji{font-size:2.6rem;line-height:1;margin:0 auto 10px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .ssm-card .card-label{font-size:13px;font-weight:700;color:#1e2a3e}
 .ssm-card .card-sub{font-size:11px;color:#6b7280;margin-top:3px}
 .ssm-number-group{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
@@ -46,7 +50,9 @@
 .ssm-result-icon{font-size:56px;margin-bottom:12px}
 .ssm-result-label{font-size:15px;color:#6b7280;margin-bottom:8px}
 .ssm-result-size{font-size:72px;font-weight:900;color:var(--ssm-c);line-height:1;margin-bottom:16px}
-.ssm-result-msg{font-size:14px;color:#374151;line-height:1.6;margin-bottom:20px}
+.ssm-result-msg{font-size:14px;color:#374151;line-height:1.6;margin-bottom:12px}
+.ssm-result-reasoning{font-size:12px;color:#6b7280;background:#f9fafb;border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.6;text-align:right;direction:rtl}
+.ssm-result-disclaimer{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:8px 12px;border-radius:8px;margin-bottom:16px;direction:rtl;text-align:right}
 .ssm-stock-warn{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;margin-bottom:16px}
 .ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151;transition:.2s}
 .ssm-restart:hover{background:#e5e7eb}
@@ -83,15 +89,12 @@
     shoulderWide:   `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M10 28 L70 28 L65 55 L15 55 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="10" y1="28" x2="2" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="70" y1="28" x2="78" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
     shoulderAvg:    `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M20 28 L60 28 L57 55 L23 55 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="28" x2="10" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="60" y1="28" x2="70" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
     shoulderNarrow: `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M26 28 Q20 30 18 35 L22 55 L58 55 L62 35 Q60 30 54 28 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="35" x2="10" y2="52" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="62" y1="35" x2="70" y2="52" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    legsLong:       `<svg width="70" height="110" viewBox="0 0 70 110" fill="none"><circle cx="35" cy="10" r="8" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><rect x="22" y="20" width="26" height="28" rx="4" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="22" y1="24" x2="14" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="48" y1="24" x2="56" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="48" x2="25" y2="108" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/><line x1="42" y1="48" x2="45" y2="108" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/></svg>`,
-    legsAvg:        `<svg width="70" height="110" viewBox="0 0 70 110" fill="none"><circle cx="35" cy="10" r="8" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><rect x="22" y="20" width="26" height="32" rx="4" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="22" y1="24" x2="14" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="48" y1="24" x2="56" y2="42" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="52" x2="25" y2="100" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/><line x1="42" y1="52" x2="45" y2="100" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/></svg>`,
-    legsShort:      `<svg width="70" height="110" viewBox="0 0 70 110" fill="none"><circle cx="35" cy="10" r="8" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><rect x="22" y="20" width="26" height="38" rx="4" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="22" y1="24" x2="14" y2="44" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="48" y1="24" x2="56" y2="44" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="28" y1="58" x2="25" y2="92" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/><line x1="42" y1="58" x2="45" y2="92" stroke="#1e2a3e" stroke-width="2.5" stroke-linecap="round"/></svg>`,
     bellyFlat:      `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 L42 60 Q38 62 30 60 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="60" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="60" x2="43" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
     bellyAvg:       `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 L44 60 Q38 62 30 60 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="60" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="60" x2="43" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
     bellyBig:       `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 Q56 34 54 52 Q50 62 38 62 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="62" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="42" y1="62" x2="45" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
   };
 
-  // ======= Fixed quiz steps — same for ALL merchants, never stored in DB =======
+  // ======= Fixed quiz steps =======
   const STEPS = [
     {
       id: "height", type: "number",
@@ -107,34 +110,34 @@
       id: "shoulders", type: "cards",
       q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "wide",    svg: SVG.shoulderWide,   label: "عريضة",  sub: "كتفان واسعان"    },
-        { v: "average", svg: SVG.shoulderAvg,    label: "متوسطة", sub: "الشكل الطبيعي"   },
-        { v: "narrow",  svg: SVG.shoulderNarrow, label: "ضيقة",   sub: "كتفان منحدران"  },
-      ],
-    },
-    {
-      id: "legs", type: "cards",
-      q: "ما طول رجليك نسبةً لجسمك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
-      options: [
-        { v: "long",    svg: SVG.legsLong,  label: "طويلة",  sub: "أطول من المعدل"  },
-        { v: "average", svg: SVG.legsAvg,   label: "متوسطة", sub: "الطول الطبيعي"   },
-        { v: "short",   svg: SVG.legsShort, label: "قصيرة",  sub: "أقصر من المعدل" },
+        { v: "wide",    svg: SVG.shoulderWide,   label: "عريضة",  sub: "كتفان واسعان"   },
+        { v: "average", svg: SVG.shoulderAvg,    label: "متوسطة", sub: "الشكل الطبيعي"  },
+        { v: "narrow",  svg: SVG.shoulderNarrow, label: "ضيقة",   sub: "كتفان منحدران" },
       ],
     },
     {
       id: "belly", type: "cards",
       q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "flat",    svg: SVG.bellyFlat, label: "مسطحة",  sub: "بطن مسطحة"      },
-        { v: "average", svg: SVG.bellyAvg,  label: "متوسطة", sub: "الشكل الطبيعي"  },
-        { v: "big",     svg: SVG.bellyBig,  label: "كبيرة",  sub: "بطن بارزة"      },
+        { v: "flat",    svg: SVG.bellyFlat, label: "مسطحة",  sub: "بطن مسطحة"     },
+        { v: "average", svg: SVG.bellyAvg,  label: "متوسطة", sub: "الشكل الطبيعي" },
+        { v: "big",     svg: SVG.bellyBig,  label: "كبيرة",  sub: "بطن بارزة"     },
+      ],
+    },
+    {
+      id: "user_preference", type: "cards",
+      q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
+      options: [
+        { v: "fitted",  icon: "🤏", label: "مقيد",  sub: "قريبة من الجسم"   },
+        { v: "regular", icon: "👗", label: "عادي",  sub: "الارتداء التقليدي" },
+        { v: "loose",   icon: "🌊", label: "واسع",  sub: "واسعة ومريحة"    },
       ],
     },
   ];
 
   let step = 0, answers = {};
-  let _sizeChart = null; // received from API for out-of-stock fallback
-  let _merchantTags = [];   // [{ tag, name }] loaded via domain auth
+  let _sizeChart = null;
+  let _merchantTags = [];
 
   function gid(id) { return document.getElementById(id); }
 
@@ -165,9 +168,8 @@
     return null;
   }
 
-  // ======= Extract product tag (meta first, then title matching) =======
+  // ======= Extract product tag =======
   function extractProductTag() {
-    // 1. Explicit meta tag (fastest, most reliable)
     const meta = document.querySelector('meta[name="product-tag"]');
     if (meta) return meta.getAttribute("content");
     const dataEl = document.querySelector('[data-product-tag]');
@@ -176,11 +178,10 @@
     if (hidden) return hidden.value;
     const m = document.body.className.match(/product-tag-([\w-]+)/);
     if (m) return m[1];
-    // 2. Auto-detect from product title
     return findTagFromTitle();
   }
 
-  // ======= Fetch merchant tags via domain auth (no API key needed) =======
+  // ======= Fetch merchant tags =======
   function fetchMerchantTags() {
     fetch(`${API_BASE}/api/get-tags`)
       .then(r => r.ok ? r.json() : null)
@@ -194,7 +195,7 @@
     return bmi < 18.5 ? "S" : bmi < 23 ? "M" : bmi < 27 ? "L" : "XL";
   }
 
-  // ======= Size normalization — handles "XS / 50" vs "XS" vs "50" =======
+  // ======= Size normalization =======
   function normalizeSize(s) {
     const str = s.toString().toUpperCase().trim();
     const letterMatch = str.match(/\b(4XL|3XL|XXL|XL|XS|S|M|L)\b/);
@@ -239,7 +240,7 @@
     return false;
   }
 
-  // ======= Auto-detect stock from DOM before API call =======
+  // ======= Auto-detect stock from DOM =======
   function buildStockFromDOM() {
     const stock = {};
     const els = document.querySelectorAll(
@@ -320,10 +321,7 @@
     if (document.getElementById("ssm-trigger")) return;
     const target = findCartButton();
     if (!target) return;
-
     applyBrandColor(target);
-
-
     const btn = document.createElement("button");
     btn.id = "ssm-trigger";
     btn.type = "button";
@@ -335,8 +333,11 @@
   function openModal()  { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
   function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
+  // ======= Render with smooth slide-in animation on every step =======
   function render() {
     const s = STEPS[step];
+
+    // Update header progress — smooth width transition via CSS
     gid("ssm-fill").style.width = ((step / STEPS.length) * 100) + "%";
     gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
 
@@ -351,13 +352,17 @@
         <span class="ssm-unit">${s.unit}</span>
       </div>`;
     } else if (s.type === "cards") {
-      html += `<div class="ssm-cards">${s.options.map(o =>
-        `<div class="ssm-card ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
-          ${o.svg}
+      const isEmoji = s.options.some(o => o.icon);
+      html += `<div class="ssm-cards">${s.options.map(o => {
+        const icon = o.svg
+          ? o.svg
+          : `<div class="card-emoji">${o.icon}</div>`;
+        return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
+          ${icon}
           <div class="card-label">${o.label}</div>
           ${o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
-        </div>`
-      ).join("")}</div>`;
+        </div>`;
+      }).join("")}</div>`;
     }
 
     const isLast = step === STEPS.length - 1;
@@ -366,11 +371,19 @@
       <button class="ssm-btn-next" onclick="window._ssm.next()">${isLast ? "✨ احسب مقاسي" : "التالي &#8592;"}</button>
     </div>`;
 
-    gid("ssm-body").innerHTML = html;
+    // Swap content then restart CSS animation (reflow trick — zero timeout, no lag)
+    const body = gid("ssm-body");
+    body.classList.remove("ssm-body-anim");
+    body.innerHTML = html;
+    void body.offsetHeight; // force reflow to restart animation
+    body.classList.add("ssm-body-anim");
   }
 
   window._ssm = {
-    pick(id, v) { answers[id] = v; render(); },
+    pick(id, v) {
+      answers[id] = v; // saved to local state immediately
+      render();
+    },
     adj(id, d) {
       const s = STEPS[step];
       answers[id] = Math.min(s.max, Math.max(s.min, (answers[id] ?? s.def) + d));
@@ -401,35 +414,43 @@
       return;
     }
 
-    const stock_info = window._ssm_stock || buildStockFromDOM();
-    const lang = document.documentElement.lang || navigator.language || 'ar';
+    const stock_info      = window._ssm_stock || buildStockFromDOM();
+    const lang            = document.documentElement.lang || navigator.language || 'ar';
+    const user_preference = answers.user_preference || "regular";
+
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag, answers, stock_info, lang }),
+      body: JSON.stringify({ tag, answers, stock_info, lang, user_preference }),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        console.log("[SSM] AI response:", data);
+        console.log("[SSM] API response:", data);
         if (data && data.size) {
           if (data.sizeChart) _sizeChart = data.sizeChart;
-          const isOutOfStock = data.status === "out_of_stock";
-          showResult(data.size, false, isOutOfStock, data.message || "");
+          showResult(
+            data.size,
+            false,
+            data.status === "out_of_stock",
+            data.message   || "",
+            data.reasoning || "",
+            data.disclaimer || null
+          );
         } else {
-          console.log("[SSM] AI failed — using BMI fallback");
-          showResult(fallbackSize(answers), true, false, "");
+          console.log("[SSM] API failed — using BMI fallback");
+          showResult(fallbackSize(answers), true, false, "", "", null);
         }
       })
       .catch(err => {
         console.log("[SSM] Error:", err, "— using BMI fallback");
-        showResult(fallbackSize(answers), true, false, "");
+        showResult(fallbackSize(answers), true, false, "", "", null);
       });
   }
 
-  function showResult(size, isFallback, forceOutOfStock, apiMessage) {
+  function showResult(size, isFallback, forceOutOfStock, apiMessage, reasoning, disclaimer) {
     const outOfStock = forceOutOfStock || isSizeOutOfStock(size);
 
-    let displaySize = size, stockBadge = "", msg = "";
+    let stockBadge = "", msg = "";
     if (outOfStock) {
       stockBadge = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
       msg = apiMessage || `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
@@ -441,22 +462,40 @@
 
     const icon = outOfStock ? "😔" : "🎉";
 
-    gid("ssm-body").innerHTML = `
+    // Reasoning block — shown only when not a fallback result
+    const reasoningHtml = (reasoning && !isFallback)
+      ? `<div class="ssm-result-reasoning">💡 ${reasoning}</div>`
+      : "";
+
+    // Disclaimer block — shown when merchant set product as oversized but user prefers fitted
+    const disclaimerHtml = disclaimer
+      ? `<div class="ssm-result-disclaimer">ℹ️ ${disclaimer}</div>`
+      : "";
+
+    const body = gid("ssm-body");
+    body.innerHTML = `
       <div class="ssm-result">
         <div class="ssm-result-icon">${icon}</div>
         <div class="ssm-result-label">المقاس المناسب لك هو</div>
-        <div class="ssm-result-size">${displaySize}</div>
+        <div class="ssm-result-size">${size}</div>
         ${stockBadge}
         <div class="ssm-result-msg">${msg}</div>
+        ${reasoningHtml}
+        ${disclaimerHtml}
         <button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button>
       </div>`;
+
+    // Animate result appearance
+    body.classList.remove("ssm-body-anim");
+    void body.offsetHeight;
+    body.classList.add("ssm-body-anim");
+
     window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
 
   // ======= Public API =======
   window.SizeMatcher = {
     init(config = {}) {
-      // config.apiKey accepted for backward compat but no longer required
       _sizeChart = null;
       fetchMerchantTags();
 

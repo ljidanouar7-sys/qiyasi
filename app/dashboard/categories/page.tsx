@@ -22,6 +22,7 @@ interface Category {
   name:       string;
   tag:        string;
   niche:      string;
+  fit_type:   string;
   size_chart: unknown;
 }
 
@@ -34,6 +35,30 @@ const NICHES = [
   { value: "kids",          label: "👶 ملابس أطفال"                  },
   { value: "sports",        label: "🏃 ملابس رياضية"                 },
   { value: "other",         label: "📦 أخرى"                        },
+];
+
+const FIT_TYPES = [
+  {
+    value:   "slim",
+    label:   "Slim Fit — ضيق",
+    badge:   "Slim",
+    color:   "bg-violet-50 text-violet-700",
+    desc:    "العباءة مفصّلة قريبة من الجسم. الزبونة التي تفضل الارتداء الواسع ستحصل تلقائياً على مقاس أكبر.",
+  },
+  {
+    value:   "regular",
+    label:   "Regular — عادي",
+    badge:   "Regular",
+    color:   "bg-slate-100 text-slate-600",
+    desc:    "القياس الكلاسيكي للعبايات. يناسب معظم تفضيلات الارتداء دون تعديل إضافي.",
+  },
+  {
+    value:   "oversized",
+    label:   "Oversized — فضفاض",
+    badge:   "Oversized",
+    color:   "bg-amber-50 text-amber-700",
+    desc:    "العباءة فضفاضة بطبيعتها. الزبونة التي تفضل المضبوط ستبقى على نفس المقاس مع تنبيه تلقائي.",
+  },
 ];
 
 const DEFAULT_COLS: ChartColumn[] = [
@@ -101,18 +126,26 @@ export default function CategoriesPage() {
   const [toast,      setToast]      = useState("");
   const [saving,     setSaving]     = useState(false);
 
-  const [catName,  setCatName]  = useState("");
-  const [catTag,   setCatTag]   = useState("");
-  const [catNiche, setCatNiche] = useState("long_clothing");
-  const [cols,     setCols]     = useState<ChartColumn[]>(DEFAULT_COLS);
-  const [rows,     setRows]     = useState<ChartRow[]>(DEFAULT_ROWS);
+  const [catName,    setCatName]    = useState("");
+  const [catTag,     setCatTag]     = useState("");
+  const [catNiche,   setCatNiche]   = useState("long_clothing");
+  const [catFitType, setCatFitType] = useState("regular");
+  const [cols,       setCols]       = useState<ChartColumn[]>(DEFAULT_COLS);
+  const [rows,       setRows]       = useState<ChartRow[]>(DEFAULT_ROWS);
 
   // Test modal state
   const [testCat,     setTestCat]     = useState<Category | null>(null);
-  const [testAnswers, setTestAnswers] = useState({ height: "165", weight: "65", shoulders: "average", legs: "average", belly: "average" });
-  const [testResult,  setTestResult]  = useState<{ size: string; status: string; message: string } | null>(null);
-  const [testError,   setTestError]   = useState("");
-  const [testing,     setTesting]     = useState(false);
+  const [testAnswers, setTestAnswers] = useState({
+    height: "165", weight: "65",
+    shoulders: "average", belly: "average",
+    user_preference: "regular",
+  });
+  const [testResult, setTestResult] = useState<{
+    size: string; status: string; message: string;
+    reasoning?: string; disclaimer?: string;
+  } | null>(null);
+  const [testError, setTestError] = useState("");
+  const [testing,   setTesting]   = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -131,7 +164,7 @@ export default function CategoriesPage() {
   async function fetchCategories(mid: string) {
     const { data } = await supabase
       .from("categories")
-      .select("id, name, tag, niche, size_chart")
+      .select("id, name, tag, niche, fit_type, size_chart")
       .eq("merchant_id", mid)
       .order("created_at");
     if (data) setCategories(data as Category[]);
@@ -139,7 +172,7 @@ export default function CategoriesPage() {
 
   function openNew() {
     setEditingCat(null);
-    setCatName(""); setCatTag(""); setCatNiche("long_clothing");
+    setCatName(""); setCatTag(""); setCatNiche("long_clothing"); setCatFitType("regular");
     setCols(DEFAULT_COLS); setRows(DEFAULT_ROWS);
     setShowForm(true);
     setTimeout(() => document.getElementById("form-top")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -147,7 +180,10 @@ export default function CategoriesPage() {
 
   function openEdit(cat: Category) {
     setEditingCat(cat);
-    setCatName(cat.name); setCatTag(cat.tag || ""); setCatNiche(cat.niche || "long_clothing");
+    setCatName(cat.name);
+    setCatTag(cat.tag || "");
+    setCatNiche(cat.niche || "long_clothing");
+    setCatFitType(cat.fit_type || "regular");
     const { cols: c, rows: r } = jsonToChart(cat.size_chart);
     setCols(c); setRows(r);
     setShowForm(true);
@@ -171,6 +207,7 @@ export default function CategoriesPage() {
       name:        catName.trim(),
       tag:         catTag.trim().replace(/\s+/g, "-"),
       niche:       catNiche,
+      fit_type:    catFitType,
       size_chart:  chartToJson(cols, rows),
     };
     if (editingCat) {
@@ -229,13 +266,24 @@ export default function CategoriesPage() {
     const res = await fetch("/api/merchant/test-size", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag: testCat.tag, answers: testAnswers }),
+      body: JSON.stringify({
+        tag: testCat.tag,
+        answers: {
+          height:    testAnswers.height,
+          weight:    testAnswers.weight,
+          shoulders: testAnswers.shoulders,
+          belly:     testAnswers.belly,
+        },
+        user_preference: testAnswers.user_preference,
+      }),
     });
     const data = await res.json();
     if (!res.ok) setTestError(data.error || "حدث خطأ");
     else setTestResult(data);
     setTesting(false);
   }
+
+  const selectedFitType = FIT_TYPES.find(f => f.value === catFitType) ?? FIT_TYPES[1];
 
   return (
     <div dir="rtl">
@@ -254,7 +302,6 @@ export default function CategoriesPage() {
             كل فئة مقاسات لها <strong>رمز خاص</strong> (مثلاً <code className="bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-xs">abayas</code>).
             هذا الرمز هو ما يخبر الأداة بأي جدول مقاسات يجب استخدامه.
           </p>
-
           <div className="bg-white p-3 rounded-xl border border-blue-100 mb-3 space-y-1.5">
             <p className="font-bold text-slate-800 text-sm">📌 مثال عملي:</p>
             <p className="text-sm text-slate-700">
@@ -270,7 +317,6 @@ export default function CategoriesPage() {
               على كل منتج من هذه العبايات — وتعرف الأداة تلقائياً أي جدول مقاسات تستخدم.
             </p>
           </div>
-
           <p className="text-xs text-slate-500">
             💡 <strong>ملاحظة:</strong> لا تحتاج جدول مقاسات لكل منتج — رمز واحد يكفي لجميع المنتجات المتشابهة.
           </p>
@@ -312,8 +358,8 @@ export default function CategoriesPage() {
               </div>
             )}
 
-            {/* Basic info — stacked on mobile, 2 cols on sm+ */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Basic info: Name + Niche + Fit Type */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">اسم الفئة</label>
                 <input
@@ -330,6 +376,22 @@ export default function CategoriesPage() {
                 >
                   {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">
+                  طراز التفصيل{" "}
+                  <span className="font-normal text-slate-400">(Fit Type)</span>
+                </label>
+                <select
+                  value={catFitType} onChange={e => setCatFitType(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
+                >
+                  {FIT_TYPES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </select>
+                {/* Inline tooltip — works on mobile and desktop */}
+                <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                  {selectedFitType.desc}
+                </p>
               </div>
             </div>
 
@@ -372,7 +434,6 @@ export default function CategoriesPage() {
                 </button>
               </div>
 
-              {/* Table — scrollable on mobile */}
               <div className="overflow-x-auto rounded-xl border border-slate-200 -mx-1">
                 <table className="w-full border-collapse text-sm">
                   <thead className="bg-slate-50">
@@ -497,6 +558,7 @@ export default function CategoriesPage() {
           const hasTag     = !!cat.tag?.trim();
           const isReady    = hasTag && matchCols > 0 && hasRows;
           const niche      = NICHES.find(n => n.value === cat.niche);
+          const fitType    = FIT_TYPES.find(f => f.value === (cat.fit_type || "regular")) ?? FIT_TYPES[1];
           return (
             <div key={cat.id} className={`bg-white border rounded-2xl px-4 py-4 shadow-sm ${isReady ? "border-slate-100" : "border-amber-200"}`}>
               <div className="flex items-start justify-between gap-3">
@@ -518,6 +580,9 @@ export default function CategoriesPage() {
                         {niche.label}
                       </span>
                     )}
+                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${fitType.color}`}>
+                      {fitType.badge}
+                    </span>
                     {matchCols > 0
                       ? <span className="text-slate-400 text-xs">📊 {matchCols} عمود حساب</span>
                       : <span className="text-amber-500 text-xs font-semibold">⚠️ لا يوجد عمود حساب</span>
@@ -591,16 +656,6 @@ export default function CategoriesPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">الأرجل</label>
-                <select value={testAnswers.legs} onChange={e => setTestAnswers(a => ({ ...a, legs: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
-                  <option value="long">طويلة</option>
-                  <option value="average">متوسطة</option>
-                  <option value="short">قصيرة</option>
-                </select>
-              </div>
-
-              <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">البطن</label>
                 <select value={testAnswers.belly} onChange={e => setTestAnswers(a => ({ ...a, belly: e.target.value }))}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
@@ -610,12 +665,34 @@ export default function CategoriesPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">كيف تفضل المقاس؟</label>
+                <select value={testAnswers.user_preference} onChange={e => setTestAnswers(a => ({ ...a, user_preference: e.target.value }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-teal-400 bg-white">
+                  <option value="fitted">مقيد</option>
+                  <option value="regular">عادي</option>
+                  <option value="loose">واسع</option>
+                </select>
+              </div>
+
               {/* Result */}
               {testResult && (
                 <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 text-center">
                   <p className="text-xs text-teal-600 font-bold mb-1">المقاس الموصى به</p>
                   <p className="text-3xl font-black text-teal-700">{testResult.size}</p>
-                  {testResult.message && <p className="text-xs text-slate-600 mt-2">{testResult.message}</p>}
+                  {testResult.message && (
+                    <p className="text-xs text-slate-600 mt-2">{testResult.message}</p>
+                  )}
+                  {testResult.reasoning && (
+                    <p className="text-xs text-slate-400 mt-2 italic border-t border-teal-100 pt-2">
+                      💡 {testResult.reasoning}
+                    </p>
+                  )}
+                  {testResult.disclaimer && (
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                      ℹ️ {testResult.disclaimer}
+                    </p>
+                  )}
                 </div>
               )}
 
