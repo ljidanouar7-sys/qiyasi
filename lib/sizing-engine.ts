@@ -185,17 +185,16 @@ export function scoreAllSizes(
 // Does NOT handle stock checks (caller's responsibility in calculate-size route).
 
 export function calculateSize(params: {
-  sizeChart:          SizeChart;
-  height:             number;
-  weight:             number;
-  shoulders:          string;
-  belly:              string;
-  userPreference:     string;
-  lang:               string;
-  fabricStretchLevel: FabricStretchLevel;
+  sizeChart:      SizeChart;
+  height:         number;
+  weight:         number;
+  shoulders:      string;
+  belly:          string;
+  userPreference: string;
+  lang:           string;
 }): SizingResult {
   const { sizeChart, height, weight, shoulders, belly,
-          userPreference, lang, fabricStretchLevel } = params;
+          userPreference, lang } = params;
   const explanation: string[] = [];
   let disclaimer: string | null = null;
 
@@ -219,9 +218,8 @@ export function calculateSize(params: {
     explanation.push(`Shape modifiers applied: shoulders=${shoulders}, belly=${belly}`);
   }
 
-  // Phase 2+4: Score every size row
-  const stretchBuf = STRETCH_BUFFER[fabricStretchLevel];
-  const scores     = scoreAllSizes(sizeChart, finalBody, height, weight, stretchBuf);
+  // Phase 2+4: Score every size row (no stretch buffer — fabric level removed)
+  const scores = scoreAllSizes(sizeChart, finalBody, height, weight, 0);
   const sorted     = [...scores].sort((a, b) => b.totalScore - a.totalScore);
   const best       = sorted[0];
 

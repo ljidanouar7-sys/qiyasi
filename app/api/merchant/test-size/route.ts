@@ -6,7 +6,6 @@ import OpenAI from "openai";
 import {
   calculateSize,
   type SizeChart,
-  type FabricStretchLevel,
   type Range,
 } from "@/lib/sizing-engine";
 
@@ -69,7 +68,7 @@ export async function POST(req: NextRequest) {
   // ── Fetch size chart ──────────────────────────────────────────────────────
   const { data: category } = await admin
     .from("categories")
-    .select("size_chart, name, fabric_stretch_level, fabric_stretchy")
+    .select("size_chart, name")
     .eq("merchant_id", merchant.id)
     .ilike("tag", tag)
     .single();
@@ -83,23 +82,15 @@ export async function POST(req: NextRequest) {
 
   const sizeChart = category.size_chart as SizeChart;
 
-  // Backward-compat: fabric_stretch_level may be null on old rows
-  const rawLevel = category.fabric_stretch_level as number | null;
-  const fabricStretchLevel: FabricStretchLevel =
-    rawLevel === 0 || rawLevel === 1 || rawLevel === 2
-      ? rawLevel
-      : (category.fabric_stretchy ? 1 : 0);
-
   // ── Scoring engine ────────────────────────────────────────────────────────
   const result = calculateSize({
     sizeChart,
-    height:             Number(answers.height  || 0),
-    weight:             Number(answers.weight  || 0),
-    shoulders:          answers.shoulders      || "average",
-    belly:              answers.belly          || "average",
-    userPreference:     user_preference,
+    height:         Number(answers.height  || 0),
+    weight:         Number(answers.weight  || 0),
+    shoulders:      answers.shoulders      || "average",
+    belly:          answers.belly          || "average",
+    userPreference: user_preference,
     lang,
-    fabricStretchLevel,
   });
 
   const { recommended: sizeName, alternatives, confidence,

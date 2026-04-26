@@ -6,10 +6,8 @@ import { Redis } from "@upstash/redis";
 import {
   calculateSize,
   scoreAllSizes,
-  STRETCH_BUFFER,
   type SizeChart,
   type SizeScore,
-  type FabricStretchLevel,
   type Range,
 } from "@/lib/sizing-engine";
 
@@ -163,7 +161,7 @@ export async function POST(req: NextRequest) {
 
   const { data: category } = await supabase
     .from("categories")
-    .select("size_chart, name, fabric_stretch_level, fabric_stretchy")
+    .select("size_chart, name")
     .eq("merchant_id", merchantId)
     .ilike("tag", tag)
     .single();
@@ -174,26 +172,18 @@ export async function POST(req: NextRequest) {
 
   const sizeChart = category.size_chart as SizeChart;
 
-  // Backward-compat: fabric_stretch_level may be null on old rows → fall back to fabric_stretchy boolean
-  const rawLevel = category.fabric_stretch_level as number | null;
-  const fabricStretchLevel: FabricStretchLevel =
-    rawLevel === 0 || rawLevel === 1 || rawLevel === 2
-      ? rawLevel
-      : (category.fabric_stretchy ? 1 : 0);
-
   // ══════════════════════════════════════════════════════════════════════════════
   // LAYER 4 — Scoring Engine
   // ══════════════════════════════════════════════════════════════════════════════
 
   const result = calculateSize({
     sizeChart,
-    height:             Number(answers.height  || 0),
-    weight:             Number(answers.weight  || 0),
-    shoulders:          answers.shoulders      || "average",
-    belly:              answers.belly          || "average",
-    userPreference:     user_preference,
+    height:         Number(answers.height  || 0),
+    weight:         Number(answers.weight  || 0),
+    shoulders:      answers.shoulders      || "average",
+    belly:          answers.belly          || "average",
+    userPreference: user_preference,
     lang,
-    fabricStretchLevel,
   });
 
   let sizeName  = result.recommended;
@@ -224,7 +214,7 @@ export async function POST(req: NextRequest) {
       const allScores = scoreAllSizes(
         sizeChart, result.estimatedBody,
         Number(answers.height || 0), Number(answers.weight || 0),
-        STRETCH_BUFFER[fabricStretchLevel]
+        0
       );
       const candidates = [finalIdx + 1, finalIdx - 1]
         .map(idx => allScores.find(s => s.rowIdx === idx))
