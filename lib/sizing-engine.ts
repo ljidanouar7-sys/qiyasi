@@ -321,7 +321,11 @@ export function calculateSize(params: {
     sizeChart, finalBody, height, weight, debug
   );
   const sorted = [...scores].sort((a, b) => b.totalScore - a.totalScore);
-  const best   = sorted[0];
+
+  // Height-lock: only consider ±1 size from height-best to prevent too-long garments
+  const heightBestRowIdx = [...scores].sort((a, b) => b.heightScore - a.heightScore)[0].rowIdx;
+  const heightLocked     = sorted.filter(s => Math.abs(s.rowIdx - heightBestRowIdx) <= 1);
+  const best             = heightLocked[0] ?? sorted[0];
 
   explanation.push(`Height factor used: ${(heightFactor * 100).toFixed(0)}%`);
   explanation.push(
@@ -331,7 +335,7 @@ export function calculateSize(params: {
   );
 
   // Phase 5: Length warning
-  const heightBestIdx    = [...scores].sort((a, b) => b.heightScore - a.heightScore)[0].rowIdx;
+  const heightBestIdx    = heightBestRowIdx;
   const bodyBestIdx      = [...scores].sort((a, b) => b.widthScore  - a.widthScore)[0].rowIdx;
   const wasLengthWarning = Math.abs(heightBestIdx - bodyBestIdx) > 2;
 
