@@ -313,8 +313,6 @@ export default function CategoriesPage() {
     setTesting(false);
   }
 
-  const selectedFitType = FIT_TYPES.find(f => f.value === catFitType) ?? FIT_TYPES[1];
-
   return (
     <div dir="rtl">
       {/* Header */}
@@ -418,19 +416,12 @@ export default function CategoriesPage() {
                 >
                   {FIT_TYPES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                 </select>
-                {/* Inline tooltip — works on mobile and desktop */}
-                <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
-                  {selectedFitType.desc}
-                </p>
               </div>
             </div>
 
             {/* Fabric stretch level selector */}
             <div className="border border-slate-200 rounded-xl px-4 py-3">
               <p className="text-sm font-bold text-slate-700 mb-0.5">مرونة القماش</p>
-              <p className="text-xs text-slate-400 mb-3 leading-relaxed">
-                تُوسّع حدود المقاس للأعلى — القماش المرن يعوّض الضيق عند حدود النطاق
-              </p>
               <div className="grid grid-cols-3 gap-2">
                 {STRETCH_LEVELS.map(s => (
                   <button
@@ -447,7 +438,6 @@ export default function CategoriesPage() {
                       {s.badge}
                     </span>
                     <span className="text-xs font-bold text-slate-800">{s.label}</span>
-                    <span className="text-xs text-slate-400 mt-0.5 leading-tight">{s.desc}</span>
                   </button>
                 ))}
               </div>
