@@ -22,7 +22,17 @@ type SizeChartRow    = Record<string, unknown>;
 type SizeChart       = { columns: SizeChartColumn[]; rows: SizeChartRow[] };
 type Range           = { min: number; max: number };
 
-// ── CORS (dashboard-internal, but defined for consistency) ─
+type DeterministicResult = {
+  sizeName:         string;
+  adjustments:      string[];
+  disclaimer:       string | null;
+  adjustmentScore:  number;
+  wasCapped:        boolean;
+  wasLengthParadox: boolean;
+  finalIdx:         number;
+};
+
+// ── CORS (dashboard-internal) ──────────────────────────────
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin":  process.env.NEXT_PUBLIC_APP_URL || "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -31,20 +41,30 @@ const CORS: Record<string, string> = {
 
 // ── Sizing helpers ─────────────────────────────────────────
 
-function findSizeIndex(rows: SizeChartRow[], colId: string, value: number): number {
+function findSizeIndex(
+  rows: SizeChartRow[],
+  colId: string,
+  value: number,
+  skipBoundaryPush = false
+): number {
   return rows.findIndex(row => {
     const range = row[colId] as Range | undefined;
     if (!range) return false;
     if (value < range.min || value > range.max) return false;
-    // Top 5% of the span → push up (e.g. height=170 in M[163-170] → goes to L)
-    const span = range.max - range.min;
-    if (span > 0 && (value - range.min) / span >= 0.95) return false;
+    if (!skipBoundaryPush) {
+      const span = range.max - range.min;
+      if (span > 0 && (value - range.min) / span >= 0.98) return false;
+    }
     return true;
   });
 }
 
 function isUpperHalf(value: number, range: Range): boolean {
   return value >= (range.min + range.max) / 2;
+}
+
+function isUpper40Percent(value: number, range: Range): boolean {
+  return value >= range.min + (range.max - range.min) * 0.60;
 }
 
 function findColumnId(columns: SizeChartColumn[], ...ids: string[]): string | null {
@@ -55,22 +75,24 @@ function findColumnId(columns: SizeChartColumn[], ...ids: string[]): string | nu
 }
 
 function calculateSizeDeterministic(params: {
-  sizeChart:      SizeChart;
-  height:         number;
-  weight:         number;
-  shoulders:      string;
-  belly:          string;
-  fitType:        string;
-  userPreference: string;
-  lang:           string;
-}): { sizeName: string; adjustments: string[]; disclaimer: string | null } {
-  const { sizeChart, height, weight, shoulders, belly, fitType, userPreference, lang } = params;
+  sizeChart:       SizeChart;
+  height:          number;
+  weight:          number;
+  shoulders:       string;
+  belly:           string;
+  fitType:         string;
+  userPreference:  string;
+  lang:            string;
+  fabricStretchy:  boolean;
+}): DeterministicResult {
+  const { sizeChart, height, weight, shoulders, belly,
+          fitType, userPreference, lang, fabricStretchy } = params;
   const { rows, columns } = sizeChart;
   const adjustments: string[] = [];
 
-  // ── Rule 1: Abaya Floor ──────────────────────────────────
-  let i_h = findSizeIndex(rows, "h", height);
-  let i_w = findSizeIndex(rows, "w", weight);
+  // ── Phase A: Baseline (Abaya Floor) ──────────────────────
+  let i_h = findSizeIndex(rows, "h", height, fabricStretchy);
+  let i_w = findSizeIndex(rows, "w", weight, fabricStretchy);
 
   if (i_h < 0) {
     const lastH = rows[rows.length - 1]?.h as Range | undefined;
@@ -81,36 +103,38 @@ function calculateSizeDeterministic(params: {
     i_w = (lastW && weight > lastW.max) ? rows.length - 1 : 0;
   }
 
-  let idx = Math.max(i_h, i_w);
+  const baseline = Math.max(i_h, i_w);
 
-  // ── Rule 2: Body shape offsets ───────────────────────────
+  // ── Phase B: Adjustment Accumulator ──────────────────────
+  let adjustmentScore = 0;
+
   const chestColId = findColumnId(columns, "ch") ?? "w";
-  const chestRange = rows[idx]?.[chestColId] as Range | undefined;
-  if (shoulders === "wide" && chestRange && isUpperHalf(weight, chestRange)) {
-    idx = Math.min(idx + 1, rows.length - 1);
+  const chestRange = rows[baseline]?.[chestColId] as Range | undefined;
+  if (shoulders === "wide" && chestRange && isUpper40Percent(weight, chestRange)) {
+    adjustmentScore += 1;
     adjustments.push("broad shoulders (+4 cm shoulder offset)");
   }
 
   const waistColId = findColumnId(columns, "wa", "hi") ?? "w";
-  const waistRange = rows[idx]?.[waistColId] as Range | undefined;
-  if (belly === "big" && waistRange && isUpperHalf(weight, waistRange)) {
-    idx = Math.min(idx + 1, rows.length - 1);
+  const waistRange = rows[baseline]?.[waistColId] as Range | undefined;
+  if (belly === "big" && waistRange && isUpper40Percent(weight, waistRange)) {
+    adjustmentScore += 1;
     adjustments.push("protruding abdomen (+7 cm waist offset)");
   }
 
   const narrowColId = findColumnId(columns, "ch") ?? "w";
-  const narrowRange = rows[idx]?.[narrowColId] as Range | undefined;
+  const narrowRange = rows[baseline]?.[narrowColId] as Range | undefined;
   if (shoulders === "narrow" && belly === "flat" && narrowRange && !isUpperHalf(weight, narrowRange)) {
-    idx = Math.max(idx - 1, 0);
+    adjustmentScore -= 1;
     adjustments.push("narrow build");
   }
 
-  // ── Rule 3: Fit Type × User Preference ──────────────────
-  let disclaimer: string | null = null;
   if (fitType === "slim" && userPreference === "loose") {
-    idx = Math.min(idx + 1, rows.length - 1);
+    adjustmentScore += 1;
     adjustments.push("loose preference on slim-cut design");
   }
+
+  let disclaimer: string | null = null;
   if (fitType === "oversized" && userPreference === "fitted") {
     disclaimer = lang === "Arabic"
       ? "هذا الطراز مصمم ليكون فضفاضاً بطبيعته — هذا هو المقاس المناسب"
@@ -118,7 +142,31 @@ function calculateSizeDeterministic(params: {
     adjustments.push("fitted preference on oversized style");
   }
 
-  return { sizeName: String(rows[idx]?.size ?? ""), adjustments, disclaimer };
+  // ── Phase C: Safety Cap (±1 from baseline) ───────────────
+  const clampedScore = Math.min(Math.max(adjustmentScore, -1), 1);
+  const wasCapped    = adjustmentScore !== clampedScore;
+  let idx = Math.min(Math.max(baseline + clampedScore, 0), rows.length - 1);
+
+  // ── Phase D: Length Paradox (2-size gap rule) ────────────
+  let wasLengthParadox = false;
+  if (idx > i_h + 2) {
+    idx = Math.min(i_h + 2, rows.length - 1);
+    wasLengthParadox = true;
+    const lengthNote = lang === "Arabic"
+      ? "هذا المقاس مناسب لعرض الجسم، لكن العباءة ستكون طويلة جداً وتحتاج إلى تقصير."
+      : "This size fits your width, but the garment will be significantly long and will require shortening.";
+    disclaimer = disclaimer ? `${disclaimer} | ${lengthNote}` : lengthNote;
+  }
+
+  return {
+    sizeName:         String(rows[idx]?.size ?? ""),
+    adjustments,
+    disclaimer,
+    adjustmentScore,
+    wasCapped,
+    wasLengthParadox,
+    finalIdx: idx,
+  };
 }
 
 // ── POST ───────────────────────────────────────────────────
@@ -136,12 +184,11 @@ export async function POST(req: NextRequest) {
   // ── Parse body ────────────────────────────────────────────
   let tag: string, answers: Record<string, string>, lang: string, user_preference: string;
   try {
-    const body     = await req.json();
-    tag             = body.tag;
-    answers         = body.answers;
-    user_preference = (body.user_preference || "regular") as string;
+    const body      = await req.json();
+    tag              = body.tag;
+    answers          = body.answers;
+    user_preference  = (body.user_preference || "regular") as string;
 
-    // Support 'ar', 'ar-SA', 'Arabic', 'arabic'
     const langRaw = (body.lang || "ar").toLowerCase();
     lang = (langRaw.startsWith("ar") || langRaw === "arabic") ? "Arabic" : "English";
   } catch {
@@ -162,10 +209,11 @@ export async function POST(req: NextRequest) {
   // ── Fetch size chart ──────────────────────────────────────
   const { data: category } = await admin
     .from("categories")
-    .select("size_chart, name, fit_type")
+    .select("size_chart, name, fit_type, fabric_stretchy")
     .eq("merchant_id", merchant.id)
     .ilike("tag", tag)
     .single();
+
   if (!category?.size_chart) {
     return NextResponse.json(
       { error: lang === "Arabic" ? `لا توجد فئة بالرمز: ${tag}` : `No category with tag: ${tag}` },
@@ -173,12 +221,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const sizeChart = category.size_chart as SizeChart;
-  const fitType   = (category.fit_type as string) || "regular";
-  console.log("[test-size] tag:", tag, "| sizes:", sizeChart.rows.map(r => r.size).join(", "));
+  const sizeChart      = category.size_chart as SizeChart;
+  const fitType        = (category.fit_type as string)        || "regular";
+  const fabricStretchy = Boolean(category.fabric_stretchy);
 
   // ── Deterministic size calculation ────────────────────────
-  const { sizeName, adjustments, disclaimer } = calculateSizeDeterministic({
+  const result = calculateSizeDeterministic({
     sizeChart,
     height:         Number(answers.height  || 0),
     weight:         Number(answers.weight  || 0),
@@ -187,9 +235,16 @@ export async function POST(req: NextRequest) {
     fitType,
     userPreference: user_preference,
     lang,
+    fabricStretchy,
   });
 
-  console.log(`[test-size] size: "${sizeName}", adjustments: [${adjustments.join(", ")}]`);
+  const { sizeName, adjustments, disclaimer, adjustmentScore, wasCapped, wasLengthParadox } = result;
+
+  console.log(
+    `[test-size] tag: ${tag} | size: "${sizeName}"` +
+    ` | score: ${adjustmentScore}${wasCapped ? " (capped)" : ""}` +
+    `${wasLengthParadox ? " (length-paradox)" : ""} | adjustments: [${adjustments.join(", ")}]`
+  );
 
   // ── AI: reasoning text only ───────────────────────────────
   const chartTable = sizeChart.rows.map(row => {
@@ -201,6 +256,12 @@ export async function POST(req: NextRequest) {
   }).join("\n");
 
   const reasoningPrompt = `A merchant is testing their size recommendation tool. The system already chose the size — write a friendly explanation.
+
+CRITICAL RULES:
+1. NEVER suggest a different size than "${sizeName}". Do NOT contradict the system's decision.
+2. Keep the message under 20 words.
+${wasCapped        ? "3. Multiple adjustments fired; the system balanced to keep the garment length manageable." : ""}
+${wasLengthParadox ? "3. The size was limited to prevent an excessive length mismatch — garment may need shortening." : ""}
 
 DECISION:
 - Chosen size: ${sizeName}
@@ -219,7 +280,6 @@ ${chartTable}
 Return ONLY a JSON object in ${lang}:
 {"message":"short friendly confirmation max 20 words","reasoning":"one sentence explaining why this size"}`;
 
-  // Fallback used if AI fails
   const fallbackAI = {
     message: lang === "Arabic"
       ? `مقاسك المناسب هو ${sizeName}`
@@ -250,7 +310,6 @@ Return ONLY a JSON object in ${lang}:
       if (candidate.message && candidate.reasoning) parsedAI = candidate;
     } catch (aiErr) {
       console.error("[test-size] AI reasoning failed — using fallback:", aiErr);
-      // parsedAI stays as fallbackAI — no crash
     }
   }
 

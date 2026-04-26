@@ -18,12 +18,13 @@ interface ChartRow {
 }
 
 interface Category {
-  id:         string;
-  name:       string;
-  tag:        string;
-  niche:      string;
-  fit_type:   string;
-  size_chart: unknown;
+  id:              string;
+  name:            string;
+  tag:             string;
+  niche:           string;
+  fit_type:        string;
+  fabric_stretchy: boolean;
+  size_chart:      unknown;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -126,12 +127,13 @@ export default function CategoriesPage() {
   const [toast,      setToast]      = useState("");
   const [saving,     setSaving]     = useState(false);
 
-  const [catName,    setCatName]    = useState("");
-  const [catTag,     setCatTag]     = useState("");
-  const [catNiche,   setCatNiche]   = useState("long_clothing");
-  const [catFitType, setCatFitType] = useState("regular");
-  const [cols,       setCols]       = useState<ChartColumn[]>(DEFAULT_COLS);
-  const [rows,       setRows]       = useState<ChartRow[]>(DEFAULT_ROWS);
+  const [catName,           setCatName]           = useState("");
+  const [catTag,            setCatTag]            = useState("");
+  const [catNiche,          setCatNiche]          = useState("long_clothing");
+  const [catFitType,        setCatFitType]        = useState("regular");
+  const [catFabricStretchy, setCatFabricStretchy] = useState(false);
+  const [cols,              setCols]              = useState<ChartColumn[]>(DEFAULT_COLS);
+  const [rows,              setRows]              = useState<ChartRow[]>(DEFAULT_ROWS);
 
   // Test modal state
   const [testCat,     setTestCat]     = useState<Category | null>(null);
@@ -164,7 +166,7 @@ export default function CategoriesPage() {
   async function fetchCategories(mid: string) {
     const { data } = await supabase
       .from("categories")
-      .select("id, name, tag, niche, fit_type, size_chart")
+      .select("id, name, tag, niche, fit_type, fabric_stretchy, size_chart")
       .eq("merchant_id", mid)
       .order("created_at");
     if (data) setCategories(data as Category[]);
@@ -173,6 +175,7 @@ export default function CategoriesPage() {
   function openNew() {
     setEditingCat(null);
     setCatName(""); setCatTag(""); setCatNiche("long_clothing"); setCatFitType("regular");
+    setCatFabricStretchy(false);
     setCols(DEFAULT_COLS); setRows(DEFAULT_ROWS);
     setShowForm(true);
     setTimeout(() => document.getElementById("form-top")?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -184,6 +187,7 @@ export default function CategoriesPage() {
     setCatTag(cat.tag || "");
     setCatNiche(cat.niche || "long_clothing");
     setCatFitType(cat.fit_type || "regular");
+    setCatFabricStretchy(cat.fabric_stretchy ?? false);
     const { cols: c, rows: r } = jsonToChart(cat.size_chart);
     setCols(c); setRows(r);
     setShowForm(true);
@@ -203,12 +207,13 @@ export default function CategoriesPage() {
     }
     setSaving(true);
     const payload = {
-      merchant_id: merchantId,
-      name:        catName.trim(),
-      tag:         catTag.trim().replace(/\s+/g, "-"),
-      niche:       catNiche,
-      fit_type:    catFitType,
-      size_chart:  chartToJson(cols, rows),
+      merchant_id:     merchantId,
+      name:            catName.trim(),
+      tag:             catTag.trim().replace(/\s+/g, "-"),
+      niche:           catNiche,
+      fit_type:        catFitType,
+      fabric_stretchy: catFabricStretchy,
+      size_chart:      chartToJson(cols, rows),
     };
     if (editingCat) {
       await supabase.from("categories").update(payload).eq("id", editingCat.id);
@@ -395,6 +400,29 @@ export default function CategoriesPage() {
               </div>
             </div>
 
+            {/* Fabric stretchy toggle */}
+            <div className="flex items-center justify-between border border-slate-200 rounded-xl px-4 py-3">
+              <div>
+                <p className="text-sm font-bold text-slate-700">قماش مطاطي / قابل للتمدد</p>
+                <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">
+                  يعطّل قاعدة "ادفع للمقاس الأكبر عند حدود النطاق" — للقماش المرن فقط
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={catFabricStretchy}
+                onClick={() => setCatFabricStretchy(v => !v)}
+                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors ${
+                  catFabricStretchy ? "bg-indigo-500" : "bg-slate-200"
+                }`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  catFabricStretchy ? "translate-x-5" : "translate-x-0"
+                }`} />
+              </button>
+            </div>
+
             {/* Tag */}
             <div>
               <label className="block text-xs font-bold text-slate-500 mb-0.5">رمز الفئة</label>
@@ -559,6 +587,7 @@ export default function CategoriesPage() {
           const isReady    = hasTag && matchCols > 0 && hasRows;
           const niche      = NICHES.find(n => n.value === cat.niche);
           const fitType    = FIT_TYPES.find(f => f.value === (cat.fit_type || "regular")) ?? FIT_TYPES[1];
+          const isStretchy = Boolean(cat.fabric_stretchy);
           return (
             <div key={cat.id} className={`bg-white border rounded-2xl px-4 py-4 shadow-sm ${isReady ? "border-slate-100" : "border-amber-200"}`}>
               <div className="flex items-start justify-between gap-3">
@@ -583,6 +612,11 @@ export default function CategoriesPage() {
                     <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${fitType.color}`}>
                       {fitType.badge}
                     </span>
+                    {isStretchy && (
+                      <span className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                        🧵 مطاطي
+                      </span>
+                    )}
                     {matchCols > 0
                       ? <span className="text-slate-400 text-xs">📊 {matchCols} عمود حساب</span>
                       : <span className="text-amber-500 text-xs font-semibold">⚠️ لا يوجد عمود حساب</span>
