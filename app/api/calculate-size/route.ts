@@ -163,7 +163,7 @@ export async function POST(req: NextRequest) {
 
   const { data: category } = await supabase
     .from("categories")
-    .select("size_chart, name, fit_type, fabric_stretch_level, fabric_stretchy")
+    .select("size_chart, name, fabric_stretch_level, fabric_stretchy")
     .eq("merchant_id", merchantId)
     .ilike("tag", tag)
     .single();
@@ -173,7 +173,6 @@ export async function POST(req: NextRequest) {
   }
 
   const sizeChart = category.size_chart as SizeChart;
-  const fitType   = (category.fit_type as string) || "regular";
 
   // Backward-compat: fabric_stretch_level may be null on old rows → fall back to fabric_stretchy boolean
   const rawLevel = category.fabric_stretch_level as number | null;
@@ -192,7 +191,6 @@ export async function POST(req: NextRequest) {
     weight:             Number(answers.weight  || 0),
     shoulders:          answers.shoulders      || "average",
     belly:              answers.belly          || "average",
-    fitType,
     userPreference:     user_preference,
     lang,
     fabricStretchLevel,
@@ -266,7 +264,6 @@ CRITICAL: NEVER suggest a different size than "${sizeName}". Do NOT contradict t
 DECISION:
 - Recommended size: ${sizeName} (confidence: ${confidence}%)
 - Alternatives considered: ${alternatives.join(", ") || "none"}
-- Fit type: ${fitType}
 - Availability: ${finalStatus}
 ${isNextBest ? `- Note: ideal size (${idealSizeName}) was out of stock; switched to nearest available (${sizeName})` : ""}
 ${disclaimer ? `- Disclaimer: ${disclaimer}` : ""}

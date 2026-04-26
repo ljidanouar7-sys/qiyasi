@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   // ── Fetch size chart ──────────────────────────────────────────────────────
   const { data: category } = await admin
     .from("categories")
-    .select("size_chart, name, fit_type, fabric_stretch_level, fabric_stretchy")
+    .select("size_chart, name, fabric_stretch_level, fabric_stretchy")
     .eq("merchant_id", merchant.id)
     .ilike("tag", tag)
     .single();
@@ -82,7 +82,6 @@ export async function POST(req: NextRequest) {
   }
 
   const sizeChart = category.size_chart as SizeChart;
-  const fitType   = (category.fit_type as string) || "regular";
 
   // Backward-compat: fabric_stretch_level may be null on old rows
   const rawLevel = category.fabric_stretch_level as number | null;
@@ -98,7 +97,6 @@ export async function POST(req: NextRequest) {
     weight:             Number(answers.weight  || 0),
     shoulders:          answers.shoulders      || "average",
     belly:              answers.belly          || "average",
-    fitType,
     userPreference:     user_preference,
     lang,
     fabricStretchLevel,
@@ -130,7 +128,6 @@ CRITICAL: NEVER suggest a different size than "${sizeName}". Do NOT contradict t
 DECISION:
 - Recommended size: ${sizeName} (confidence: ${confidence}%)
 - Alternatives: ${alternatives.join(", ") || "none"}
-- Fit type: ${fitType}
 ${disclaimer ? `- Note: ${disclaimer}` : ""}
 
 ENGINE DATA:

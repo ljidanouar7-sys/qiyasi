@@ -86,11 +86,9 @@ export function applyBodyShape(
 // slim+loose gets an extra +2 cm because slim cuts leave less room to absorb looseness.
 export function applyFitPreference(
   body:       BodyMeasurements,
-  preference: string,
-  fitType:    string
+  preference: string
 ): BodyMeasurements {
-  let delta = PREF_DELTA[preference] ?? 0;
-  if (fitType === "slim" && preference === "loose") delta += 2;
+  const delta = PREF_DELTA[preference] ?? 0;
   return {
     chest: body.chest + delta,
     waist: body.waist + delta,
@@ -192,13 +190,12 @@ export function calculateSize(params: {
   weight:             number;
   shoulders:          string;
   belly:              string;
-  fitType:            string;
   userPreference:     string;
   lang:               string;
   fabricStretchLevel: FabricStretchLevel;
 }): SizingResult {
   const { sizeChart, height, weight, shoulders, belly,
-          fitType, userPreference, lang, fabricStretchLevel } = params;
+          userPreference, lang, fabricStretchLevel } = params;
   const explanation: string[] = [];
   let disclaimer: string | null = null;
 
@@ -213,7 +210,7 @@ export function calculateSize(params: {
   // Phase 0+1: Estimate and adjust body measurements
   const rawBody    = estimateBody(height, weight);
   const shapedBody = applyBodyShape(rawBody, shoulders, belly);
-  const finalBody  = applyFitPreference(shapedBody, userPreference, fitType);
+  const finalBody  = applyFitPreference(shapedBody, userPreference);
 
   explanation.push(
     `Estimated body: chest ${rawBody.chest}cm, waist ${rawBody.waist}cm, hips ${rawBody.hips}cm`
@@ -244,14 +241,6 @@ export function calculateSize(params: {
       ? "تنبيه: هناك فارق كبير بين مقاس الطول ومقاس الجسم — قد تحتاج العباءة إلى تقصير."
       : "Note: significant height-to-body mismatch — the garment may need length adjustment.";
     explanation.push("Length warning: height-best and body-best differ by >2 sizes");
-  }
-
-  // Oversized + fitted preference: inform customer, do not change size
-  if (fitType === "oversized" && userPreference === "fitted") {
-    const note = lang === "Arabic"
-      ? "هذا الطراز مصمم ليكون فضفاضاً بطبيعته — هذا هو المقاس المناسب"
-      : "This style is intentionally oversized — this is the correct size for you.";
-    disclaimer = disclaimer ? `${disclaimer} | ${note}` : note;
   }
 
   // Phase 6: Confidence — combines score quality with top-2 gap clarity

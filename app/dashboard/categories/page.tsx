@@ -22,7 +22,6 @@ interface Category {
   name:                 string;
   tag:                  string;
   niche:                string;
-  fit_type:             string;
   fabric_stretch_level: 0 | 1 | 2;
   size_chart:           unknown;
 }
@@ -36,30 +35,6 @@ const NICHES = [
   { value: "kids",          label: "👶 ملابس أطفال"                  },
   { value: "sports",        label: "🏃 ملابس رياضية"                 },
   { value: "other",         label: "📦 أخرى"                        },
-];
-
-const FIT_TYPES = [
-  {
-    value:   "slim",
-    label:   "Slim Fit — ضيق",
-    badge:   "Slim",
-    color:   "bg-violet-50 text-violet-700",
-    desc:    "العباءة مفصّلة قريبة من الجسم. الزبونة التي تفضل الارتداء الواسع ستحصل تلقائياً على مقاس أكبر.",
-  },
-  {
-    value:   "regular",
-    label:   "Regular — عادي",
-    badge:   "Regular",
-    color:   "bg-slate-100 text-slate-600",
-    desc:    "القياس الكلاسيكي للعبايات. يناسب معظم تفضيلات الارتداء دون تعديل إضافي.",
-  },
-  {
-    value:   "oversized",
-    label:   "Oversized — فضفاض",
-    badge:   "Oversized",
-    color:   "bg-amber-50 text-amber-700",
-    desc:    "العباءة فضفاضة بطبيعتها. الزبونة التي تفضل المضبوط ستبقى على نفس المقاس مع تنبيه تلقائي.",
-  },
 ];
 
 const STRETCH_LEVELS = [
@@ -154,7 +129,6 @@ export default function CategoriesPage() {
   const [catName,         setCatName]         = useState("");
   const [catTag,          setCatTag]          = useState("");
   const [catNiche,        setCatNiche]        = useState("long_clothing");
-  const [catFitType,      setCatFitType]      = useState("regular");
   const [catStretchLevel, setCatStretchLevel] = useState<0 | 1 | 2>(0);
   const [cols,            setCols]            = useState<ChartColumn[]>(DEFAULT_COLS);
   const [rows,            setRows]            = useState<ChartRow[]>(DEFAULT_ROWS);
@@ -191,7 +165,7 @@ export default function CategoriesPage() {
   async function fetchCategories(mid: string) {
     const { data } = await supabase
       .from("categories")
-      .select("id, name, tag, niche, fit_type, fabric_stretch_level, size_chart")
+      .select("id, name, tag, niche, fabric_stretch_level, size_chart")
       .eq("merchant_id", mid)
       .order("created_at");
     if (data) setCategories(data as Category[]);
@@ -199,7 +173,7 @@ export default function CategoriesPage() {
 
   function openNew() {
     setEditingCat(null);
-    setCatName(""); setCatTag(""); setCatNiche("long_clothing"); setCatFitType("regular");
+    setCatName(""); setCatTag(""); setCatNiche("long_clothing");
     setCatStretchLevel(0);
     setCols(DEFAULT_COLS); setRows(DEFAULT_ROWS);
     setShowForm(true);
@@ -211,7 +185,6 @@ export default function CategoriesPage() {
     setCatName(cat.name);
     setCatTag(cat.tag || "");
     setCatNiche(cat.niche || "long_clothing");
-    setCatFitType(cat.fit_type || "regular");
     setCatStretchLevel((cat.fabric_stretch_level ?? 0) as 0 | 1 | 2);
     const { cols: c, rows: r } = jsonToChart(cat.size_chart);
     setCols(c); setRows(r);
@@ -236,7 +209,6 @@ export default function CategoriesPage() {
       name:                 catName.trim(),
       tag:                  catTag.trim().replace(/\s+/g, "-"),
       niche:                catNiche,
-      fit_type:             catFitType,
       fabric_stretch_level: catStretchLevel,
       size_chart:           chartToJson(cols, rows),
     };
@@ -386,8 +358,8 @@ export default function CategoriesPage() {
               </div>
             )}
 
-            {/* Basic info: Name + Niche + Fit Type */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Basic info: Name + Niche */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5">اسم الفئة</label>
                 <input
@@ -403,18 +375,6 @@ export default function CategoriesPage() {
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
                 >
                   {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">
-                  طراز التفصيل{" "}
-                  <span className="font-normal text-slate-400">(Fit Type)</span>
-                </label>
-                <select
-                  value={catFitType} onChange={e => setCatFitType(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
-                >
-                  {FIT_TYPES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                 </select>
               </div>
             </div>
@@ -605,8 +565,7 @@ export default function CategoriesPage() {
           const hasRows    = r.length > 0;
           const hasTag     = !!cat.tag?.trim();
           const isReady    = hasTag && matchCols > 0 && hasRows;
-          const niche      = NICHES.find(n => n.value === cat.niche);
-          const fitType      = FIT_TYPES.find(f => f.value === (cat.fit_type || "regular")) ?? FIT_TYPES[1];
+          const niche        = NICHES.find(n => n.value === cat.niche);
           const stretchLevel = (cat.fabric_stretch_level ?? 0) as 0 | 1 | 2;
           const stretchInfo  = stretchLevel > 0 ? STRETCH_LEVELS[stretchLevel] : null;
           return (
@@ -630,9 +589,6 @@ export default function CategoriesPage() {
                         {niche.label}
                       </span>
                     )}
-                    <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${fitType.color}`}>
-                      {fitType.badge}
-                    </span>
                     {stretchInfo && (
                       <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${stretchInfo.color}`}>
                         🧵 {stretchInfo.badge}
