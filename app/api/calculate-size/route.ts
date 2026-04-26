@@ -98,13 +98,15 @@ export async function POST(req: NextRequest) {
       answers: Record<string, string>,
       stock_info: Record<string, number> | null,
       lang: string,
-      user_preference: string;
+      user_preference: string,
+      debug: boolean;
   try {
     const body     = await req.json();
     tag             = body.tag;
     answers         = body.answers;
     stock_info      = body.stock_info || null;
     user_preference = (body.user_preference || "regular") as string;
+    debug           = body.debug === true;
     const langRaw   = (body.lang || "ar").toLowerCase();
     lang            = (langRaw.startsWith("ar") || langRaw === "arabic") ? "Arabic" : "English";
   } catch {
@@ -184,6 +186,7 @@ export async function POST(req: NextRequest) {
     belly:          answers.belly          || "average",
     userPreference: user_preference,
     lang,
+    debug,
   });
 
   let sizeName  = result.recommended;
@@ -211,10 +214,9 @@ export async function POST(req: NextRequest) {
       finalStatus = "out_of_stock";
 
       // Re-score to find the best available adjacent size in either direction
-      const allScores = scoreAllSizes(
+      const { scores: allScores } = scoreAllSizes(
         sizeChart, result.estimatedBody,
-        Number(answers.height || 0), Number(answers.weight || 0),
-        0
+        Number(answers.height || 0), Number(answers.weight || 0)
       );
       const candidates = [finalIdx + 1, finalIdx - 1]
         .map(idx => allScores.find(s => s.rowIdx === idx))
@@ -315,5 +317,6 @@ Return ONLY a JSON object in ${lang}:
     reasoning:    parsedAI.reasoning,
     disclaimer:   disclaimer ?? undefined,
     sizeChart,
+    ...(debug && result.debug ? { debug: result.debug } : {}),
   }, { headers: CORS });
 }

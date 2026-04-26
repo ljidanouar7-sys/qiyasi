@@ -42,12 +42,13 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
 
   // ── Parse body ────────────────────────────────────────────────────────────
-  let tag: string, answers: Record<string, string>, lang: string, user_preference: string;
+  let tag: string, answers: Record<string, string>, lang: string, user_preference: string, debug: boolean;
   try {
     const body     = await req.json();
     tag             = body.tag;
     answers         = body.answers;
     user_preference = (body.user_preference || "regular") as string;
+    debug           = body.debug === true;
     const langRaw   = (body.lang || "ar").toLowerCase();
     lang            = (langRaw.startsWith("ar") || langRaw === "arabic") ? "Arabic" : "English";
   } catch {
@@ -91,6 +92,7 @@ export async function POST(req: NextRequest) {
     belly:          answers.belly          || "average",
     userPreference: user_preference,
     lang,
+    debug,
   });
 
   const { recommended: sizeName, alternatives, confidence,
@@ -173,5 +175,6 @@ Return ONLY a JSON object in ${lang}:
     message:      parsedAI.message,
     reasoning:    parsedAI.reasoning,
     disclaimer:   disclaimer ?? undefined,
+    ...(debug && result.debug ? { debug: result.debug } : {}),
   }, { headers: CORS });
 }
