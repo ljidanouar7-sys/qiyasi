@@ -80,7 +80,6 @@
       if (!m) { applyWhiteMode(); return; }
       const [r, g, b] = m.map(Number);
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      if (max - min < 30)                    { applyWhiteMode(); return; } // gray
       if (r > 240 && g > 240 && b > 240)    { applyWhiteMode(); return; } // white
       if (r < 30  && g < 30  && b < 30)     { applyWhiteMode(); return; } // black
       const dark   = v => Math.max(0,   Math.round(v * 0.8));
