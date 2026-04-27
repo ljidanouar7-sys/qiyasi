@@ -61,7 +61,7 @@
   `;
   document.head.appendChild(style);
 
-  // ======= White mode (gray / white / black stores) =======
+  // ======= White mode (no brand color found) =======
   function applyWhiteMode() {
     const root = document.documentElement;
     root.style.setProperty('--ssm-c',    '#6b7280');
@@ -71,25 +71,46 @@
     root.style.setProperty('--ssm-text', '#111827');
   }
 
+  // Returns {r,g,b} if element has a valid brand color, else null
+  function extractColor(el) {
+    try {
+      const bg = window.getComputedStyle(el).backgroundColor;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return null;
+      const m = bg.match(/\d+/g);
+      if (!m) return null;
+      const [r, g, b] = m.map(Number);
+      if (r > 240 && g > 240 && b > 240) return null; // white
+      if (r < 30  && g < 30  && b < 30)  return null; // black
+      return { r, g, b };
+    } catch(e) { return null; }
+  }
+
+  function applyColor({ r, g, b }) {
+    const dark   = v => Math.max(0,   Math.round(v * 0.8));
+    const light  = v => Math.min(255, Math.round(255 - (255 - v) * 0.12));
+    const border = v => Math.min(255, Math.round(255 - (255 - v) * 0.35));
+    const root = document.documentElement;
+    root.style.setProperty('--ssm-c',  `rgb(${r},${g},${b})`);
+    root.style.setProperty('--ssm-cd', `rgb(${dark(r)},${dark(g)},${dark(b)})`);
+    root.style.setProperty('--ssm-cl', `rgb(${light(r)},${light(g)},${light(b)})`);
+    root.style.setProperty('--ssm-cb', `rgb(${border(r)},${border(g)},${border(b)})`);
+  }
+
   // ======= Auto-detect brand color =======
   function applyBrandColor(cartBtn) {
     try {
-      const bg = window.getComputedStyle(cartBtn).backgroundColor;
-      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') { applyWhiteMode(); return; }
-      const m = bg.match(/\d+/g);
-      if (!m) { applyWhiteMode(); return; }
-      const [r, g, b] = m.map(Number);
-      const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      if (r > 240 && g > 240 && b > 240)    { applyWhiteMode(); return; } // white
-      if (r < 30  && g < 30  && b < 30)     { applyWhiteMode(); return; } // black
-      const dark   = v => Math.max(0,   Math.round(v * 0.8));
-      const light  = v => Math.min(255, Math.round(255 - (255 - v) * 0.12));
-      const border = v => Math.min(255, Math.round(255 - (255 - v) * 0.35));
-      const root = document.documentElement;
-      root.style.setProperty('--ssm-c',  `rgb(${r},${g},${b})`);
-      root.style.setProperty('--ssm-cd', `rgb(${dark(r)},${dark(g)},${dark(b)})`);
-      root.style.setProperty('--ssm-cl', `rgb(${light(r)},${light(g)},${light(b)})`);
-      root.style.setProperty('--ssm-cb', `rgb(${border(r)},${border(g)},${border(b)})`);
+      // 1. Try the cart button itself
+      const c = extractColor(cartBtn);
+      if (c) { applyColor(c); return; }
+
+      // 2. Fallback: scan all buttons/links for a colored one
+      for (const el of document.querySelectorAll('button,[role="button"],a')) {
+        const fc = extractColor(el);
+        if (fc) { applyColor(fc); return; }
+      }
+
+      // 3. Nothing found → white mode
+      applyWhiteMode();
     } catch(e) { applyWhiteMode(); }
   }
 
