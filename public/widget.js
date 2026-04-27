@@ -353,7 +353,6 @@
             ? o.svg
             : `<div class="card-emoji">${o.icon}</div>`;
         return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${isImg ? "ssm-card-img" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
-          ${o.imgSrc ? `<div class="card-label" style="margin-bottom:8px;font-size:14px;font-weight:700;color:#1e2a3e">${o.label}</div>` : ""}
           ${imgDiv}
           ${!o.imgSrc ? `<div class="card-label">${o.label}</div>` : ""}
           ${!o.imgSrc && o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
