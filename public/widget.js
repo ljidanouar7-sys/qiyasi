@@ -29,6 +29,7 @@
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 .ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
 .ssm-card.ssm-card-emoji{min-width:90px;max-width:130px}
+.ssm-card.ssm-card-img{min-width:100px;max-width:160px;padding:8px 6px 6px;}
 .ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl);transform:translateY(-2px)}
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
@@ -84,15 +85,6 @@
     } catch(e) {}
   }
 
-  // ======= SVGs =======
-  const SVG = {
-    shoulderWide:   `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M10 28 L70 28 L65 55 L15 55 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="10" y1="28" x2="2" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="70" y1="28" x2="78" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    shoulderAvg:    `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M20 28 L60 28 L57 55 L23 55 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="28" x2="10" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="60" y1="28" x2="70" y2="50" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    shoulderNarrow: `<svg width="80" height="90" viewBox="0 0 80 90" fill="none"><circle cx="40" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M26 28 Q20 30 18 35 L22 55 L58 55 L62 35 Q60 30 54 28 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="40" y1="55" x2="35" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="55" x2="45" y2="88" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="35" x2="10" y2="52" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="62" y1="35" x2="70" y2="52" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    bellyFlat:      `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 L42 60 Q38 62 30 60 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="60" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="60" x2="43" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    bellyAvg:       `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 L44 60 Q38 62 30 60 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="60" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="40" y1="60" x2="43" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-    bellyBig:       `<svg width="70" height="100" viewBox="0 0 70 100" fill="none"><circle cx="38" cy="12" r="9" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><path d="M28 22 Q38 22 42 22 Q56 34 54 52 Q50 62 38 62 L26 22 Z" stroke="#1e2a3e" stroke-width="2" fill="#e8f4f8"/><line x1="28" y1="25" x2="18" y2="46" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="32" y1="62" x2="29" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/><line x1="42" y1="62" x2="45" y2="98" stroke="#1e2a3e" stroke-width="2" stroke-linecap="round"/></svg>`,
-  };
 
   // ======= Fixed quiz steps =======
   const STEPS = [
@@ -110,27 +102,27 @@
       id: "shoulders", type: "cards",
       q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "wide",    svg: SVG.shoulderWide,   label: "عريضة",  sub: "كتفان واسعان"   },
-        { v: "average", svg: SVG.shoulderAvg,    label: "متوسطة", sub: "الشكل الطبيعي"  },
-        { v: "narrow",  svg: SVG.shoulderNarrow, label: "ضيقة",   sub: "كتفان منحدران" },
+        { v: "narrow",  imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
+        { v: "average", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
+        { v: "wide",    imgSrc: "q-shoulders.jpg", imgPos: "100%" },
       ],
     },
     {
       id: "belly", type: "cards",
       q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "flat",    svg: SVG.bellyFlat, label: "مسطحة",  sub: "بطن مسطحة"     },
-        { v: "average", svg: SVG.bellyAvg,  label: "متوسطة", sub: "الشكل الطبيعي" },
-        { v: "big",     svg: SVG.bellyBig,  label: "كبيرة",  sub: "بطن بارزة"     },
+        { v: "flat",    imgSrc: "q-belly.jpg", imgPos: "0%"   },
+        { v: "average", imgSrc: "q-belly.jpg", imgPos: "50%"  },
+        { v: "big",     imgSrc: "q-belly.jpg", imgPos: "100%" },
       ],
     },
     {
       id: "user_preference", type: "cards",
       q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
       options: [
-        { v: "fitted",  icon: "🤏", label: "مقيد",  sub: "قريبة من الجسم"   },
-        { v: "regular", icon: "👗", label: "عادي",  sub: "الارتداء التقليدي" },
-        { v: "loose",   icon: "🌊", label: "واسع",  sub: "واسعة ومريحة"    },
+        { v: "fitted",  imgSrc: "q-fit.jpg", imgPos: "0%"   },
+        { v: "regular", imgSrc: "q-fit.jpg", imgPos: "50%"  },
+        { v: "loose",   imgSrc: "q-fit.jpg", imgPos: "100%" },
       ],
     },
   ];
@@ -353,14 +345,17 @@
       </div>`;
     } else if (s.type === "cards") {
       const isEmoji = s.options.some(o => o.icon);
+      const isImg   = s.options.some(o => o.imgSrc);
       html += `<div class="ssm-cards">${s.options.map(o => {
-        const icon = o.svg
-          ? o.svg
-          : `<div class="card-emoji">${o.icon}</div>`;
-        return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
+        const icon = o.imgSrc
+          ? `<div style="width:100%;height:128px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} top;background-repeat:no-repeat;border-radius:8px;"></div>`
+          : o.svg
+            ? o.svg
+            : `<div class="card-emoji">${o.icon}</div>`;
+        return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${isImg ? "ssm-card-img" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
           ${icon}
-          <div class="card-label">${o.label}</div>
-          ${o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
+          ${!o.imgSrc ? `<div class="card-label">${o.label}</div>` : ""}
+          ${!o.imgSrc && o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
         </div>`;
       }).join("")}</div>`;
     }
