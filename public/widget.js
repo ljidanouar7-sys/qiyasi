@@ -6,7 +6,7 @@
   // ======= CSS =======
   const style = document.createElement("style");
   style.textContent = `
-:root{--ssm-c:#0d9488;--ssm-cd:#0a7060;--ssm-cl:#e6f7f5;--ssm-cb:#b2e4de}
+:root{--ssm-c:#0d9488;--ssm-cd:#0a7060;--ssm-cl:#e6f7f5;--ssm-cb:#b2e4de;--ssm-text:#1e2a3e}
 #ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:var(--ssm-c);color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;white-space:nowrap;line-height:1}
 #ssm-trigger:hover{background:var(--ssm-cd)}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
@@ -22,7 +22,7 @@
 .ssm-progress-fill{background:#fff;height:5px;border-radius:99px}
 .ssm-step-count{font-size:12px;opacity:.85;white-space:nowrap}
 .ssm-body{padding:24px;direction:rtl}
-.ssm-question{font-size:19px;font-weight:700;color:#1e2a3e;margin-bottom:6px;line-height:1.4}
+.ssm-question{font-size:19px;font-weight:700;color:var(--ssm-text,#000000);margin-bottom:6px;line-height:1.4}
 .ssm-hint{font-size:13px;color:#6b7280;margin-bottom:22px}
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 .ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;background:#fafafa}
@@ -32,12 +32,12 @@
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
 .ssm-card .card-emoji{font-size:2.6rem;line-height:1;margin:0 auto 10px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
-.ssm-card .card-label{font-size:13px;font-weight:700;color:#1e2a3e}
+.ssm-card .card-label{font-size:13px;font-weight:700;color:var(--ssm-text,#000000)}
 .ssm-card .card-sub{font-size:11px;color:#6b7280;margin-top:3px}
 .ssm-number-group{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
 .ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
 .ssm-num-btn:hover{background:var(--ssm-c);color:#fff}
-.ssm-num-input{width:100px;text-align:center;font-size:26px;font-weight:700;color:#1e2a3e;border:2px solid #e5e7eb;border-radius:12px;padding:8px;outline:none}
+.ssm-num-input{width:100px;text-align:center;font-size:26px;font-weight:700;color:var(--ssm-text,#000000);border:2px solid #e5e7eb;border-radius:12px;padding:8px;outline:none}
 .ssm-num-input:focus{border-color:var(--ssm-c)}
 .ssm-unit{font-size:16px;color:#6b7280;margin-right:4px}
 .ssm-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid #f0f0f0}
@@ -61,17 +61,28 @@
   `;
   document.head.appendChild(style);
 
+  // ======= White mode (gray / white / black stores) =======
+  function applyWhiteMode() {
+    const root = document.documentElement;
+    root.style.setProperty('--ssm-c',    '#6b7280');
+    root.style.setProperty('--ssm-cd',   '#4b5563');
+    root.style.setProperty('--ssm-cl',   '#f3f4f6');
+    root.style.setProperty('--ssm-cb',   '#d1d5db');
+    root.style.setProperty('--ssm-text', '#111827');
+  }
+
   // ======= Auto-detect brand color =======
   function applyBrandColor(cartBtn) {
     try {
       const bg = window.getComputedStyle(cartBtn).backgroundColor;
-      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return;
+      if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') { applyWhiteMode(); return; }
       const m = bg.match(/\d+/g);
-      if (!m) return;
+      if (!m) { applyWhiteMode(); return; }
       const [r, g, b] = m.map(Number);
       const max = Math.max(r, g, b), min = Math.min(r, g, b);
-      if (max - min < 30) return;
-      if (r > 240 && g > 240 && b > 240) return;
+      if (max - min < 30)                    { applyWhiteMode(); return; } // gray
+      if (r > 240 && g > 240 && b > 240)    { applyWhiteMode(); return; } // white
+      if (r < 30  && g < 30  && b < 30)     { applyWhiteMode(); return; } // black
       const dark   = v => Math.max(0,   Math.round(v * 0.8));
       const light  = v => Math.min(255, Math.round(255 - (255 - v) * 0.12));
       const border = v => Math.min(255, Math.round(255 - (255 - v) * 0.35));
@@ -80,7 +91,7 @@
       root.style.setProperty('--ssm-cd', `rgb(${dark(r)},${dark(g)},${dark(b)})`);
       root.style.setProperty('--ssm-cl', `rgb(${light(r)},${light(g)},${light(b)})`);
       root.style.setProperty('--ssm-cb', `rgb(${border(r)},${border(g)},${border(b)})`);
-    } catch(e) {}
+    } catch(e) { applyWhiteMode(); }
   }
 
 
