@@ -348,11 +348,14 @@
       const isImg   = s.options.some(o => o.imgSrc);
       html += `<div class="ssm-cards">${s.options.map(o => {
         const imgDiv = o.imgSrc
-          ? `<div style="width:100%;height:190px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} center;background-repeat:no-repeat;border-radius:8px;"></div>`
+          ? `<div style="width:100%;height:175px;overflow:hidden;border-radius:8px;">
+              <div style="width:100%;height:260px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} top;background-repeat:no-repeat;margin-top:-55px;"></div>
+             </div>`
           : o.svg
             ? o.svg
             : `<div class="card-emoji">${o.icon}</div>`;
         return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${isImg ? "ssm-card-img" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
+          ${o.imgSrc ? `<div class="card-label" style="margin-bottom:8px">${o.label}</div>` : ""}
           ${imgDiv}
           ${!o.imgSrc ? `<div class="card-label">${o.label}</div>` : ""}
           ${!o.imgSrc && o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
