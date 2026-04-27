@@ -7,7 +7,7 @@
   const style = document.createElement("style");
   style.textContent = `
 :root{--ssm-c:#0d9488;--ssm-cd:#0a7060;--ssm-cl:#e6f7f5;--ssm-cb:#b2e4de}
-#ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:var(--ssm-c);color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;transition:all .2s;white-space:nowrap;line-height:1}
+#ssm-trigger{display:inline-flex;align-items:center;gap:7px;background:var(--ssm-c);color:#fff;border:none;padding:12px 20px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;font-family:'Segoe UI',Tahoma,Arial,sans-serif;margin-bottom:10px;white-space:nowrap;line-height:1}
 #ssm-trigger:hover{background:var(--ssm-cd)}
 #ssm-overlay{display:none;position:fixed;inset:0;background:rgba(10,20,40,.55);z-index:99999;justify-content:center;align-items:center;padding:16px;font-family:'Segoe UI',Arial,sans-serif}
 #ssm-overlay.open{display:flex}
@@ -15,38 +15,36 @@
 .ssm-header{background:var(--ssm-c);padding:20px 24px 16px;border-radius:20px 20px 0 0;color:#fff}
 .ssm-header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .ssm-title{font-size:17px;font-weight:700}
-#ssm-close-btn{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:.2s}
+#ssm-close-btn{background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
 #ssm-close-btn:hover{background:rgba(255,255,255,.35)}
 .ssm-progress-wrap{display:flex;align-items:center;gap:10px}
 .ssm-progress-bar{flex:1;background:rgba(255,255,255,.3);border-radius:99px;height:5px}
-.ssm-progress-fill{background:#fff;height:5px;border-radius:99px;transition:width .4s ease}
+.ssm-progress-fill{background:#fff;height:5px;border-radius:99px}
 .ssm-step-count{font-size:12px;opacity:.85;white-space:nowrap}
 .ssm-body{padding:24px;direction:rtl}
-@keyframes ssm-slide-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.ssm-body-anim{animation:ssm-slide-in .2s ease both}
 .ssm-question{font-size:19px;font-weight:700;color:#1e2a3e;margin-bottom:6px;line-height:1.4}
 .ssm-hint{font-size:13px;color:#6b7280;margin-bottom:22px}
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
-.ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
+.ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;background:#fafafa}
 .ssm-card.ssm-card-emoji{min-width:90px;max-width:130px}
 .ssm-card.ssm-card-img{min-width:110px;max-width:170px;padding:10px 8px 8px;}
-.ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl);transform:translateY(-2px)}
+.ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl)}
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
 .ssm-card .card-emoji{font-size:2.6rem;line-height:1;margin:0 auto 10px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .ssm-card .card-label{font-size:13px;font-weight:700;color:#1e2a3e}
 .ssm-card .card-sub{font-size:11px;color:#6b7280;margin-top:3px}
 .ssm-number-group{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
-.ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;transition:.2s}
+.ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
 .ssm-num-btn:hover{background:var(--ssm-c);color:#fff}
 .ssm-num-input{width:100px;text-align:center;font-size:26px;font-weight:700;color:#1e2a3e;border:2px solid #e5e7eb;border-radius:12px;padding:8px;outline:none}
 .ssm-num-input:focus{border-color:var(--ssm-c)}
 .ssm-unit{font-size:16px;color:#6b7280;margin-right:4px}
 .ssm-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid #f0f0f0}
-.ssm-btn-back{background:none;border:none;color:var(--ssm-c);cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;padding:8px 4px;border-radius:8px;transition:.2s}
+.ssm-btn-back{background:none;border:none;color:var(--ssm-c);cursor:pointer;font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;padding:8px 4px;border-radius:8px}
 .ssm-btn-back:hover{background:var(--ssm-cl)}
-.ssm-btn-next{background:var(--ssm-c);color:#fff;border:none;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;transition:.2s}
-.ssm-btn-next:hover{background:var(--ssm-cd);transform:translateY(-1px)}
+.ssm-btn-next{background:var(--ssm-c);color:#fff;border:none;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700}
+.ssm-btn-next:hover{background:var(--ssm-cd)}
 .ssm-result{text-align:center;padding:10px 0}
 .ssm-result-icon{font-size:56px;margin-bottom:12px}
 .ssm-result-label{font-size:15px;color:#6b7280;margin-bottom:8px}
@@ -55,7 +53,7 @@
 .ssm-result-reasoning{font-size:12px;color:#6b7280;background:#f9fafb;border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.6;text-align:right;direction:rtl}
 .ssm-result-disclaimer{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:8px 12px;border-radius:8px;margin-bottom:16px;direction:rtl;text-align:right}
 .ssm-stock-warn{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;margin-bottom:16px}
-.ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151;transition:.2s}
+.ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151}
 .ssm-restart:hover{background:#e5e7eb}
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
@@ -325,11 +323,11 @@
   function openModal()  { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
   function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
-  // ======= Render with smooth slide-in animation on every step =======
+  // ======= Render =======
   function render() {
     const s = STEPS[step];
 
-    // Update header progress — smooth width transition via CSS
+    // Update header progress
     gid("ssm-fill").style.width = (((step + 1) / STEPS.length) * 100) + "%";
     gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
 
@@ -369,12 +367,7 @@
       <button class="ssm-btn-next" onclick="window._ssm.next()">${isLast ? "✨ احسب مقاسي" : "التالي &#8592;"}</button>
     </div>`;
 
-    // Swap content then restart CSS animation (reflow trick — zero timeout, no lag)
-    const body = gid("ssm-body");
-    body.classList.remove("ssm-body-anim");
-    body.innerHTML = html;
-    void body.offsetHeight; // force reflow to restart animation
-    body.classList.add("ssm-body-anim");
+    gid("ssm-body").innerHTML = html;
   }
 
   window._ssm = {
@@ -482,11 +475,6 @@
         ${disclaimerHtml}
         <button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button>
       </div>`;
-
-    // Animate result appearance
-    body.classList.remove("ssm-body-anim");
-    void body.offsetHeight;
-    body.classList.add("ssm-body-anim");
 
     window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
