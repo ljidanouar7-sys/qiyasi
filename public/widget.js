@@ -29,7 +29,7 @@
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 .ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fafafa}
 .ssm-card.ssm-card-emoji{min-width:90px;max-width:130px}
-.ssm-card.ssm-card-img{min-width:100px;max-width:160px;padding:8px 6px 6px;}
+.ssm-card.ssm-card-img{min-width:110px;max-width:170px;padding:10px 8px 8px;}
 .ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl);transform:translateY(-2px)}
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
 .ssm-card svg{display:block;margin:0 auto 10px}
@@ -102,27 +102,27 @@
       id: "shoulders", type: "cards",
       q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "narrow",  imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
-        { v: "average", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
-        { v: "wide",    imgSrc: "q-shoulders.jpg", imgPos: "100%" },
+        { v: "narrow",  label: "ضيقة",   imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
+        { v: "average", label: "متوسطة", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
+        { v: "wide",    label: "عريضة",  imgSrc: "q-shoulders.jpg", imgPos: "100%" },
       ],
     },
     {
       id: "belly", type: "cards",
       q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
       options: [
-        { v: "flat",    imgSrc: "q-belly.jpg", imgPos: "0%"   },
-        { v: "average", imgSrc: "q-belly.jpg", imgPos: "50%"  },
-        { v: "big",     imgSrc: "q-belly.jpg", imgPos: "100%" },
+        { v: "flat",    label: "ضيقة",   imgSrc: "q-belly.jpg", imgPos: "0%"   },
+        { v: "average", label: "متوسطة", imgSrc: "q-belly.jpg", imgPos: "50%"  },
+        { v: "big",     label: "كبيرة",  imgSrc: "q-belly.jpg", imgPos: "100%" },
       ],
     },
     {
       id: "user_preference", type: "cards",
       q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
       options: [
-        { v: "fitted",  imgSrc: "q-fit.jpg", imgPos: "0%"   },
-        { v: "regular", imgSrc: "q-fit.jpg", imgPos: "50%"  },
-        { v: "loose",   imgSrc: "q-fit.jpg", imgPos: "100%" },
+        { v: "fitted",  label: "مقيد",   imgSrc: "q-fit.jpg", imgPos: "0%"   },
+        { v: "regular", label: "عادي",   imgSrc: "q-fit.jpg", imgPos: "50%"  },
+        { v: "loose",   label: "واسع",   imgSrc: "q-fit.jpg", imgPos: "100%" },
       ],
     },
   ];
@@ -347,13 +347,14 @@
       const isEmoji = s.options.some(o => o.icon);
       const isImg   = s.options.some(o => o.imgSrc);
       html += `<div class="ssm-cards">${s.options.map(o => {
-        const icon = o.imgSrc
-          ? `<div style="width:100%;height:128px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} top;background-repeat:no-repeat;border-radius:8px;"></div>`
+        const imgDiv = o.imgSrc
+          ? `<div style="width:100%;height:190px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} center;background-repeat:no-repeat;border-radius:8px;"></div>`
           : o.svg
             ? o.svg
             : `<div class="card-emoji">${o.icon}</div>`;
         return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${isImg ? "ssm-card-img" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
-          ${icon}
+          ${o.imgSrc ? `<div class="card-label" style="margin-bottom:8px;font-size:14px;font-weight:700;color:#1e2a3e">${o.label}</div>` : ""}
+          ${imgDiv}
           ${!o.imgSrc ? `<div class="card-label">${o.label}</div>` : ""}
           ${!o.imgSrc && o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
         </div>`;
