@@ -48,10 +48,10 @@ export async function GET(req: NextRequest) {
     if (domainRow) {
       const { data: merchant } = await supabase
         .from("merchants")
-        .select("id")
+        .select("id, status")
         .eq("user_id", domainRow.user_id)
         .single();
-      if (merchant) merchantId = merchant.id;
+      if (merchant?.status === "active") merchantId = merchant.id;
     }
   }
 

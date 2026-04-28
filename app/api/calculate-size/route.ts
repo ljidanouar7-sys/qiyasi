@@ -134,12 +134,17 @@ export async function POST(req: NextRequest) {
 
   const { data: merchant } = await supabase
     .from("merchants")
-    .select("id")
+    .select("id, status")
     .eq("user_id", domainRow.user_id)
     .single();
 
   if (!merchant) {
     return NextResponse.json({ error: "Merchant not found" }, { status: 404, headers: CORS });
+  }
+
+  if (merchant.status !== "active") {
+    console.log(`[${timestamp}] BLOCKED — merchant inactive, domain: ${normalizedOrigin}`);
+    return NextResponse.json({ error: "Service unavailable" }, { status: 403, headers: CORS });
   }
 
   const merchantId = merchant.id;
