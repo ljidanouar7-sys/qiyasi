@@ -194,17 +194,6 @@ export default function WelcomePage() {
                   autoFocus
                 />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">الـ Tag (يستخدمه الويدجت)</label>
-                <input
-                  type="text"
-                  placeholder="abayas"
-                  value={categoryTag}
-                  onChange={e => setCategoryTag(e.target.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""))}
-                  dir="ltr"
-                  className="w-full border border-slate-200 rounded-xl p-3.5 text-sm font-mono focus:outline-none focus:border-teal-400 transition"
-                />
-              </div>
               <div className="bg-teal-50 border border-teal-100 rounded-xl p-4">
                 <p className="text-teal-700 text-xs font-bold mb-1">📊 جدول المقاسات الافتراضي</p>
                 <p className="text-teal-600 text-xs">XS/50 → S/52 → M/54 → L/56 → XL/58 → XXL/60 → 3XL/62</p>
