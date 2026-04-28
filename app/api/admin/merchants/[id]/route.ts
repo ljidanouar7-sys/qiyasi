@@ -38,7 +38,7 @@ export async function PATCH(
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  const { error } = await admin.from("users").update(allowed).eq("id", id);
+  const { error } = await admin.from("merchants").update(allowed).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true });
