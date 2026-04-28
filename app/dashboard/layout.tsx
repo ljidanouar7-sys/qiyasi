@@ -17,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const [email,      setEmail]      = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [checking,   setChecking]   = useState(true);
 
   useEffect(() => {
     async function check() {
@@ -28,9 +29,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         const { data } = await supabase.from("merchants").select("status").eq("user_id", user.id).single();
         if (data?.status !== "active") {
           await supabase.auth.signOut();
-          router.replace("/auth?blocked=1");
+          router.replace("/blocked");
+          return;
         }
       }
+      setChecking(false);
     }
     check();
   }, [router]);
@@ -48,6 +51,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     await supabase.auth.signOut();
     router.replace("/auth");
   }
+
+  if (checking) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="w-8 h-8 border-4 border-teal-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
