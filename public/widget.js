@@ -203,11 +203,15 @@
   }
 
   // ======= Fetch merchant tags =======
-  function fetchMerchantTags() {
-    fetch(`${API_BASE}/api/get-tags`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data && data.tags) _merchantTags = data.tags; })
-      .catch(() => {});
+  // Returns true if merchant is active, false if blocked/inactive
+  async function fetchMerchantTags() {
+    try {
+      const r = await fetch(`${API_BASE}/api/get-tags`);
+      if (!r.ok) return false;
+      const data = await r.json();
+      if (data && data.tags) _merchantTags = data.tags;
+      return true;
+    } catch { return false; }
   }
 
   function fallbackSize(ans) {
@@ -514,10 +518,11 @@
   window.SizeMatcher = {
     init(config = {}) {
       _sizeChart = null;
-      fetchMerchantTags();
 
       let currentIv = null;
-      function startInject() {
+      async function startInject() {
+        const active = await fetchMerchantTags();
+        if (!active) return; // merchant inactive — no button
         const old = document.getElementById("ssm-trigger");
         if (old) old.remove();
         _sizeChart = null;
