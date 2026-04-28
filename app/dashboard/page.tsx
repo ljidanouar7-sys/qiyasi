@@ -12,6 +12,7 @@ export default function DashboardPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      if (user.email === "ljidanouar7@gmail.com") { window.location.href = "/admin"; return; }
       setEmail(user.email ?? "");
       const { data } = await supabase.from("users").select("plan, status").eq("id", user.id).single();
       if (data) { setPlan(data.plan); setStatus(data.status); }

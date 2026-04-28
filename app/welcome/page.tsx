@@ -24,6 +24,7 @@ export default function WelcomePage() {
   async function init() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/auth"; return; }
+    if (user.email === "ljidanouar7@gmail.com") { window.location.href = "/admin"; return; }
 
     const { data: s } = await supabase.auth.getSession();
     const token = s.session?.access_token;
