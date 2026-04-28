@@ -8,6 +8,7 @@ const ADMIN_EMAIL = "ljidanouar7@gmail.com";
 type Merchant = {
   id: string;
   email: string;
+  store_name: string;
   plan: string;
   status: string;
   created_at: string;
@@ -81,6 +82,7 @@ export default function AdminPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="text-right px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">#</th>
+                <th className="text-right px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">المتجر</th>
                 <th className="text-right px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">الإيميل</th>
                 <th className="text-right px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">الخطة</th>
                 <th className="text-right px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">الحالة</th>
@@ -92,7 +94,8 @@ export default function AdminPage() {
               {merchants.map((m, i) => (
                 <tr key={m.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
                   <td className="px-6 py-4 text-slate-400 font-mono text-xs">{i + 1}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-800">{m.email}</td>
+                  <td className="px-6 py-4 font-semibold text-slate-800">{m.store_name}</td>
+                  <td className="px-6 py-4 text-slate-500 text-xs font-mono">{m.email}</td>
 
                   {/* Plan */}
                   <td className="px-6 py-4">

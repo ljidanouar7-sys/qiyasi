@@ -27,10 +27,19 @@ export async function GET() {
 
   const { data, error } = await admin
     .from("merchants")
-    .select("id, email, store_name, plan, status, created_at")
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ merchants: data });
+  const merchants = (data || []).map((m: Record<string, unknown>) => ({
+    id:         m.id,
+    email:      m.email      ?? "—",
+    store_name: m.store_name ?? "—",
+    plan:       m.plan       ?? "free",
+    status:     m.status     ?? "invited",
+    created_at: m.created_at ?? new Date().toISOString(),
+  }));
+
+  return NextResponse.json({ merchants });
 }
