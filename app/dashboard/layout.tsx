@@ -25,8 +25,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setEmail(user.email ?? "");
 
       if (user.email !== ADMIN_EMAIL) {
-        const { data } = await supabase.from("users").select("status").eq("id", user.id).single();
-        if (data?.status === "inactive") {
+        const { data } = await supabase.from("merchants").select("status").eq("user_id", user.id).single();
+        if (data?.status !== "active") {
           await supabase.auth.signOut();
           router.replace("/auth?blocked=1");
         }
