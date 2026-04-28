@@ -17,10 +17,18 @@ export async function POST(req: NextRequest) {
   if (!store_name?.trim() || store_name.trim().length < 2)
     return NextResponse.json({ error: "اسم المتجر قصير جداً" }, { status: 400 });
 
+  const { data: merchant } = await supabase
+    .from("merchants")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!merchant) return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
+
   const { error } = await supabase
     .from("merchants")
     .update({ store_name: store_name.trim() })
-    .eq("user_id", user.id);
+    .eq("id", merchant.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
