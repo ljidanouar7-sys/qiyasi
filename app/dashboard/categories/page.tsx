@@ -94,7 +94,8 @@ function jsonToChart(json: unknown): { cols: ChartColumn[]; rows: ChartRow[] } {
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function CategoriesPage() {
-  const [merchantId, setMerchantId] = useState<string | null>(null);
+  const [merchantId,   setMerchantId]   = useState<string | null>(null);
+  const [merchantPlan, setMerchantPlan] = useState<string>("free");
   const [categories, setCategories] = useState<Category[]>([]);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [showForm,   setShowForm]   = useState(false);
@@ -128,12 +129,16 @@ export default function CategoriesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.href = "/auth"; return; }
 
-    let { data: merchant } = await supabase.from("merchants").select("id").eq("user_id", user.id).single();
+    let { data: merchant } = await supabase.from("merchants").select("id, plan").eq("user_id", user.id).single();
     if (!merchant) {
-      const { data: m } = await supabase.from("merchants").insert({ user_id: user.id, store_name: "متجري" }).select("id").single();
+      const { data: m } = await supabase.from("merchants").insert({ user_id: user.id, store_name: "متجري" }).select("id, plan").single();
       merchant = m;
     }
-    if (merchant) { setMerchantId(merchant.id); fetchCategories(merchant.id); }
+    if (merchant) {
+      setMerchantId(merchant.id);
+      setMerchantPlan(merchant.plan || "free");
+      fetchCategories(merchant.id);
+    }
   }
 
   async function fetchCategories(mid: string) {
@@ -175,6 +180,15 @@ export default function CategoriesPage() {
       alert("يوجد مقاسات مكررة في الجدول — تأكد من أن كل صف له مقاس مختلف");
       return;
     }
+    if (!editingCat) {
+      const MAX = merchantPlan === "pro" ? 50 : 3;
+      if (categories.length >= MAX) {
+        setToast(`❌ وصلت للحد الأقصى (${MAX} فئات) — ${merchantPlan === "pro" ? "تواصل معنا للرفع" : "رقّي للباقة Pro باش تضيف أكثر"}`);
+        setTimeout(() => setToast(""), 5000);
+        return;
+      }
+    }
+
     setSaving(true);
     const payload = {
       merchant_id:          merchantId,
