@@ -86,6 +86,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     { categoryId: category.id, categoryName: category.name, sizeChart: category.size_chart },
-    { headers: CORS }
+    { headers: { ...CORS, "Cache-Control": "public, max-age=300, s-maxage=3600" } }
   );
 }

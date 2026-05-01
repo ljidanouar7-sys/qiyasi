@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { log } from "@/lib/logger";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,13 +23,7 @@ export async function POST(req: NextRequest) {
 
   if (!merchant) return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
 
-  // Deactivate old keys
-  await supabase
-    .from("api_keys")
-    .update({ is_active: false })
-    .eq("merchant_id", merchant.id);
-
-  // Generate new key
+  // Generate new key first — only deactivate old ones if creation succeeds
   const newKey = `ssm_${crypto.randomUUID().replace(/-/g, "")}`;
 
   const { data: apiKey, error } = await supabase
@@ -39,5 +34,13 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: "Failed to generate key" }, { status: 500 });
 
+  // Safe to deactivate old keys now that new one exists
+  await supabase
+    .from("api_keys")
+    .update({ is_active: false })
+    .eq("merchant_id", merchant.id)
+    .neq("key", newKey);
+
+  log("info", "key_rotated", { merchantId: merchant.id });
   return NextResponse.json({ key: apiKey.key });
 }

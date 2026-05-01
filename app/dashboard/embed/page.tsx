@@ -44,26 +44,32 @@ export default function EmbedPage() {
   async function saveDomain() {
     if (!domain.trim()) return;
     setSavingDomain(true);
-    const { data: s } = await supabase.auth.getSession();
-    const res = await fetch("/api/merchants/save-domain", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${s.session?.access_token}`,
-      },
-      body: JSON.stringify({ domain: domain.trim() }),
-    });
-    const data = await res.json();
-    if (data.domain) {
-      setSavedDomain(data.domain);
-      setDomain(data.domain);
-      setDomainToast("✅ تم حفظ الدومين");
-      setTimeout(() => setDomainToast(""), 3000);
-    } else {
-      setDomainToast("❌ خطأ في الحفظ — حاول مجدداً");
+    try {
+      const { data: s } = await supabase.auth.getSession();
+      if (!s.session?.access_token) { window.location.href = "/auth"; return; }
+
+      const res = await fetch("/api/merchants/save-domain", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${s.session.access_token}`,
+        },
+        body: JSON.stringify({ domain: domain.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.domain) {
+        setSavedDomain(data.domain);
+        setDomain(data.domain);
+        setDomainToast("✅ تم حفظ الدومين");
+      } else {
+        setDomainToast(`❌ ${data.error || "خطأ في الحفظ — حاول مجدداً"}`);
+      }
+    } catch {
+      setDomainToast("❌ خطأ في الاتصال — تحقق من الإنترنت");
+    } finally {
+      setSavingDomain(false);
       setTimeout(() => setDomainToast(""), 3000);
     }
-    setSavingDomain(false);
   }
 
   function copy() {

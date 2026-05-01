@@ -90,6 +90,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(
     { tags: (categories || []).map(c => ({ tag: c.tag, name: c.name })) },
-    { headers: CORS }
+    { headers: { ...CORS, "Cache-Control": "public, max-age=300, s-maxage=3600" } }
   );
 }

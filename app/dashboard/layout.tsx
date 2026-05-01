@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-const ADMIN_EMAIL = "ljidanouar7@gmail.com";
+// Admin guard is enforced server-side in middleware.ts
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
 
 const navLinks = [
   { href: "/dashboard",            label: "الرئيسية",     icon: "🏠" },

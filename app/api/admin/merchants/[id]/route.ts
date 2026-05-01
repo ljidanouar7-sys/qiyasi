@@ -25,6 +25,17 @@ export async function PATCH(
 
   const body = await req.json();
   const { plan, status } = body;
+
+  const VALID_PLANS    = ["free", "pro"];
+  const VALID_STATUSES = ["active", "inactive", "invited"];
+
+  if (plan !== undefined && !VALID_PLANS.includes(plan)) {
+    return NextResponse.json({ error: "Invalid plan value" }, { status: 400 });
+  }
+  if (status !== undefined && !VALID_STATUSES.includes(status)) {
+    return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+  }
+
   const allowed: Record<string, unknown> = {};
   if (plan   !== undefined) allowed.plan   = plan;
   if (status !== undefined) allowed.status = status;

@@ -27,18 +27,8 @@ export default function AuthPage() {
       return;
     }
 
-    // Check if onboarding is complete
-    const { data: merchant } = await supabase
-      .from("merchants")
-      .select("store_name")
-      .eq("user_id", (await supabase.auth.getUser()).data.user?.id)
-      .single();
-
-    if (!merchant?.store_name || merchant.store_name === "متجري") {
-      window.location.href = "/welcome";
-    } else {
-      window.location.href = "/dashboard";
-    }
+    // Middleware handles onboarding and status checks server-side
+    window.location.href = "/dashboard";
   }
 
   return (

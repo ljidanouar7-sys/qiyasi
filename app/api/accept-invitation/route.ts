@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { makeRatelimit, getClientIp } from "@/lib/rate-limit";
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
+
+const ratelimit = makeRatelimit(5, "1 h", "qiyasi_accept");
 
 async function validateToken(token: string) {
   const { data } = await admin
@@ -43,6 +46,10 @@ const schema = z.object({
 
 // POST — create user and activate merchant
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const { success } = await ratelimit.limit(ip);
+  if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
   const parse = schema.safeParse(await req.json());
   if (!parse.success) {
     return NextResponse.json({ error: parse.error.issues[0].message }, { status: 400 });
@@ -64,9 +71,16 @@ export async function POST(req: NextRequest) {
 
   if (authError) {
     if (authError.message.toLowerCase().includes("already")) {
-      // User exists — update their password and get their ID
-      const { data: listData } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const existing = listData?.users?.find(u => u.email === email);
+      // User exists — paginate to find them without loading all users at once
+      let existing: { id: string; email?: string } | undefined;
+      let page = 1;
+      while (!existing) {
+        const { data: listData } = await admin.auth.admin.listUsers({ page, perPage: 50 });
+        if (!listData?.users?.length) break;
+        existing = listData.users.find(u => u.email === email);
+        if (listData.users.length < 50) break;
+        page++;
+      }
       if (!existing) return NextResponse.json({ error: "خطأ في التحقق من المستخدم" }, { status: 500 });
       // Update password for existing user
       await admin.auth.admin.updateUserById(existing.id, { password });

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
 import {
   calculateSize,
   scoreAllSizes,
@@ -11,6 +10,7 @@ import {
   type Range,
 } from "@/lib/sizing-engine";
 import { log } from "@/lib/logger";
+import { redis } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,10 +20,7 @@ const supabase = createClient(
 );
 
 const ratelimit = new Ratelimit({
-  redis: new Redis({
-    url:   process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  }),
+  redis,
   limiter:   Ratelimit.slidingWindow(50, "1 m"),
   analytics: true,
   prefix:    "qiyasi_rl",
@@ -194,6 +191,13 @@ export async function POST(req: NextRequest) {
 
   const sizeChart = category.size_chart as SizeChart;
 
+  // ── Redis cache check (key = all inputs that affect the result) ────────────
+  const cacheKey = `size:${merchantId}:${tag}:${h}:${w}:${answers.shoulders ?? ""}:${answers.belly ?? ""}:${user_preference}:${lang}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    return NextResponse.json(JSON.parse(cached as string), { headers: CORS });
+  }
+
   // ══════════════════════════════════════════════════════════════════════════════
   // LAYER 4 — Scoring Engine
   // ══════════════════════════════════════════════════════════════════════════════
@@ -330,7 +334,7 @@ Return ONLY a JSON object in ${lang}:
     }
   }
 
-  return NextResponse.json({
+  const responseBody = {
     size:         sizeName,
     status:       finalStatus,
     confidence,
@@ -340,5 +344,12 @@ Return ONLY a JSON object in ${lang}:
     disclaimer:   disclaimer ?? undefined,
     sizeChart,
     ...(debug && result.debug ? { debug: result.debug } : {}),
-  }, { headers: CORS });
+  };
+
+  // Cache for 1 hour — debug responses excluded to avoid leaking internals
+  if (!debug) {
+    await redis.set(cacheKey, JSON.stringify(responseBody), { ex: 3600 });
+  }
+
+  return NextResponse.json(responseBody, { headers: CORS });
 }

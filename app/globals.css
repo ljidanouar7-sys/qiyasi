@@ -3,10 +3,11 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Shared utilities (dashboard, auth, other pages) ── */
 .btn-primary {
   background: #0F172A;
   color: white;
@@ -49,4 +50,98 @@ body {
   padding: 6px 14px;
   border-radius: 99px;
   border: 1px solid #BAE6FD;
+}
+
+/* ── Landing Page — Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+.reveal          { opacity: 0 }
+.animate-fadeUp  { animation: fadeUp 0.55s cubic-bezier(.22,1,.36,1) both }
+.delay-100       { animation-delay: .10s }
+.delay-200       { animation-delay: .20s }
+.delay-300       { animation-delay: .30s }
+.delay-400       { animation-delay: .40s }
+.delay-500       { animation-delay: .50s }
+
+/* ── Landing Page — Design Utilities ── */
+.gradient-text {
+  background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-lift {
+  background: white;
+  border: 1px solid rgba(15,23,42,0.07);
+  border-radius: 16px;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(15,23,42,0.10);
+}
+
+.btn-indigo {
+  background: linear-gradient(135deg, #4F46E5, #2563EB);
+  color: white;
+  font-weight: 700;
+  padding: 14px 32px;
+  border-radius: 10px;
+  display: inline-block;
+  transition: box-shadow .2s ease, transform .15s ease;
+}
+.btn-indigo:hover {
+  box-shadow: 0 8px 24px rgba(79,70,229,0.25);
+  transform: scale(1.02) translateY(-1px);
+}
+
+/* ── Hero — Subtle grid pattern ── */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(99,102,241,0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.045) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* ── Hero — Page-load staggered fade-in ── */
+.hero-fade-1 { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; animation-delay: 0.05s }
+.hero-fade-2 { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; animation-delay: 0.20s }
+.hero-fade-3 { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; animation-delay: 0.35s }
+.hero-fade-4 { animation: fadeUp 0.65s cubic-bezier(.22,1,.36,1) both; animation-delay: 0.50s }
+
+/* ── Hero — Floating card ── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) }
+  50%       { transform: translateY(-10px) }
+}
+.animate-float { animation: float 4s ease-in-out infinite }
+
+html { scroll-behavior: smooth }
+
+/* ── Feature Widget Auto-Animation ── */
+@keyframes wCard {
+  0%, 8%    { opacity:0; transform:scale(0.93) translateY(16px); }
+  20%, 74%  { opacity:1; transform:scale(1) translateY(0); }
+  86%, 100% { opacity:0; transform:scale(0.96) translateY(-8px); }
+}
+.w-card { animation: wCard 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Disable keyframe animations only — hover transitions stay active */
+  .animate-fadeUp, .animate-float,
+  .hero-fade-1, .hero-fade-2, .hero-fade-3, .hero-fade-4 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .reveal { opacity: 1 }
+  .w-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

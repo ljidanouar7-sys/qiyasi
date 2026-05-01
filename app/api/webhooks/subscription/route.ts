@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { timingSafeEqual } from "crypto";
+import { makeRatelimit, getClientIp } from "@/lib/rate-limit";
+import { log, redactEmail } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -9,13 +12,36 @@ const admin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
-const APP_URL        = process.env.NEXT_PUBLIC_APP_URL || "https://qiyasi.net";
+const APP_URL        = process.env.NEXT_PUBLIC_APP_URL;
 const WEBHOOK_SECRET = process.env.SUBSCRIPTION_WEBHOOK_SECRET;
 
+const ratelimit = makeRatelimit(20, "1 m", "qiyasi_webhook");
+
+function verifyWebhookSecret(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  try {
+    const a = Buffer.from(provided, "utf8");
+    const b = Buffer.from(expected, "utf8");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  const { success } = await ratelimit.limit(ip);
+  if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
+  if (!APP_URL) {
+    log("error", "webhook_received", { action: "misconfiguration", reason: "NEXT_PUBLIC_APP_URL not set" });
+    return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+  }
+
   // ── Security: verify webhook secret ───────────────────────
   const secret = req.headers.get("x-webhook-secret");
-  if (!WEBHOOK_SECRET || secret !== WEBHOOK_SECRET) {
+  if (!WEBHOOK_SECRET || !verifyWebhookSecret(secret, WEBHOOK_SECRET)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -24,7 +50,7 @@ export async function POST(req: NextRequest) {
   try {
     const body         = await req.json();
     email                 = (body.email || "").toLowerCase().trim();
-    store_name            = (body.store_name || "متجري").trim();
+    store_name            = (body.store_name || "متجري").trim().slice(0, 100);
     subscription_provider = (body.subscription_provider || "paddle").trim();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
@@ -32,6 +58,11 @@ export async function POST(req: NextRequest) {
 
   if (!email) {
     return NextResponse.json({ error: "email required" }, { status: 400 });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
   }
 
   // ── Check if merchant already exists ──────────────────────
@@ -57,7 +88,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`[subscription-webhook] Updated existing merchant: ${email}`);
+    log("info", "webhook_received", { action: "updated", email: redactEmail(email) });
     return NextResponse.json({ success: true, action: "updated" });
   }
 
@@ -68,7 +99,7 @@ export async function POST(req: NextRequest) {
   );
 
   if (inviteErr || !invite?.user) {
-    console.error("[subscription-webhook] inviteUserByEmail failed:", inviteErr);
+    log("error", "webhook_received", { action: "invite_failed", email: redactEmail(email), error: inviteErr?.message });
     return NextResponse.json({ error: inviteErr?.message || "Failed to create user" }, { status: 500 });
   }
 
@@ -102,7 +133,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (merchantErr) {
-      console.error("[subscription-webhook] Insert merchant failed:", merchantErr);
+      log("error", "webhook_received", { action: "insert_failed", email: redactEmail(email), error: merchantErr.message });
       return NextResponse.json({ error: merchantErr.message }, { status: 500 });
     }
   }
@@ -113,6 +144,6 @@ export async function POST(req: NextRequest) {
     { onConflict: "id" }
   );
 
-  console.log(`[subscription-webhook] Created new merchant: ${email}, user_id: ${userId}`);
+  log("info", "webhook_received", { action: "created", email: redactEmail(email), userId });
   return NextResponse.json({ success: true, action: "created" });
 }

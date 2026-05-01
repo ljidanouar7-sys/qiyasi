@@ -162,6 +162,13 @@
 
   function gid(id) { return document.getElementById(id); }
 
+  // Safe text helper — use instead of raw ${var} inside innerHTML
+  function _esc(s) {
+    return String(s ?? "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+  }
+
   // ======= Read product title from page =======
   function readProductTitle() {
     const selectors = [
@@ -360,49 +367,147 @@
 
   // ======= Render =======
   function render() {
-    const s = STEPS[step];
+    const s    = STEPS[step];
+    const body = gid("ssm-body");
 
     // Update header progress
     gid("ssm-fill").style.width = (((step + 1) / STEPS.length) * 100) + "%";
     gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
 
-    let html = `<div class="ssm-question">${s.q}</div><div class="ssm-hint">${s.hint}</div>`;
+    body.innerHTML = "";
+
+    const qEl = document.createElement("div");
+    qEl.className = "ssm-question";
+    qEl.textContent = s.q;
+    body.appendChild(qEl);
+
+    const hEl = document.createElement("div");
+    hEl.className = "ssm-hint";
+    hEl.textContent = s.hint;
+    body.appendChild(hEl);
 
     if (s.type === "number") {
-      const v = answers[s.id] ?? s.def;
-      html += `<div class="ssm-number-group">
-        <button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',-1)">−</button>
-        <input  class="ssm-num-input" id="numinput" type="number" value="${v}" min="${s.min}" max="${s.max}" oninput="window._ssm.setVal('${s.id}',+this.value)"/>
-        <button class="ssm-num-btn" onclick="window._ssm.adj('${s.id}',1)">+</button>
-        <span class="ssm-unit">${s.unit}</span>
-      </div>`;
+      const v     = answers[s.id] ?? s.def;
+      const group = document.createElement("div");
+      group.className = "ssm-number-group";
+
+      const btnMinus = document.createElement("button");
+      btnMinus.className = "ssm-num-btn";
+      btnMinus.textContent = "−";
+      btnMinus.addEventListener("click", () => window._ssm.adj(s.id, -1));
+
+      const inp = document.createElement("input");
+      inp.className = "ssm-num-input";
+      inp.id    = "numinput";
+      inp.type  = "number";
+      inp.value = String(v);
+      inp.min   = String(s.min);
+      inp.max   = String(s.max);
+      inp.addEventListener("input", () => window._ssm.setVal(s.id, +inp.value));
+
+      const btnPlus = document.createElement("button");
+      btnPlus.className = "ssm-num-btn";
+      btnPlus.textContent = "+";
+      btnPlus.addEventListener("click", () => window._ssm.adj(s.id, 1));
+
+      const unit = document.createElement("span");
+      unit.className = "ssm-unit";
+      unit.textContent = s.unit;
+
+      group.appendChild(btnMinus);
+      group.appendChild(inp);
+      group.appendChild(btnPlus);
+      group.appendChild(unit);
+      body.appendChild(group);
+
     } else if (s.type === "cards") {
       const isEmoji = s.options.some(o => o.icon);
       const isImg   = s.options.some(o => o.imgSrc);
-      html += `<div class="ssm-cards">${s.options.map(o => {
-        const imgDiv = o.imgSrc
-          ? `<div style="width:100%;height:175px;overflow:hidden;border-radius:8px;">
-              <div style="width:100%;height:260px;background-image:url('${API_BASE}/images/${o.imgSrc}');background-size:300% auto;background-position:${o.imgPos} top;background-repeat:no-repeat;margin-top:-55px;"></div>
-             </div>`
-          : o.svg
-            ? o.svg
-            : `<div class="card-emoji">${o.icon}</div>`;
-        return `<div class="ssm-card ${isEmoji ? "ssm-card-emoji" : ""} ${isImg ? "ssm-card-img" : ""} ${answers[s.id] === o.v ? "active" : ""}" onclick="window._ssm.pick('${s.id}','${o.v}')">
-          ${o.imgSrc ? `<div class="card-label" style="margin-bottom:8px">${o.label}</div>` : ""}
-          ${imgDiv}
-          ${!o.imgSrc ? `<div class="card-label">${o.label}</div>` : ""}
-          ${!o.imgSrc && o.sub ? `<div class="card-sub">${o.sub}</div>` : ""}
-        </div>`;
-      }).join("")}</div>`;
+      const cards   = document.createElement("div");
+      cards.className = "ssm-cards";
+
+      for (const o of s.options) {
+        const card = document.createElement("div");
+        const cls  = ["ssm-card"];
+        if (isEmoji) cls.push("ssm-card-emoji");
+        if (isImg)   cls.push("ssm-card-img");
+        if (answers[s.id] === o.v) cls.push("active");
+        card.className = cls.join(" ");
+        card.addEventListener("click", () => window._ssm.pick(s.id, o.v));
+
+        if (o.imgSrc) {
+          const lbl = document.createElement("div");
+          lbl.className = "card-label";
+          lbl.style.marginBottom = "8px";
+          lbl.textContent = o.label;
+          card.appendChild(lbl);
+
+          const imgWrap = document.createElement("div");
+          imgWrap.style.cssText = "width:100%;height:175px;overflow:hidden;border-radius:8px;";
+          const imgDiv = document.createElement("div");
+          imgDiv.style.width           = "100%";
+          imgDiv.style.height          = "260px";
+          imgDiv.style.backgroundImage = `url('${API_BASE}/images/${_esc(o.imgSrc)}')`;
+          imgDiv.style.backgroundSize     = "300% auto";
+          imgDiv.style.backgroundPosition = `${_esc(o.imgPos)} top`;
+          imgDiv.style.backgroundRepeat   = "no-repeat";
+          imgDiv.style.marginTop          = "-55px";
+          imgWrap.appendChild(imgDiv);
+          card.appendChild(imgWrap);
+
+        } else if (o.svg) {
+          card.innerHTML = o.svg; // o.svg is hardcoded in STEPS — static, not user data
+          const lbl = document.createElement("div");
+          lbl.className = "card-label";
+          lbl.textContent = o.label;
+          card.appendChild(lbl);
+          if (o.sub) {
+            const sub = document.createElement("div");
+            sub.className = "card-sub";
+            sub.textContent = o.sub;
+            card.appendChild(sub);
+          }
+        } else {
+          const ico = document.createElement("div");
+          ico.className = "card-emoji";
+          ico.textContent = o.icon;
+          card.appendChild(ico);
+
+          const lbl = document.createElement("div");
+          lbl.className = "card-label";
+          lbl.textContent = o.label;
+          card.appendChild(lbl);
+
+          if (o.sub) {
+            const sub = document.createElement("div");
+            sub.className = "card-sub";
+            sub.textContent = o.sub;
+            card.appendChild(sub);
+          }
+        }
+        cards.appendChild(card);
+      }
+      body.appendChild(cards);
     }
 
+    // Nav buttons
     const isLast = step === STEPS.length - 1;
-    html += `<div class="ssm-nav">
-      <button class="ssm-btn-back" onclick="window._ssm.back()">${step > 0 ? "&#8594; رجوع" : ""}</button>
-      <button class="ssm-btn-next" onclick="window._ssm.next()">${isLast ? "✨ احسب مقاسي" : "التالي &#8592;"}</button>
-    </div>`;
+    const nav = document.createElement("div");
+    nav.className = "ssm-nav";
 
-    gid("ssm-body").innerHTML = html;
+    const backBtn = document.createElement("button");
+    backBtn.className = "ssm-btn-back";
+    backBtn.textContent = step > 0 ? "→ رجوع" : "";
+    backBtn.addEventListener("click", () => window._ssm.back());
+
+    const nextBtn = document.createElement("button");
+    nextBtn.className = "ssm-btn-next";
+    nextBtn.textContent = isLast ? "✨ احسب مقاسي" : "التالي ←";
+    nextBtn.addEventListener("click", () => window._ssm.next());
+
+    nav.appendChild(backBtn);
+    nav.appendChild(nextBtn);
+    body.appendChild(nav);
   }
 
   window._ssm = {
@@ -475,42 +580,89 @@
 
   function showResult(size, isFallback, forceOutOfStock, apiMessage, reasoning, disclaimer) {
     const outOfStock = forceOutOfStock || isSizeOutOfStock(size);
+    const icon       = outOfStock ? "😔" : "🎉";
 
-    let stockBadge = "", msg = "";
+    const body   = gid("ssm-body");
+    body.innerHTML = "";
+
+    const result = document.createElement("div");
+    result.className = "ssm-result";
+
+    // Icon
+    const iconEl = document.createElement("div");
+    iconEl.className = "ssm-result-icon";
+    iconEl.textContent = icon;
+    result.appendChild(iconEl);
+
+    // Label
+    const labelEl = document.createElement("div");
+    labelEl.className = "ssm-result-label";
+    labelEl.textContent = "المقاس المناسب لك هو";
+    result.appendChild(labelEl);
+
+    // Size — textContent prevents any HTML injection from API
+    const sizeEl = document.createElement("div");
+    sizeEl.className = "ssm-result-size";
+    sizeEl.textContent = size;
+    result.appendChild(sizeEl);
+
+    // Stock badge
     if (outOfStock) {
-      stockBadge = `<div class="ssm-stock-warn">⚠️ مقاسك ${size} غير متوفر حالياً</div>`;
-      msg = apiMessage || `مقاسك هو <strong>${size}</strong>، لكنه غير متوفر. تواصل مع المتجر.`;
-    } else if (isFallback) {
-      msg = `مقاس تقديري: <strong>${size}</strong> — بناءً على طولك ووزنك.<br/><span style="color:#9ca3af;font-size:12px">للدقة الكاملة: تأكد أن المنتج عنده رمز فئة في متجرك</span>`;
-    } else {
-      msg = apiMessage || `بناءً على إجاباتك، ننصحك بمقاس <strong>${size}</strong>.<br/>إذا كنت بين مقاسين، ننصح بالأكبر للراحة.`;
+      const badge = document.createElement("div");
+      badge.className = "ssm-stock-warn";
+      badge.textContent = `⚠️ مقاسك ${size} غير متوفر حالياً`;
+      result.appendChild(badge);
     }
 
-    const icon = outOfStock ? "😔" : "🎉";
+    // Message — use textContent to prevent XSS from API-derived content
+    const msgEl = document.createElement("div");
+    msgEl.className = "ssm-result-msg";
+    if (outOfStock) {
+      msgEl.textContent = apiMessage || `مقاسك هو ${size}، لكنه غير متوفر. تواصل مع المتجر.`;
+    } else if (isFallback) {
+      msgEl.textContent = `مقاس تقديري: ${size} — بناءً على طولك ووزنك.`;
+      const note = document.createElement("span");
+      note.style.cssText = "color:#9ca3af;font-size:12px;display:block;margin-top:4px";
+      note.textContent = "للدقة الكاملة: تأكد أن المنتج عنده رمز فئة في متجرك";
+      msgEl.appendChild(note);
+    } else {
+      msgEl.textContent = apiMessage || `بناءً على إجاباتك، ننصحك بمقاس ${size}.`;
+      if (!apiMessage) {
+        const note = document.createElement("span");
+        note.style.display = "block";
+        note.style.marginTop = "4px";
+        note.textContent = "إذا كنت بين مقاسين، ننصح بالأكبر للراحة.";
+        msgEl.appendChild(note);
+      }
+    }
+    result.appendChild(msgEl);
 
-    // Reasoning block — shown only when not a fallback result
-    const reasoningHtml = (reasoning && !isFallback)
-      ? `<div class="ssm-result-reasoning">💡 ${reasoning}</div>`
-      : "";
+    // Reasoning — textContent prevents XSS from AI-generated content
+    if (reasoning && !isFallback) {
+      const reasonEl = document.createElement("div");
+      reasonEl.className = "ssm-result-reasoning";
+      reasonEl.textContent = `💡 ${reasoning}`;
+      result.appendChild(reasonEl);
+    }
 
-    // Disclaimer block — shown when merchant set product as oversized but user prefers fitted
-    const disclaimerHtml = disclaimer
-      ? `<div class="ssm-result-disclaimer">ℹ️ ${disclaimer}</div>`
-      : "";
+    // Disclaimer — textContent prevents XSS
+    if (disclaimer) {
+      const discEl = document.createElement("div");
+      discEl.className = "ssm-result-disclaimer";
+      discEl.textContent = `ℹ️ ${disclaimer}`;
+      result.appendChild(discEl);
+    }
 
-    const body = gid("ssm-body");
-    body.innerHTML = `
-      <div class="ssm-result">
-        <div class="ssm-result-icon">${icon}</div>
-        <div class="ssm-result-label">المقاس المناسب لك هو</div>
-        <div class="ssm-result-size">${size}</div>
-        ${stockBadge}
-        <div class="ssm-result-msg">${msg}</div>
-        ${reasoningHtml}
-        ${disclaimerHtml}
-        <button class="ssm-restart" onclick="window._ssm_restart()">🔄 أعد الحساب</button>
-      </div>`;
+    // Restart button — addEventListener instead of inline onclick
+    const restartBtn = document.createElement("button");
+    restartBtn.className = "ssm-restart";
+    restartBtn.textContent = "🔄 أعد الحساب";
+    restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
+    result.appendChild(restartBtn);
 
+    body.appendChild(result);
+
+    // Keep global for external use (e.g. auto-restart calls from merchant scripts)
     window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
 

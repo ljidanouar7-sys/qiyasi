@@ -3,15 +3,18 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { makeRatelimit, getClientIp } from "@/lib/rate-limit";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
-const APP_URL     = process.env.NEXT_PUBLIC_APP_URL || "https://qiyasi.net";
+const APP_URL     = process.env.NEXT_PUBLIC_APP_URL;
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
+
+const ratelimit = makeRatelimit(10, "1 h", "qiyasi_invite");
 
 const schema = z.object({
   email:      z.string().email("بريد إلكتروني غير صالح"),
@@ -20,6 +23,12 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!APP_URL) return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+
+  const ip = getClientIp(req);
+  const { success } = await ratelimit.limit(ip);
+  if (!success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
   // Verify admin
   const cookieStore = await cookies();
   const supabase = createServerClient(

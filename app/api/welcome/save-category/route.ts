@@ -38,11 +38,24 @@ export async function POST(req: NextRequest) {
 
   const { data: merchant } = await supabase
     .from("merchants")
-    .select("id")
+    .select("id, plan")
     .eq("user_id", user.id)
     .single();
 
   if (!merchant) return NextResponse.json({ error: "Merchant not found" }, { status: 404 });
+
+  const MAX_CATEGORIES = merchant.plan === "pro" ? 50 : 3;
+  const { count } = await supabase
+    .from("categories")
+    .select("id", { count: "exact", head: true })
+    .eq("merchant_id", merchant.id);
+
+  if ((count ?? 0) >= MAX_CATEGORIES) {
+    return NextResponse.json({
+      error: `وصلت للحد الأقصى من الفئات (${MAX_CATEGORIES}) للباقة الحالية`,
+      limit: MAX_CATEGORIES,
+    }, { status: 402 });
+  }
 
   const cleanTag = (tag || name).trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 

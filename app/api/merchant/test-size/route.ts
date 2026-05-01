@@ -8,6 +8,7 @@ import {
   type SizeChart,
   type Range,
 } from "@/lib/sizing-engine";
+import { log } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
@@ -99,10 +100,7 @@ export async function POST(req: NextRequest) {
           explanation, disclaimer, wasLengthWarning } = result;
   const { chest, waist, hips } = result.estimatedBody;
 
-  console.log(
-    `[test-size] tag: ${tag} | size: "${sizeName}" | confidence: ${confidence}%` +
-    ` | alts: [${alternatives.join(", ")}]${wasLengthWarning ? " | length-warning" : ""}`
-  );
+  log("info", "size_calculated", { tag, size: sizeName, confidence, merchantId: merchant.id, lengthWarning: wasLengthWarning });
 
   // ── AI: reasoning text only ───────────────────────────────────────────────
   const chartTable = sizeChart.rows.map(row => {
@@ -158,12 +156,11 @@ Return ONLY a JSON object in ${lang}:
         max_tokens:  150,
       });
       const rawResp   = (completion.choices[0].message.content ?? "").trim();
-      console.log("[test-size] Groq reasoning:", rawResp);
       const match     = rawResp.match(/\{[\s\S]*\}/);
       const candidate = JSON.parse(match?.[0] || rawResp);
       if (candidate.message && candidate.reasoning) parsedAI = candidate;
     } catch (aiErr) {
-      console.error("[test-size] AI reasoning failed — using fallback:", aiErr);
+      log("error", "ai_reasoning_failed", { tag, error: String(aiErr) });
     }
   }
 
