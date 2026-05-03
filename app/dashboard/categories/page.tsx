@@ -96,6 +96,7 @@ function jsonToChart(json: unknown): { cols: ChartColumn[]; rows: ChartRow[] } {
 export default function CategoriesPage() {
   const [merchantId,   setMerchantId]   = useState<string | null>(null);
   const [merchantPlan, setMerchantPlan] = useState<string>("free");
+  const [loading,      setLoading]      = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [showForm,   setShowForm]   = useState(false);
@@ -139,6 +140,7 @@ export default function CategoriesPage() {
       setMerchantPlan(merchant.plan || "free");
       fetchCategories(merchant.id);
     }
+    setLoading(false);
   }
 
   async function fetchCategories(mid: string) {
@@ -268,6 +270,14 @@ export default function CategoriesPage() {
     if (!res.ok) setTestError(data.error || "حدث خطأ");
     else setTestResult(data);
     setTesting(false);
+  }
+
+  if (loading) {
+    return (
+      <div dir="rtl" className="flex items-center justify-center py-20">
+        <p className="text-slate-400 text-sm font-bold">جاري التحميل...</p>
+      </div>
+    );
   }
 
   return (
