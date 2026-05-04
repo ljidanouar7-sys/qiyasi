@@ -18,27 +18,34 @@ export default function BillingPage() {
   useEffect(() => { initPage(); }, []);
 
   async function initPage() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { window.location.href = "/auth"; return; }
-    setEmail(user.email ?? "");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { window.location.href = "/auth"; return; }
+      setEmail(user.email ?? "");
 
-    const { data: merchant } = await supabase
-      .from("merchants")
-      .select("id, plan")
-      .eq("user_id", user.id)
-      .single();
+      const { data: merchant } = await supabase
+        .from("merchants")
+        .select("id, plan")
+        .eq("user_id", user.id)
+        .single();
 
-    if (merchant) {
-      setMerchantId(merchant.id);
-      setPlan(merchant.plan || "free");
+      if (merchant) {
+        setMerchantId(merchant.id);
+        setPlan(merchant.plan || "free");
+      }
+
+      try {
+        const p = await initializePaddle({
+          environment: "sandbox",
+          token: CLIENT_TOKEN,
+        });
+        if (p) setPaddle(p);
+      } catch (e) {
+        console.error("[Billing] Paddle init failed:", e);
+      }
+    } finally {
+      setLoading(false);
     }
-
-    const p = await initializePaddle({
-      environment: "production",
-      token: CLIENT_TOKEN,
-    });
-    if (p) setPaddle(p);
-    setLoading(false);
   }
 
   async function openCheckout(cycle: "monthly" | "yearly") {
