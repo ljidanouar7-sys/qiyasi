@@ -8,6 +8,7 @@ type LogEvent =
   | "merchant_blocked"
   | "ai_reasoning_failed"
   | "webhook_received"
+  | "paddle_webhook"
   | "invalid_input";
 
 const ENV = process.env.NODE_ENV ?? "production";

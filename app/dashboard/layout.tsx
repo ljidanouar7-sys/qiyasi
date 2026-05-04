@@ -11,6 +11,7 @@ const navLinks = [
   { href: "/dashboard",            label: "الرئيسية",     icon: "🏠" },
   { href: "/dashboard/categories", label: "الفئات",       icon: "📐" },
   { href: "/dashboard/embed",      label: "كود التضمين",  icon: "🔗" },
+  { href: "/dashboard/billing",    label: "الباقة",       icon: "⭐" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
