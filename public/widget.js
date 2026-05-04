@@ -1,7 +1,20 @@
 (function () {
-  const API_BASE = document.currentScript?.src
-    ? new URL(document.currentScript.src).origin
-    : window.location.origin;
+  // Detect the API origin from the script tag — works even when currentScript is null
+  // (e.g. Salla or any platform that loads scripts dynamically via JS)
+  const API_BASE = (() => {
+    if (document.currentScript && document.currentScript.src) {
+      return new URL(document.currentScript.src).origin;
+    }
+    // Fallback: scan all loaded script tags for widget.js
+    const all = document.querySelectorAll('script[src]');
+    for (const s of all) {
+      if (s.src && (s.src.includes('/widget.js') || s.src.includes('qiyasi'))) {
+        try { return new URL(s.src).origin; } catch {}
+      }
+    }
+    console.warn('[SSM] Could not detect API origin — defaulting to current page origin. Button may not work.');
+    return window.location.origin;
+  })();
 
   // ======= CSS =======
   const style = document.createElement("style");
@@ -212,13 +225,23 @@
   // ======= Fetch merchant tags =======
   // Returns true if merchant is active, false if blocked/inactive
   async function fetchMerchantTags() {
+    const url = `${API_BASE}/api/get-tags`;
+    console.log('[SSM] fetchMerchantTags → GET', url);
     try {
-      const r = await fetch(`${API_BASE}/api/get-tags`);
-      if (!r.ok) return false;
+      const r = await fetch(url);
+      console.log('[SSM] get-tags status:', r.status);
+      if (!r.ok) {
+        console.log('[SSM] get-tags failed — merchant blocked or domain not registered');
+        return false;
+      }
       const data = await r.json();
+      console.log('[SSM] get-tags data:', data);
       if (data && data.tags) _merchantTags = data.tags;
       return true;
-    } catch { return false; }
+    } catch (e) {
+      console.log('[SSM] get-tags network error:', e);
+      return false;
+    }
   }
 
   function fallbackSize(ans) {
@@ -332,9 +355,16 @@
     'أضف للسلة','أضف إلى السلة','إضافة للسلة','اشتر الآن','اطلب الآن','أضف','شراء',
   ];
   const CART_SELECTORS = [
+    // Salla platform (web components — inject next to the component itself)
+    'salla-add-to-cart',
+    'salla-buy-now',
+    // Salla button inside component (may work if shadow DOM not used)
+    'salla-add-to-cart button',
+    // Generic
     'button[name="add"]','.add-to-cart','.single_add_to_cart_button',
     '.product-form__submit','.btn-add-to-cart','[id*="AddToCart"]',
-    '[class*="add-to-cart"]','[class*="addtocart"]','salla-add-to-cart button',
+    '[class*="add-to-cart"]','[class*="addtocart"]',
+    // Broad fallback
     'button[type="submit"]',
   ];
 
@@ -346,6 +376,7 @@
       const txt = (el.textContent || el.value || '').toLowerCase().trim();
       if (CART_KEYWORDS.some(k => txt.includes(k))) return el;
     }
+    console.log('[SSM] findCartButton: no cart button found on this page');
     return null;
   }
 
@@ -360,6 +391,7 @@
     btn.innerHTML = "📏 احسب مقاسي";
     btn.onclick = () => { setupModal(); openModal(); };
     target.insertAdjacentElement("afterend", btn);
+    console.log('[SSM] button injected successfully next to:', target);
   }
 
   function openModal()  { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
@@ -673,8 +705,13 @@
 
       let currentIv = null;
       async function startInject() {
+        console.log('[SSM] startInject — API_BASE:', API_BASE, '| page:', location.href);
         const active = await fetchMerchantTags();
-        if (!active) return; // merchant inactive — no button
+        console.log('[SSM] merchant active:', active, '| tags:', _merchantTags);
+        if (!active) {
+          console.log('[SSM] merchant not active or domain not registered — no button');
+          return;
+        }
         const old = document.getElementById("ssm-trigger");
         if (old) old.remove();
         _sizeChart = null;

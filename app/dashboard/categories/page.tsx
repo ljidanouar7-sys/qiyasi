@@ -196,29 +196,34 @@ export default function CategoriesPage() {
     }
 
     setSaving(true);
-    const payload = {
-      merchant_id: merchantId,
-      name:        catName.trim(),
-      tag:         catTag.trim().replace(/\s+/g, "-"),
-      niche:       catNiche,
-      size_chart:  chartToJson(cols, rows),
-    };
-    const { error } = editingCat
-      ? await supabase.from("categories").update(payload).eq("id", editingCat.id)
-      : await supabase.from("categories").insert(payload);
+    try {
+      const payload = {
+        merchant_id: merchantId,
+        name:        catName.trim(),
+        tag:         catTag.trim().replace(/\s+/g, "-"),
+        niche:       catNiche,
+        size_chart:  chartToJson(cols, rows),
+      };
+      const { error } = editingCat
+        ? await supabase.from("categories").update(payload).eq("id", editingCat.id)
+        : await supabase.from("categories").insert(payload);
 
-    setSaving(false);
+      if (error) {
+        setToast(`❌ خطأ في الحفظ: ${error.message}`);
+        setTimeout(() => setToast(""), 6000);
+        return;
+      }
 
-    if (error) {
-      setToast(`❌ خطأ في الحفظ: ${error.message}`);
-      setTimeout(() => setToast(""), 5000);
-      return;
+      setToast(editingCat ? "✅ تم التعديل" : "✅ تم الحفظ");
+      setTimeout(() => setToast(""), 3000);
+      setShowForm(false);
+      fetchCategories(merchantId);
+    } catch (err) {
+      setToast("❌ خطأ في الاتصال — تحقق من الإنترنت");
+      setTimeout(() => setToast(""), 6000);
+    } finally {
+      setSaving(false);
     }
-
-    setToast(editingCat ? "✅ تم التعديل" : "✅ تم الحفظ");
-    setTimeout(() => setToast(""), 3000);
-    setShowForm(false);
-    fetchCategories(merchantId);
   }
 
   async function handleDelete(id: string) {
@@ -329,7 +334,9 @@ export default function CategoriesPage() {
       )}
 
       {toast && (
-        <div className="mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 font-bold text-sm px-4 py-3 rounded-xl">
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3.5 rounded-2xl font-bold text-sm shadow-xl whitespace-nowrap transition-all ${
+          toast.startsWith("❌") ? "bg-red-600 text-white" : "bg-emerald-600 text-white"
+        }`}>
           {toast}
         </div>
       )}
