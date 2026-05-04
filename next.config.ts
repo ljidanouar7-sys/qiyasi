@@ -27,12 +27,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   async redirects() {
-    return [
-      // permanent: false = 307 Temporary Redirect — allows moving to v2 later without cache lock-in
-      { source: "/api/calculate-size", destination: "/api/v1/calculate-size", permanent: false },
-      { source: "/api/get-quiz",       destination: "/api/v1/get-quiz",       permanent: false },
-      { source: "/api/get-tags",       destination: "/api/v1/get-tags",       permanent: false },
-    ];
+    return [];
   },
   async headers() {
     return [
