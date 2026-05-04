@@ -176,7 +176,11 @@ export default function CategoriesPage() {
   async function handleSave() {
     if (!catName.trim()) { alert("أدخل اسم الفئة"); return; }
     if (!catTag.trim())  { alert("أدخل الـ Tag"); return; }
-    if (!merchantId) return;
+    if (!merchantId) {
+      setToast("❌ لم تتحمل بيانات المتجر — أعد تحميل الصفحة");
+      setTimeout(() => setToast(""), 4000);
+      return;
+    }
     const sizeNames = rows.map(r => r.size);
     if (new Set(sizeNames).size !== sizeNames.length) {
       alert("يوجد مقاسات مكررة في الجدول — تأكد من أن كل صف له مقاس مختلف");
