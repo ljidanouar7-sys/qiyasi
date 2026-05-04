@@ -193,18 +193,24 @@ export default function CategoriesPage() {
 
     setSaving(true);
     const payload = {
-      merchant_id:          merchantId,
-      name:  catName.trim(),
-      tag:   catTag.trim().replace(/\s+/g, "-"),
-      niche: catNiche,
-      size_chart:           chartToJson(cols, rows),
+      merchant_id: merchantId,
+      name:        catName.trim(),
+      tag:         catTag.trim().replace(/\s+/g, "-"),
+      niche:       catNiche,
+      size_chart:  chartToJson(cols, rows),
     };
-    if (editingCat) {
-      await supabase.from("categories").update(payload).eq("id", editingCat.id);
-    } else {
-      await supabase.from("categories").insert(payload);
-    }
+    const { error } = editingCat
+      ? await supabase.from("categories").update(payload).eq("id", editingCat.id)
+      : await supabase.from("categories").insert(payload);
+
     setSaving(false);
+
+    if (error) {
+      setToast(`❌ خطأ في الحفظ: ${error.message}`);
+      setTimeout(() => setToast(""), 5000);
+      return;
+    }
+
     setToast(editingCat ? "✅ تم التعديل" : "✅ تم الحفظ");
     setTimeout(() => setToast(""), 3000);
     setShowForm(false);
