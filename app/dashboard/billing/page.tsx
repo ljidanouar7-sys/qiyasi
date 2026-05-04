@@ -97,7 +97,7 @@ export default function BillingPage() {
           <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">شهري</p>
             <div className="flex items-end gap-1 mb-4">
-              <span className="text-4xl font-black text-slate-900">$9</span>
+              <span className="text-4xl font-black text-slate-900">$15</span>
               <span className="text-slate-400 text-sm mb-1">/شهر</span>
             </div>
             <ul className="space-y-2 mb-6 text-sm text-slate-600">
@@ -121,10 +121,10 @@ export default function BillingPage() {
             </div>
             <p className="text-xs font-bold text-teal-600 uppercase tracking-widest mb-3">سنوي</p>
             <div className="flex items-end gap-1 mb-1">
-              <span className="text-4xl font-black text-slate-900">$79</span>
+              <span className="text-4xl font-black text-slate-900">$150</span>
               <span className="text-slate-400 text-sm mb-1">/سنة</span>
             </div>
-            <p className="text-teal-600 text-xs font-bold mb-4">بدل $108 — وفّر $29</p>
+            <p className="text-teal-600 text-xs font-bold mb-4">بدل $180 — وفّر $30</p>
             <ul className="space-y-2 mb-6 text-sm text-slate-600">
               <li>✅ حتى 50 فئة</li>
               <li>✅ ذكاء اصطناعي لا محدود</li>

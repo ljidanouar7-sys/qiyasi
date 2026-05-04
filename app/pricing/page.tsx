@@ -1,7 +1,13 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { initializePaddle, Paddle } from "@paddle/paddle-js";
+import { supabase } from "../../lib/supabase";
+
+const MONTHLY_PRICE = process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID!;
+const YEARLY_PRICE  = process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID!;
+const CLIENT_TOKEN  = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!;
 
 const T = {
   en: {
@@ -10,57 +16,53 @@ const T = {
     badge: "Pricing",
     h1: "Simple, Transparent Pricing",
     sub: "Start free. Upgrade when you're ready.",
-    toggle: { monthly: "Monthly", yearly: "Yearly", save: "Save 20%" },
     plans: [
       {
         name: "Free",
-        price: { monthly: "$0", yearly: "$0" },
+        price: "$0",
         period: "forever",
         desc: "Perfect for trying Qiyasi before you commit.",
         features: [
-          "Up to 3 products",
-          "1 category",
+          "Up to 3 categories",
           "Basic size quiz",
           "Qiyasi branding on widget",
           "Community support",
         ],
         cta: "Get Started Free",
-        href: "/auth",
+        type: "free" as const,
         highlight: false,
       },
       {
         name: "Pro Monthly",
-        price: { monthly: "$29", yearly: "$29" },
+        price: "$15",
         period: "/month",
         desc: "Full power. Pay month to month, cancel anytime.",
         features: [
-          "Unlimited products & categories",
+          "Up to 50 categories",
           "Your own private API key",
           "Works on Shopify, WordPress, any HTML",
           "Custom size charts per category",
           "Priority email support",
-          "14-day free trial included",
           "No Qiyasi branding",
         ],
-        cta: "Start Free Trial →",
-        href: "/auth",
+        cta: "Subscribe Monthly →",
+        type: "monthly" as const,
         highlight: true,
         badge: "Most Popular",
       },
       {
         name: "Pro Yearly",
-        price: { monthly: "$290", yearly: "$290" },
+        price: "$150",
         period: "/year",
-        desc: "Best value — two months free compared to monthly.",
+        desc: "Best value — save $30 compared to monthly.",
         features: [
           "Everything in Pro Monthly",
-          "2 months free (≈ $24/mo)",
+          "Save $30 (≈ $12.5/mo)",
           "Early access to new features",
-          "Dedicated onboarding call",
-          "Priority support (< 4h response)",
+          "Priority support",
         ],
-        cta: "Start Yearly Plan →",
-        href: "/auth",
+        cta: "Subscribe Yearly →",
+        type: "yearly" as const,
         highlight: false,
         badge: "Best Value",
       },
@@ -68,9 +70,9 @@ const T = {
     faq: {
       label: "Common Questions",
       items: [
-        { q: "Can I switch plans later?", a: "Yes. You can upgrade or downgrade anytime from your dashboard. Yearly plans are prorated if you switch early." },
+        { q: "Can I switch plans later?", a: "Yes. You can upgrade or downgrade anytime from your dashboard." },
         { q: "Is there a setup fee?", a: "None. Qiyasi integrates in under 2 minutes with a single embed snippet — no developer needed." },
-        { q: "What happens after the free trial?", a: "You choose a plan or stay on the Free tier. We will never charge you without confirmation." },
+        { q: "What payment methods are accepted?", a: "All major credit and debit cards. Payments are processed securely by Paddle." },
         { q: "Does it work with my store platform?", a: "Yes. Qiyasi works on Shopify, WooCommerce, WordPress, or any custom HTML store." },
       ],
     },
@@ -80,6 +82,8 @@ const T = {
       btn: "Book a Free Demo →",
     },
     footer: "© 2025 Qiyasi · AI-Powered Size Intelligence",
+    loginFirst: "Please log in first to subscribe",
+    loading: "Loading...",
   },
   ar: {
     dir: "rtl" as const,
@@ -87,57 +91,53 @@ const T = {
     badge: "التسعير",
     h1: "أسعار بسيطة وشفافة",
     sub: "ابدأ مجاناً. ارقِ عندما تكون مستعداً.",
-    toggle: { monthly: "شهري", yearly: "سنوي", save: "وفر 20٪" },
     plans: [
       {
         name: "مجاني",
-        price: { monthly: "$0", yearly: "$0" },
+        price: "$0",
         period: "للأبد",
         desc: "مثالي لتجربة قياسي قبل الالتزام.",
         features: [
-          "حتى 3 منتجات",
-          "فئة واحدة",
+          "حتى 3 فئات",
           "اختبار مقاسات أساسي",
           "شعار قياسي على الودجت",
           "دعم المجتمع",
         ],
         cta: "ابدأ مجاناً",
-        href: "/auth",
+        type: "free" as const,
         highlight: false,
       },
       {
         name: "برو شهري",
-        price: { monthly: "$29", yearly: "$29" },
+        price: "$15",
         period: "/شهر",
         desc: "القوة الكاملة. ادفع شهرياً، ألغِ في أي وقت.",
         features: [
-          "منتجات وفئات غير محدودة",
+          "حتى 50 فئة",
           "مفتاح API خاص بك",
           "يعمل على Shopify وWordPress وأي HTML",
           "جداول مقاسات مخصصة لكل فئة",
           "دعم بريد إلكتروني مُفضَّل",
-          "تجربة مجانية 14 يوماً",
           "بدون شعار قياسي",
         ],
-        cta: "← ابدأ التجربة المجانية",
-        href: "/auth",
+        cta: "← اشترك شهرياً",
+        type: "monthly" as const,
         highlight: true,
         badge: "الأكثر شيوعاً",
       },
       {
         name: "برو سنوي",
-        price: { monthly: "$290", yearly: "$290" },
+        price: "$150",
         period: "/سنة",
-        desc: "أفضل قيمة — شهران مجاناً مقارنةً بالشهري.",
+        desc: "أفضل قيمة — وفّر $30 مقارنةً بالشهري.",
         features: [
           "كل شيء في برو الشهري",
-          "شهران مجاناً (≈ $24/شهر)",
+          "وفّر $30 (≈ $12.5/شهر)",
           "وصول مبكر للميزات الجديدة",
-          "مكالمة تأهيل مخصصة",
-          "دعم مُفضَّل (< 4 ساعات)",
+          "دعم مُفضَّل",
         ],
-        cta: "← ابدأ الخطة السنوية",
-        href: "/auth",
+        cta: "← اشترك سنوياً",
+        type: "yearly" as const,
         highlight: false,
         badge: "أفضل قيمة",
       },
@@ -145,9 +145,9 @@ const T = {
     faq: {
       label: "أسئلة شائعة",
       items: [
-        { q: "هل يمكنني تغيير الخطة لاحقاً؟", a: "نعم. يمكنك الترقية أو التخفيض في أي وقت من لوحة التحكم. تُحسب الخطط السنوية بالتناسب إذا غيرت مبكراً." },
+        { q: "هل يمكنني تغيير الخطة لاحقاً؟", a: "نعم. يمكنك الترقية أو التخفيض في أي وقت من لوحة التحكم." },
         { q: "هل هناك رسوم إعداد؟", a: "لا. يتكامل قياسي في أقل من دقيقتين بكود تضمين واحد — لا تحتاج مطوراً." },
-        { q: "ماذا يحدث بعد التجربة المجانية؟", a: "تختار خطة أو تبقى على الطبقة المجانية. لن نفرض عليك رسوماً أبداً بدون تأكيد." },
+        { q: "ما وسائل الدفع المقبولة؟", a: "جميع بطاقات الائتمان والخصم الرئيسية. تتم المعالجة بأمان عبر Paddle." },
         { q: "هل يعمل مع منصة متجري؟", a: "نعم. يعمل قياسي على Shopify وWooCommerce وWordPress وأي متجر HTML مخصص." },
       ],
     },
@@ -157,12 +157,14 @@ const T = {
       btn: "← احجز عرضاً مجانياً",
     },
     footer: "© 2025 قياسي · ذكاء المقاسات بالذكاء الاصطناعي",
+    loginFirst: "يرجى تسجيل الدخول أولاً للاشتراك",
+    loading: "جاري التحميل...",
   },
 };
 
-function CheckIcon() {
+function CheckIcon({ highlight }: { highlight: boolean }) {
   return (
-    <svg className="w-4 h-4 text-indigo-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className={`w-4 h-4 flex-shrink-0 mt-0.5 ${highlight ? "text-indigo-200" : "text-indigo-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
     </svg>
   );
@@ -176,9 +178,60 @@ export default function PricingPage() {
     }
     return "ar";
   });
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const t = T[lang];
+  const [openFaq,         setOpenFaq]         = useState<number | null>(null);
+  const [paddle,          setPaddle]          = useState<Paddle | null>(null);
+  const [userEmail,       setUserEmail]       = useState<string>("");
+  const [merchantId,      setMerchantId]      = useState<string>("");
+  const [checkoutLoading, setCheckoutLoading] = useState<"monthly" | "yearly" | null>(null);
+  const [toast,           setToast]           = useState<string>("");
+
+  const t    = T[lang];
   const isAr = lang === "ar";
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email ?? "");
+          const { data: merchant } = await supabase
+            .from("merchants")
+            .select("id")
+            .eq("user_id", user.id)
+            .single();
+          if (merchant) setMerchantId(merchant.id);
+        }
+      } catch { /* user not logged in — fine */ }
+
+      try {
+        const p = await initializePaddle({ environment: "sandbox", token: CLIENT_TOKEN });
+        if (p) setPaddle(p);
+      } catch (e) {
+        console.error("[Pricing] Paddle init failed:", e);
+      }
+    }
+    init();
+  }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 4000);
+  }
+
+  async function handleProClick(cycle: "monthly" | "yearly") {
+    if (!paddle) { showToast(isAr ? "جاري التحميل..." : "Loading..."); return; }
+    setCheckoutLoading(cycle);
+    try {
+      await paddle.Checkout.open({
+        items: [{ priceId: cycle === "monthly" ? MONTHLY_PRICE : YEARLY_PRICE, quantity: 1 }],
+        ...(userEmail ? { customer: { email: userEmail } } : {}),
+        ...(merchantId ? { customData: { merchant_id: merchantId } } : {}),
+        settings: { displayMode: "overlay", theme: "light", locale: isAr ? "ar" : "en" },
+      });
+    } finally {
+      setCheckoutLoading(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FF] text-slate-900" dir={t.dir}>
@@ -249,7 +302,7 @@ export default function PricingPage() {
               <div className="mb-2">
                 <span className={`text-6xl font-black leading-none
                   ${plan.highlight ? "text-white" : "text-slate-900"}`}>
-                  {plan.price.monthly}
+                  {plan.price}
                 </span>
                 <span className={`text-base font-medium ms-1
                   ${plan.highlight ? "text-indigo-200" : "text-slate-400"}`}>
@@ -267,34 +320,45 @@ export default function PricingPage() {
                 {plan.features.map((f, fi) => (
                   <li key={fi} className={`flex items-start gap-2.5 text-sm
                     ${plan.highlight ? "text-indigo-50" : "text-slate-600"}`}>
-                    {plan.highlight
-                      ? <svg className="w-4 h-4 text-indigo-200 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      : <CheckIcon />
-                    }
+                    <CheckIcon highlight={plan.highlight} />
                     {f}
                   </li>
                 ))}
               </ul>
 
               {/* CTA */}
-              <Link
-                href={plan.href}
-                className={`block w-full text-center font-black py-3.5 rounded-2xl transition text-sm
-                  ${plan.highlight
-                    ? "bg-white text-indigo-600 hover:bg-indigo-50"
-                    : "bg-slate-900 text-white hover:bg-slate-700"
-                  }`}
-              >
-                {plan.cta}
-              </Link>
+              {plan.type === "free" ? (
+                <Link
+                  href="/auth"
+                  className={`block w-full text-center font-black py-3.5 rounded-2xl transition text-sm
+                    ${plan.highlight
+                      ? "bg-white text-indigo-600 hover:bg-indigo-50"
+                      : "bg-slate-900 text-white hover:bg-slate-700"
+                    }`}
+                >
+                  {plan.cta}
+                </Link>
+              ) : (
+                <button
+                  onClick={() => handleProClick(plan.type as "monthly" | "yearly")}
+                  disabled={checkoutLoading === plan.type}
+                  className={`w-full font-black py-3.5 rounded-2xl transition text-sm disabled:opacity-60
+                    ${plan.highlight
+                      ? "bg-white text-indigo-600 hover:bg-indigo-50"
+                      : "bg-slate-900 text-white hover:bg-slate-700"
+                    }`}
+                >
+                  {checkoutLoading === plan.type
+                    ? (isAr ? "جاري..." : "Loading...")
+                    : plan.cta}
+                </button>
+              )}
             </div>
           ))}
         </div>
 
         <p className="text-center text-slate-400 text-sm mt-8">
-          {isAr ? "لا رسوم إعداد · إلغاء في أي وقت · لا بطاقة بنكية للتجربة" : "No setup fees · Cancel anytime · No credit card for free trial"}
+          {isAr ? "لا رسوم إعداد · إلغاء في أي وقت · دفع آمن عبر Paddle" : "No setup fees · Cancel anytime · Secure payment via Paddle"}
         </p>
       </section>
 
@@ -355,6 +419,13 @@ export default function PricingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3.5 rounded-2xl font-bold text-sm shadow-xl whitespace-nowrap bg-slate-900 text-white">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
