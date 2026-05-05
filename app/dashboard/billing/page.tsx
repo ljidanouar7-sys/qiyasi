@@ -36,7 +36,7 @@ export default function BillingPage() {
 
       try {
         const p = await initializePaddle({
-          environment: "sandbox",
+          environment: "production",
           token: CLIENT_TOKEN,
         });
         if (p) setPaddle(p);

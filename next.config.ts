@@ -5,12 +5,12 @@ const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
   "default-src 'self'",
-  // unsafe-eval allowed in dev only — React uses eval() for callstack reconstruction
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://js.paddle.com${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co https://*.upstash.io",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://*.supabase.co https://*.upstash.io https://api.paddle.com https://sandbox-api.paddle.com",
+  "frame-src https://*.paddle.com",
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",

@@ -204,7 +204,7 @@ export default function PricingPage() {
       } catch { /* user not logged in — fine */ }
 
       try {
-        const p = await initializePaddle({ environment: "sandbox", token: CLIENT_TOKEN });
+        const p = await initializePaddle({ environment: "production", token: CLIENT_TOKEN });
         if (p) setPaddle(p);
       } catch (e) {
         console.error("[Pricing] Paddle init failed:", e);

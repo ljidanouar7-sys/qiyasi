@@ -5,6 +5,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import {
   calculateSize,
   scoreAllSizes,
+  normalizeGarmentType,
   type SizeChart,
   type SizeScore,
   type Range,
@@ -180,7 +181,7 @@ export async function POST(req: NextRequest) {
 
   const { data: category } = await supabase
     .from("categories")
-    .select("size_chart, name")
+    .select("size_chart, name, niche")
     .eq("merchant_id", merchantId)
     .ilike("tag", tag)
     .single();
@@ -192,7 +193,7 @@ export async function POST(req: NextRequest) {
   const sizeChart = category.size_chart as SizeChart;
 
   // ── Redis cache check (key = all inputs that affect the result) ────────────
-  const cacheKey = `size:${merchantId}:${tag}:${h}:${w}:${answers.shoulders ?? ""}:${answers.belly ?? ""}:${user_preference}:${lang}`;
+  const cacheKey = `size:${merchantId}:${tag}:${h}:${w}:${answers.shoulders ?? ""}:${answers.belly ?? ""}:${user_preference}:${normalizeGarmentType(category.niche as string)}:${lang}`;
   const cached = await redis.get(cacheKey);
   if (cached) {
     return NextResponse.json(JSON.parse(cached as string), { headers: CORS });
@@ -209,6 +210,7 @@ export async function POST(req: NextRequest) {
     shoulders:      answers.shoulders      || "average",
     belly:          answers.belly          || "average",
     userPreference: user_preference,
+    garmentType:    category.niche as string,
     lang,
     debug,
   });
@@ -243,7 +245,8 @@ export async function POST(req: NextRequest) {
       // Re-score to find the best available adjacent size in either direction
       const { scores: allScores } = scoreAllSizes(
         sizeChart, result.estimatedBody,
-        Number(answers.height || 0), Number(answers.weight || 0)
+        Number(answers.height || 0), Number(answers.weight || 0),
+        category.niche as string
       );
       const candidates = [finalIdx + 1, finalIdx - 1]
         .map(idx => allScores.find(s => s.rowIdx === idx))

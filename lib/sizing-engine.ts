@@ -1,11 +1,11 @@
 // ── Shared Sizing Engine ───────────────────────────────────────────────────────
 // Single source of truth for all size recommendation logic.
-// Imported by: app/api/calculate-size/route.ts
+// Imported by: app/api/v1/calculate-size/route.ts
 //              app/api/merchant/test-size/route.ts
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-export type SizeChartColumn = { id: string; label: string; quiz_field: string };
+export type SizeChartColumn = { id: string; label: string; quiz_field: string; active?: boolean };
 export type SizeChartRow    = Record<string, unknown>;
 export type SizeChart       = { columns: SizeChartColumn[]; rows: SizeChartRow[] };
 export type Range           = { min: number; max: number };
@@ -29,35 +29,29 @@ export type SizeScore = {
 export type DebugSizeScore = {
   heightScore:  number;
   widthScore:   number;
-  chestScore:   number | null;  // null = column absent in chart
+  chestScore:   number | null;
   waistScore:   number | null;
   hipsScore:    number | null;
-  weightScore:  number | null;  // fallback if no body cols
+  weightScore:  number | null;
   totalScore:   number;
-  heightFactor: number;         // factor used for this row
-  keysFound:    string[];       // which keys were non-null in DB row
-  keysMissing:  string[];       // expected keys that were undefined/null
+  heightFactor: number;
+  keysFound:    string[];
+  keysMissing:  string[];
 };
 
 export type DebugInfo = {
-  // Estimation audit
   bmi:          number;
   bmiDelta:     number;
-  rawBody:      BodyMeasurements;  // before shape adjustments
-  shapedBody:   BodyMeasurements;  // after shoulders/belly
-  finalBody:    BodyMeasurements;  // after fit preference
-  prefDelta:    number;            // cm shift applied for preference
-
-  // Chart validation
+  rawBody:      BodyMeasurements;
+  shapedBody:   BodyMeasurements;
+  finalBody:    BodyMeasurements;
+  prefDelta:    number;
   chartHasHCol:    boolean;
   chartHasBodyCols: boolean;
   chartColIds:     string[];
-
-  // Score breakdown per size
   scores: Record<string, DebugSizeScore>;
-
-  // Final decision
-  heightFactor:  number;   // factor actually used (dynamic)
+  heightFactor:  number;
+  garmentType:   string;
   winner:        string;
   winnerScore:   number;
   runnerUp:      string;
@@ -73,17 +67,62 @@ export type SizingResult = {
   disclaimer:       string | null;
   wasLengthWarning: boolean;
   estimatedBody:    BodyMeasurements;
-  debug?:           DebugInfo;     // only present when debug=true
+  debug?:           DebugInfo;
 };
 
-// ── Constants ──────────────────────────────────────────────────────────────────
+// ── Garment-Type Height Factors ────────────────────────────────────────────────
+//
+// Each garment type has a base and high height factor.
+// base = used when height spread across chart is low
+// high = used when height clearly differentiates sizes (spread >= 0.40)
+// Lower values = chest/waist/hips matter more (shirts, pants)
+// Higher values = height matters more (abayas, dresses)
 
-// Base height weight. Will be boosted dynamically when height strongly
-// differentiates sizes (tall person outside most ranges → height must win).
-const BASE_HEIGHT_FACTOR = 0.55;
-const HIGH_HEIGHT_FACTOR = 0.75; // used when height spread > 0.4 across chart
+export const GARMENT_FACTORS: Record<string, { base: number; high: number }> = {
+  abaya:         { base: 0.60, high: 0.75 }, // long garment — height critical
+  jelaba:        { base: 0.58, high: 0.72 },
+  dress:         { base: 0.55, high: 0.70 },
+  jacket:        { base: 0.38, high: 0.52 }, // upper body — chest/shoulders
+  shirt:         { base: 0.28, high: 0.42 }, // chest matters most
+  pants:         { base: 0.20, high: 0.32 }, // waist/hips matter most
+  kids:          { base: 0.55, high: 0.70 },
+  // backward-compat aliases for old niche values
+  long_clothing: { base: 0.60, high: 0.75 },
+  sports:        { base: 0.40, high: 0.55 },
+  other:         { base: 0.50, high: 0.65 },
+};
 
-// Fit preference shifts effective measurements (cm), not size jumps.
+// ── Niche → Garment Type normalization ────────────────────────────────────────
+//
+// DB may store English values (long_clothing) or Arabic label strings.
+// Both are normalized to canonical garment type keys.
+
+export const NICHE_TO_GARMENT: Record<string, string> = {
+  // English values (original NICHES)
+  long_clothing: "abaya",
+  sports:        "sports",
+  kids:          "kids",
+  other:         "other",
+  // Arabic label values (if somehow stored directly)
+  "ملابس طويلة (عبايات، جلابيب)": "abaya",
+  "ملابس أطفال":                  "kids",
+  "ملابس رياضية":                 "sports",
+  // New canonical values (pass through)
+  abaya:  "abaya",
+  jelaba: "jelaba",
+  dress:  "dress",
+  shirt:  "shirt",
+  pants:  "pants",
+  jacket: "jacket",
+};
+
+export function normalizeGarmentType(niche?: string | null): string {
+  if (!niche) return "abaya";
+  return NICHE_TO_GARMENT[niche] ?? "abaya";
+}
+
+// ── Fit Preference Shifts ──────────────────────────────────────────────────────
+
 const PREF_DELTA: Record<string, number> = { fitted: -2, regular: 0, loose: 3 };
 
 // ── Body Estimation ────────────────────────────────────────────────────────────
@@ -160,17 +199,16 @@ export function fitScore(value: number, range: Range, stretchBuffer = 0): number
 
 // ── Dynamic Height Factor ──────────────────────────────────────────────────────
 //
-// If height clearly differentiates sizes (high spread across height scores),
-// boost HEIGHT_FACTOR so a tall person isn't dragged down by body scores.
-// This fixes the "tall person gets S" bug when body is slim but height is L/XL.
+// Uses garment-type base/high factors instead of fixed constants.
+// If height strongly differentiates sizes (high spread) → use high factor.
 
-function computeHeightFactor(heightScores: number[]): number {
-  if (heightScores.length < 2) return BASE_HEIGHT_FACTOR;
+function computeHeightFactor(heightScores: number[], garmentType: string): number {
+  const f = GARMENT_FACTORS[garmentType] ?? GARMENT_FACTORS.other;
+  if (heightScores.length < 2) return f.base;
   const max    = Math.max(...heightScores);
   const min    = Math.min(...heightScores);
   const spread = max - min;
-  // High spread = height strongly differentiates → give it more authority
-  return spread >= 0.40 ? HIGH_HEIGHT_FACTOR : BASE_HEIGHT_FACTOR;
+  return spread >= 0.40 ? f.high : f.base;
 }
 
 // ── Score All Sizes ────────────────────────────────────────────────────────────
@@ -180,28 +218,32 @@ export function scoreAllSizes(
   body:         BodyMeasurements,
   height:       number,
   weight:       number,
+  garmentType:  string = "abaya",
   debugMode?:   boolean
 ): { scores: SizeScore[]; heightFactor: number; debugScores?: Record<string, DebugSizeScore> } {
   const colIds      = new Set(sizeChart.columns.map(c => c.id));
   const hasBodyCols = colIds.has("ch") || colIds.has("wa") || colIds.has("hi");
 
-  // First pass: compute all heightScores to determine dynamic factor
+  // Only body columns with active !== false are used in scoring
+  const activeCols = new Set(
+    sizeChart.columns.filter(c => c.active !== false).map(c => c.id)
+  );
+
   const rawHeightScores = sizeChart.rows.map(row => {
     const hRange = row["h"] as Range | undefined;
     return hRange && hRange.max > hRange.min ? fitScore(height, hRange) : 0.5;
   });
-  const heightFactor = computeHeightFactor(rawHeightScores);
+  const heightFactor = computeHeightFactor(rawHeightScores, garmentType);
 
   const debugScores: Record<string, DebugSizeScore> = {};
 
   const scores: SizeScore[] = sizeChart.rows.map((row, rowIdx) => {
     const sizeName = String(row.size ?? `row${rowIdx}`);
 
-    // ── Width score ──────────────────────────────────────────────────────
     let widthScore: number;
-    let chestScore: number | null = null;
-    let waistScore: number | null = null;
-    let hipsScore:  number | null = null;
+    let chestScore:  number | null = null;
+    let waistScore:  number | null = null;
+    let hipsScore:   number | null = null;
     let weightScore: number | null = null;
     const keysFound:   string[] = [];
     const keysMissing: string[] = [];
@@ -214,7 +256,8 @@ export function scoreAllSizes(
       ];
       let totalW = 0, totalS = 0;
       for (const p of parts) {
-        if (!colIds.has(p.id)) continue;
+        // Skip if column doesn't exist OR is toggled to "display only"
+        if (!colIds.has(p.id) || !activeCols.has(p.id)) continue;
         const range = row[p.id] as Range | undefined;
         if (!range || typeof range.min !== "number" || typeof range.max !== "number") {
           keysMissing.push(p.id);
@@ -241,8 +284,7 @@ export function scoreAllSizes(
       }
     }
 
-    // ── Height score ─────────────────────────────────────────────────────
-    const hRange      = row["h"] as Range | undefined;
+    const hRange = row["h"] as Range | undefined;
     let heightScore: number;
     if (hRange && typeof hRange.min === "number" && typeof hRange.max === "number") {
       heightScore = fitScore(height, hRange);
@@ -256,16 +298,8 @@ export function scoreAllSizes(
 
     if (debugMode) {
       debugScores[sizeName] = {
-        heightScore,
-        widthScore,
-        chestScore,
-        waistScore,
-        hipsScore,
-        weightScore,
-        totalScore,
-        heightFactor,
-        keysFound,
-        keysMissing,
+        heightScore, widthScore, chestScore, waistScore, hipsScore,
+        weightScore, totalScore, heightFactor, keysFound, keysMissing,
       };
     }
 
@@ -285,10 +319,12 @@ export function calculateSize(params: {
   belly:          string;
   userPreference: string;
   lang:           string;
+  garmentType?:   string;
   debug?:         boolean;
 }): SizingResult {
   const { sizeChart, height, weight, shoulders, belly,
           userPreference, lang, debug = false } = params;
+  const resolvedGarmentType = normalizeGarmentType(params.garmentType);
   const explanation: string[] = [];
   let disclaimer: string | null = null;
 
@@ -314,18 +350,26 @@ export function calculateSize(params: {
   if (shoulders !== "average" || belly !== "average") {
     explanation.push(`Shape modifiers: shoulders=${shoulders}, belly=${belly}`);
   }
+  explanation.push(`Garment type: ${resolvedGarmentType}`);
 
-  // Phase 2+4: Score all sizes (with dynamic height factor)
-  const colIds       = new Set(sizeChart.columns.map(c => c.id));
+  // Phase 2+4: Score all sizes
+  const colIds = new Set(sizeChart.columns.map(c => c.id));
   const { scores, heightFactor, debugScores } = scoreAllSizes(
-    sizeChart, finalBody, height, weight, debug
+    sizeChart, finalBody, height, weight, resolvedGarmentType, debug
   );
   const sorted = [...scores].sort((a, b) => b.totalScore - a.totalScore);
 
-  // Height-lock: only consider ±1 size from height-best to prevent too-long garments
+  // Height-lock: constrain candidate range based on garment type
+  // Abayas/dresses: strict (±1) — shirts/pants: relaxed or none
   const heightBestRowIdx = [...scores].sort((a, b) => b.heightScore - a.heightScore)[0].rowIdx;
-  const heightLocked     = sorted.filter(s => Math.abs(s.rowIdx - heightBestRowIdx) <= 1);
-  const best             = heightLocked[0] ?? sorted[0];
+  const garmentBase      = GARMENT_FACTORS[resolvedGarmentType]?.base ?? 0.5;
+  const heightLockRange  =
+    garmentBase >= 0.55 ? 1                  // abaya/jelaba/dress — strict
+    : garmentBase >= 0.35 ? 2               // jacket/kids/sports — relaxed
+    : sizeChart.rows.length;                 // shirt/pants — no lock
+
+  const heightLocked = sorted.filter(s => Math.abs(s.rowIdx - heightBestRowIdx) <= heightLockRange);
+  const best         = heightLocked[0] ?? sorted[0];
 
   explanation.push(`Height factor used: ${(heightFactor * 100).toFixed(0)}%`);
   explanation.push(
@@ -336,7 +380,7 @@ export function calculateSize(params: {
 
   // Phase 5: Length warning
   const heightBestIdx    = heightBestRowIdx;
-  const bodyBestIdx      = [...scores].sort((a, b) => b.widthScore  - a.widthScore)[0].rowIdx;
+  const bodyBestIdx      = [...scores].sort((a, b) => b.widthScore - a.widthScore)[0].rowIdx;
   const wasLengthWarning = Math.abs(heightBestIdx - bodyBestIdx) > 2;
 
   if (wasLengthWarning) {
@@ -369,7 +413,6 @@ export function calculateSize(params: {
     estimatedBody:  rawBody,
   };
 
-  // Debug object
   if (debug && debugScores) {
     result.debug = {
       bmi:      Math.round(bmi * 10) / 10,
@@ -383,6 +426,7 @@ export function calculateSize(params: {
       chartColIds:      [...colIds],
       scores:           debugScores,
       heightFactor,
+      garmentType:      resolvedGarmentType,
       winner:           best.sizeName,
       winnerScore:      Math.round(best.totalScore * 1000) / 1000,
       runnerUp:         sorted[1]?.sizeName ?? "—",

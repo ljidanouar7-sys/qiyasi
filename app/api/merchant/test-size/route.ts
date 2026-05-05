@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import OpenAI from "openai";
 import {
   calculateSize,
+  normalizeGarmentType,
   type SizeChart,
   type Range,
 } from "@/lib/sizing-engine";
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
   // ── Fetch size chart ──────────────────────────────────────────────────────
   const { data: category } = await admin
     .from("categories")
-    .select("size_chart, name")
+    .select("size_chart, name, niche")
     .eq("merchant_id", merchant.id)
     .ilike("tag", tag)
     .single();
@@ -92,9 +93,12 @@ export async function POST(req: NextRequest) {
     shoulders:      answers.shoulders      || "average",
     belly:          answers.belly          || "average",
     userPreference: user_preference,
+    garmentType:    category.niche as string,
     lang,
     debug,
   });
+
+  const garmentType = normalizeGarmentType(category.niche as string);
 
   const { recommended: sizeName, alternatives, confidence,
           explanation, disclaimer, wasLengthWarning } = result;

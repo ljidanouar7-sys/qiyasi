@@ -10,6 +10,7 @@ interface ChartColumn {
   id:         string;
   label:      string;
   quiz_field: QuizField;
+  active?:    boolean;
 }
 
 interface ChartRow {
@@ -30,11 +31,26 @@ interface Category {
 const ALL_SIZES = ["XS / 50", "S / 52", "M / 54", "L / 56", "XL / 58", "XXL / 60", "3XL / 62", "4XL / 64"];
 
 const NICHES = [
-  { value: "long_clothing", label: "👗 ملابس طويلة (عبايات، جلابيب)" },
-  { value: "kids",          label: "👶 ملابس أطفال"                  },
-  { value: "sports",        label: "🏃 ملابس رياضية"                 },
-  { value: "other",         label: "📦 أخرى"                        },
+  { value: "abaya",   label: "👗 عبايات وجلابيب (ملابس طويلة)" },
+  { value: "jelaba",  label: "🥻 جلابيات"                      },
+  { value: "dress",   label: "👗 فساتين"                        },
+  { value: "shirt",   label: "👕 قمصان وبلوزات"                },
+  { value: "pants",   label: "👖 بناطيل وتنانير"               },
+  { value: "jacket",  label: "🧥 جاكيتات وصترات"              },
+  { value: "kids",    label: "👶 ملابس أطفال"                  },
+  { value: "other",   label: "📦 أخرى"                         },
 ];
+
+const NICHE_HINTS: Record<string, string> = {
+  abaya:  "الطول هو الأساس — الخوارزمية ستعطيه أولوية قصوى (70-75%)",
+  jelaba: "الطول مهم مع توازن في عرض الصدر والخصر",
+  dress:  "الطول مهم مع مراعاة الصدر والورك",
+  shirt:  "الصدر والكتفين أهم من الطول — الخوارزمية ستركز عليهم",
+  pants:  "الخصر والورك أهم — الطول أقل تأثيراً (20-32%)",
+  jacket: "توازن بين الطول والصدر والكتفين",
+  kids:   "الطول مهم مع وزن الطفل",
+  other:  "أوزان متوازنة بين الطول والعرض",
+};
 
 const DEFAULT_COLS: ChartColumn[] = [
   { id: "h",  label: "الطول (سم)", quiz_field: "height" },
@@ -154,17 +170,23 @@ export default function CategoriesPage() {
 
   function openNew() {
     setEditingCat(null);
-    setCatName(""); setCatTag(""); setCatNiche("long_clothing");
+    setCatName(""); setCatTag(""); setCatNiche("abaya");
     setCols(DEFAULT_COLS); setRows(DEFAULT_ROWS);
     setShowForm(true);
     setTimeout(() => document.getElementById("form-top")?.scrollIntoView({ behavior: "smooth" }), 50);
   }
 
+  const OLD_NICHE_MAP: Record<string, string> = {
+    long_clothing: "abaya",
+    sports:        "other",
+  };
+
   function openEdit(cat: Category) {
     setEditingCat(cat);
     setCatName(cat.name);
     setCatTag(cat.tag || "");
-    setCatNiche(cat.niche || "long_clothing");
+    const mappedNiche = OLD_NICHE_MAP[cat.niche] ?? cat.niche ?? "abaya";
+    setCatNiche(mappedNiche);
     const { cols: c, rows: r } = jsonToChart(cat.size_chart);
     setCols(c); setRows(r);
     setShowForm(true);
@@ -381,13 +403,18 @@ export default function CategoriesPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">نوع النيش</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">نوع الملابس</label>
                 <select
                   value={catNiche} onChange={e => setCatNiche(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-teal-400 bg-white transition"
                 >
                   {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </select>
+                {NICHE_HINTS[catNiche] && (
+                  <p className="text-xs text-teal-700 mt-1.5 bg-teal-50 px-3 py-1.5 rounded-lg">
+                    ⚙️ {NICHE_HINTS[catNiche]}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -461,6 +488,20 @@ export default function CategoriesPage() {
                                 className="text-slate-300 hover:text-red-500 font-bold text-base leading-none transition flex-shrink-0"
                               >✕</button>
                             </div>
+                            {/* Active toggle — only for body measurement columns */}
+                            {["ch", "wa", "hi"].includes(col.id) && (
+                              <label className="flex items-center gap-1 cursor-pointer mt-1">
+                                <input
+                                  type="checkbox"
+                                  checked={col.active !== false}
+                                  onChange={e => updateColumn(col.id, { active: e.target.checked })}
+                                  className="w-3 h-3 accent-teal-600"
+                                />
+                                <span className="text-xs text-slate-500">
+                                  {col.active !== false ? "⚙️ يطابق في الحساب" : "👁 للعرض فقط"}
+                                </span>
+                              </label>
+                            )}
                           </div>
                         </th>
                       ))}
