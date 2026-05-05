@@ -176,6 +176,8 @@ Return ONLY a JSON object in ${lang}:
     message:      parsedAI.message,
     reasoning:    parsedAI.reasoning,
     disclaimer:   disclaimer ?? undefined,
+    garmentType:  result.garmentType,
+    heightFactor: result.heightFactor,
     ...(debug && result.debug ? { debug: result.debug } : {}),
   }, { headers: CORS });
 }

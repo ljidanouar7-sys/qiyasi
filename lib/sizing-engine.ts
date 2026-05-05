@@ -67,6 +67,8 @@ export type SizingResult = {
   disclaimer:       string | null;
   wasLengthWarning: boolean;
   estimatedBody:    BodyMeasurements;
+  garmentType:      string;
+  heightFactor:     number;
   debug?:           DebugInfo;
 };
 
@@ -118,7 +120,12 @@ export const NICHE_TO_GARMENT: Record<string, string> = {
 
 export function normalizeGarmentType(niche?: string | null): string {
   if (!niche) return "abaya";
-  return NICHE_TO_GARMENT[niche] ?? "abaya";
+  const mapped = NICHE_TO_GARMENT[niche];
+  if (!mapped) {
+    console.warn(`[sizing-engine] Unknown niche "${niche}" — defaulting to abaya`);
+    return "abaya";
+  }
+  return mapped;
 }
 
 // ── Fit Preference Shifts ──────────────────────────────────────────────────────
@@ -333,6 +340,7 @@ export function calculateSize(params: {
       recommended: "", recommendedIdx: 0, alternatives: [],
       confidence: 0, explanation: ["Empty size chart"], disclaimer: null,
       wasLengthWarning: false, estimatedBody: { chest: 0, waist: 0, hips: 0 },
+      garmentType: resolvedGarmentType, heightFactor: 0,
     };
   }
 
@@ -411,6 +419,8 @@ export function calculateSize(params: {
     disclaimer,
     wasLengthWarning,
     estimatedBody:  rawBody,
+    garmentType:    resolvedGarmentType,
+    heightFactor,
   };
 
   if (debug && debugScores) {
