@@ -47,7 +47,7 @@ const NICHE_FIELDS: Record<string, string[]> = {
   shirt:  ["ch", "wa", "h"],
   pants:  ["wa", "hi", "h"],
   jacket: ["ch", "wa", "hi", "h"],
-  kids:   ["h", "w", "ch"],
+  kids:   ["h", "ch", "wa"],
   other:  ["h", "ch", "wa"],
 };
 
