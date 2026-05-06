@@ -140,33 +140,6 @@
       q: "كم وزنك؟", hint: "أدخل وزنك بالكيلوغرام.",
       unit: "كغ", min: 35, max: 200, def: 70,
     },
-    {
-      id: "shoulders", type: "cards",
-      q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
-      options: [
-        { v: "narrow",  label: "ضيقة",   imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
-        { v: "average", label: "متوسطة", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
-        { v: "wide",    label: "عريضة",  imgSrc: "q-shoulders.jpg", imgPos: "100%" },
-      ],
-    },
-    {
-      id: "belly", type: "cards",
-      q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
-      options: [
-        { v: "flat",    label: "ضيقة",   imgSrc: "q-belly.jpg", imgPos: "0%"   },
-        { v: "average", label: "متوسطة", imgSrc: "q-belly.jpg", imgPos: "50%"  },
-        { v: "big",     label: "كبيرة",  imgSrc: "q-belly.jpg", imgPos: "100%" },
-      ],
-    },
-    {
-      id: "user_preference", type: "cards",
-      q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
-      options: [
-        { v: "fitted",  label: "مقيد",   imgSrc: "q-fit.jpg", imgPos: "0%"   },
-        { v: "regular", label: "عادي",   imgSrc: "q-fit.jpg", imgPos: "50%"  },
-        { v: "loose",   label: "واسع",   imgSrc: "q-fit.jpg", imgPos: "100%" },
-      ],
-    },
   ];
 
   let step = 0, answers = {};
@@ -569,53 +542,43 @@
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>الخياط الذكي يحلل مقاسك...</p></div>`;
 
     const tag = extractProductTag();
-    console.log("[SSM] submit — tag:", tag, "| answers:", JSON.stringify(answers));
+    console.log("[SSM] submit — tag:", tag, "| height:", answers.height, "| weight:", answers.weight);
 
     if (!tag) {
       console.log("[SSM] No tag found — using BMI fallback");
-      setTimeout(() => showResult(fallbackSize(answers), true), 600);
+      setTimeout(() => showResult(fallbackSize(answers), true, [], 0), 600);
       return;
     }
-
-    const stock_info      = window._ssm_stock || buildStockFromDOM();
-    const lang            = document.documentElement.lang || navigator.language || 'ar';
-    const user_preference = answers.user_preference || "regular";
 
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tag, answers, stock_info, lang, user_preference }),
+      body: JSON.stringify({
+        tag,
+        height: answers.height,
+        weight: answers.weight,
+      }),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         console.log("[SSM] API response:", data);
         if (data && data.size) {
-          if (data.sizeChart) _sizeChart = data.sizeChart;
-          showResult(
-            data.size,
-            false,
-            data.status === "out_of_stock",
-            data.message   || "",
-            data.reasoning || "",
-            data.disclaimer || null
-          );
+          showResult(data.size, false, data.alternatives || [], data.confidence || 0);
         } else {
           console.log("[SSM] API failed — using BMI fallback");
-          showResult(fallbackSize(answers), true, false, "", "", null);
+          showResult(fallbackSize(answers), true, [], 0);
         }
       })
       .catch(err => {
         console.log("[SSM] Error:", err, "— using BMI fallback");
-        showResult(fallbackSize(answers), true, false, "", "", null);
+        showResult(fallbackSize(answers), true, [], 0);
       });
   }
 
-  function showResult(size, isFallback, forceOutOfStock, apiMessage, reasoning, disclaimer) {
-    const outOfStock = forceOutOfStock || isSizeOutOfStock(size);
-    const icon       = outOfStock ? "😔" : "🎉";
-
-    const body   = gid("ssm-body");
-    body.innerHTML = "";
+  function showResult(size, isFallback, alternatives, confidence) {
+    const outOfStock = isSizeOutOfStock(size);
+    const body       = gid("ssm-body");
+    body.innerHTML   = "";
 
     const result = document.createElement("div");
     result.className = "ssm-result";
@@ -623,7 +586,7 @@
     // Icon
     const iconEl = document.createElement("div");
     iconEl.className = "ssm-result-icon";
-    iconEl.textContent = icon;
+    iconEl.textContent = outOfStock ? "😔" : "🎉";
     result.appendChild(iconEl);
 
     // Label
@@ -632,13 +595,34 @@
     labelEl.textContent = "المقاس المناسب لك هو";
     result.appendChild(labelEl);
 
-    // Size — textContent prevents any HTML injection from API
+    // Size
     const sizeEl = document.createElement("div");
     sizeEl.className = "ssm-result-size";
     sizeEl.textContent = size;
     result.appendChild(sizeEl);
 
-    // Stock badge
+    // Confidence badge + alternatives (only from real API, not fallback)
+    if (!isFallback && confidence > 0) {
+      const metaEl = document.createElement("div");
+      metaEl.style.cssText = "display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:14px";
+
+      const confEl = document.createElement("span");
+      const confColor = confidence >= 90 ? "#059669" : confidence >= 70 ? "#d97706" : "#dc2626";
+      const confBg    = confidence >= 90 ? "#d1fae5" : confidence >= 70 ? "#fef3c7" : "#fee2e2";
+      confEl.style.cssText = `background:${confBg};color:${confColor};font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px`;
+      confEl.textContent = `دقة ${confidence}%`;
+      metaEl.appendChild(confEl);
+
+      if (alternatives && alternatives.length > 0) {
+        const altEl = document.createElement("span");
+        altEl.style.cssText = "font-size:12px;color:#6b7280";
+        altEl.textContent = `بدائل: ${alternatives.join(" · ")}`;
+        metaEl.appendChild(altEl);
+      }
+      result.appendChild(metaEl);
+    }
+
+    // Out of stock warning
     if (outOfStock) {
       const badge = document.createElement("div");
       badge.className = "ssm-stock-warn";
@@ -646,46 +630,7 @@
       result.appendChild(badge);
     }
 
-    // Message — use textContent to prevent XSS from API-derived content
-    const msgEl = document.createElement("div");
-    msgEl.className = "ssm-result-msg";
-    if (outOfStock) {
-      msgEl.textContent = apiMessage || `مقاسك هو ${size}، لكنه غير متوفر. تواصل مع المتجر.`;
-    } else if (isFallback) {
-      msgEl.textContent = `مقاس تقديري: ${size} — بناءً على طولك ووزنك.`;
-      const note = document.createElement("span");
-      note.style.cssText = "color:#9ca3af;font-size:12px;display:block;margin-top:4px";
-      note.textContent = "للدقة الكاملة: تأكد أن المنتج عنده رمز فئة في متجرك";
-      msgEl.appendChild(note);
-    } else {
-      msgEl.textContent = apiMessage || `بناءً على إجاباتك، ننصحك بمقاس ${size}.`;
-      if (!apiMessage) {
-        const note = document.createElement("span");
-        note.style.display = "block";
-        note.style.marginTop = "4px";
-        note.textContent = "إذا كنت بين مقاسين، ننصح بالأكبر للراحة.";
-        msgEl.appendChild(note);
-      }
-    }
-    result.appendChild(msgEl);
-
-    // Reasoning — textContent prevents XSS from AI-generated content
-    if (reasoning && !isFallback) {
-      const reasonEl = document.createElement("div");
-      reasonEl.className = "ssm-result-reasoning";
-      reasonEl.textContent = `💡 ${reasoning}`;
-      result.appendChild(reasonEl);
-    }
-
-    // Disclaimer — textContent prevents XSS
-    if (disclaimer) {
-      const discEl = document.createElement("div");
-      discEl.className = "ssm-result-disclaimer";
-      discEl.textContent = `ℹ️ ${disclaimer}`;
-      result.appendChild(discEl);
-    }
-
-    // Restart button — addEventListener instead of inline onclick
+    // Restart button
     const restartBtn = document.createElement("button");
     restartBtn.className = "ssm-restart";
     restartBtn.textContent = "🔄 أعد الحساب";
@@ -693,8 +638,6 @@
     result.appendChild(restartBtn);
 
     body.appendChild(result);
-
-    // Keep global for external use (e.g. auto-restart calls from merchant scripts)
     window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
 
