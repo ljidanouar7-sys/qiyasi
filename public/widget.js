@@ -140,6 +140,33 @@
       q: "كم وزنك؟", hint: "أدخل وزنك بالكيلوغرام.",
       unit: "كغ", min: 35, max: 200, def: 70,
     },
+    {
+      id: "shoulders", type: "cards",
+      q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
+      options: [
+        { v: "narrow",  label: "ضيقة",   imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
+        { v: "average", label: "متوسطة", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
+        { v: "wide",    label: "عريضة",  imgSrc: "q-shoulders.jpg", imgPos: "100%" },
+      ],
+    },
+    {
+      id: "belly", type: "cards",
+      q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
+      options: [
+        { v: "flat",    label: "ضيقة",   imgSrc: "q-belly.jpg", imgPos: "0%"   },
+        { v: "average", label: "متوسطة", imgSrc: "q-belly.jpg", imgPos: "50%"  },
+        { v: "big",     label: "كبيرة",  imgSrc: "q-belly.jpg", imgPos: "100%" },
+      ],
+    },
+    {
+      id: "user_preference", type: "cards",
+      q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
+      options: [
+        { v: "fitted",  label: "مقيد",   imgSrc: "q-fit.jpg", imgPos: "0%"   },
+        { v: "regular", label: "عادي",   imgSrc: "q-fit.jpg", imgPos: "50%"  },
+        { v: "loose",   label: "واسع",   imgSrc: "q-fit.jpg", imgPos: "100%" },
+      ],
+    },
   ];
 
   let step = 0, answers = {};
