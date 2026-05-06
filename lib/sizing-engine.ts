@@ -69,6 +69,7 @@ export type SizingResult = {
   estimatedBody:    BodyMeasurements;
   garmentType:      string;
   heightFactor:     number;
+  isShort?:         boolean;
   debug?:           DebugInfo;
 };
 
@@ -445,4 +446,167 @@ export function calculateSize(params: {
   }
 
   return result;
+}
+
+// ── Deterministic Dual-Strategy Engine ────────────────────────────────────────
+//
+// Abaya/Jelaba: height is the primary anchor.
+//   Result index = MAX(height_idx, weight_idx)  ← "Abaya Floor" rule.
+//   Fine-tune: if estimated chest > garment ch.max at result row → go up one size.
+//
+// Shirt/Dress/Jacket: estimated chest is the primary anchor.
+//   Height is secondary — only sets is_short flag (never upsizes for height).
+//   Weight nudges up if significantly larger than chest-recommended size.
+
+function findBestRowByField(
+  rows: SizeChartRow[],
+  fieldId: string,
+  value: number
+): number {
+  let bestIdx = 0;
+  let bestScore = -1;
+  rows.forEach((row, idx) => {
+    const range = row[fieldId] as Range | undefined;
+    if (!range || typeof range.min !== "number" || typeof range.max !== "number") return;
+    const s = fitScore(value, range);
+    if (s > bestScore) { bestScore = s; bestIdx = idx; }
+  });
+  return bestIdx;
+}
+
+type CalcParams = Parameters<typeof calculateSize>[0];
+
+function emptyDeterministicResult(resolvedNiche: string): SizingResult {
+  return {
+    recommended: "", recommendedIdx: 0, alternatives: [], confidence: 0,
+    explanation: ["Empty size chart"], disclaimer: null, wasLengthWarning: false,
+    estimatedBody: { chest: 0, waist: 0, hips: 0 },
+    garmentType: resolvedNiche, heightFactor: 0,
+  };
+}
+
+function calculateAbayaDeterministic(params: CalcParams, resolvedNiche: string): SizingResult {
+  const { sizeChart, height, weight, shoulders, belly, userPreference, lang } = params;
+  const rows = sizeChart.rows;
+  if (rows.length === 0) return emptyDeterministicResult(resolvedNiche);
+
+  const rawBody   = estimateBody(height, weight);
+  const shaped    = applyBodyShape(rawBody, shoulders, belly);
+  const finalBody = applyFitPreference(shaped, userPreference);
+  const explanation: string[] = [];
+
+  // Step 1: height index (primary)
+  const heightIdx = findBestRowByField(rows, "h", height);
+  explanation.push(`Height ${height}cm → ${rows[heightIdx]?.size ?? "?"} (idx ${heightIdx})`);
+
+  // Step 2: weight index (secondary)
+  const weightIdx = findBestRowByField(rows, "w", weight);
+  explanation.push(`Weight ${weight}kg → ${rows[weightIdx]?.size ?? "?"} (idx ${weightIdx})`);
+
+  // Step 3: Abaya floor rule — never too short
+  let bestIdx = Math.max(heightIdx, weightIdx);
+  if (weightIdx > heightIdx) {
+    explanation.push(`Floor rule: weight idx (${weightIdx}) > height idx (${heightIdx}) → use ${rows[bestIdx]?.size}`);
+  }
+
+  // Step 4: chest fine-tune
+  const hasCh = sizeChart.columns.some(c => c.id === "ch" && c.active !== false);
+  if (hasCh && bestIdx < rows.length - 1) {
+    const garmentCh = (rows[bestIdx]["ch"] as Range)?.max;
+    if (garmentCh && finalBody.chest > garmentCh) {
+      bestIdx = Math.min(bestIdx + 1, rows.length - 1);
+      explanation.push(`Chest fine-tune: estimated ${finalBody.chest}cm > garment ${garmentCh}cm → up to ${rows[bestIdx]?.size}`);
+    }
+  }
+
+  const best        = rows[bestIdx];
+  const heightFactor = GARMENT_FACTORS[resolvedNiche]?.base ?? 0.6;
+  const hRange      = best["h"] as Range | undefined;
+  const confidence  = hRange ? Math.round(fitScore(height, hRange) * 100) : 70;
+
+  const alternatives = ([] as (string | null)[])
+    .concat(bestIdx > 0 ? String(rows[bestIdx - 1].size) : null)
+    .concat(bestIdx < rows.length - 1 ? String(rows[bestIdx + 1].size) : null)
+    .filter((s): s is string => s !== null)
+    .slice(0, 2);
+
+  return {
+    recommended: String(best.size), recommendedIdx: bestIdx,
+    alternatives, confidence, explanation,
+    disclaimer: null, wasLengthWarning: false,
+    estimatedBody: rawBody, garmentType: resolvedNiche, heightFactor,
+  };
+}
+
+function calculateShirtDeterministic(params: CalcParams, resolvedNiche: string): SizingResult {
+  const { sizeChart, height, weight, shoulders, belly, userPreference, lang } = params;
+  const rows = sizeChart.rows;
+  if (rows.length === 0) return emptyDeterministicResult(resolvedNiche);
+
+  const rawBody   = estimateBody(height, weight);
+  const shaped    = applyBodyShape(rawBody, shoulders, belly);
+  const finalBody = applyFitPreference(shaped, userPreference);
+  const explanation: string[] = [];
+
+  explanation.push(`Estimated chest: ${finalBody.chest}cm`);
+
+  // Step 1: chest is primary anchor
+  const hasCh = sizeChart.columns.some(c => c.id === "ch");
+  let bestIdx = hasCh
+    ? findBestRowByField(rows, "ch", finalBody.chest)
+    : findBestRowByField(rows, "w", weight);
+  explanation.push(`Chest → ${rows[bestIdx]?.size ?? "?"} (idx ${bestIdx})`);
+
+  // Step 2: weight nudge (if weight suggests significantly larger size)
+  const weightIdx = findBestRowByField(rows, "w", weight);
+  if (weightIdx > bestIdx + 1) {
+    bestIdx = Math.min(bestIdx + 1, rows.length - 1);
+    explanation.push(`Weight nudge → idx ${bestIdx}`);
+  }
+
+  // Step 3: is_short flag — tall user for chosen chest size (do NOT upsize)
+  const maxHForSize = Number((rows[bestIdx]["h"] as Range)?.max ?? 300);
+  const isShort = height > maxHForSize + 5;
+  if (isShort) {
+    explanation.push(`is_short: height ${height}cm > size max ${maxHForSize}cm`);
+  }
+
+  const best         = rows[bestIdx];
+  const heightFactor = GARMENT_FACTORS[resolvedNiche]?.base ?? 0.3;
+  const chRange      = best["ch"] as Range | undefined;
+  const confidence   = chRange ? Math.round(fitScore(finalBody.chest, chRange) * 100) : 70;
+
+  const alternatives = ([] as (string | null)[])
+    .concat(bestIdx > 0 ? String(rows[bestIdx - 1].size) : null)
+    .concat(bestIdx < rows.length - 1 ? String(rows[bestIdx + 1].size) : null)
+    .filter((s): s is string => s !== null)
+    .slice(0, 2);
+
+  const disclaimer = isShort
+    ? (lang === "Arabic"
+        ? "ملاحظة: طولك أعلى من المعتاد لهذا المقاس — الثوب قد يبدو قصيراً قليلاً"
+        : "Note: you are taller than usual for this size — the garment may appear slightly short")
+    : null;
+
+  return {
+    recommended: String(best.size), recommendedIdx: bestIdx,
+    alternatives, confidence, explanation,
+    disclaimer, wasLengthWarning: isShort,
+    estimatedBody: rawBody, garmentType: resolvedNiche, heightFactor, isShort,
+  };
+}
+
+export function calculateSizeDeterministic(params: CalcParams): SizingResult {
+  const resolvedNiche = normalizeGarmentType(params.garmentType);
+  switch (resolvedNiche) {
+    case "abaya":
+    case "jelaba":
+      return calculateAbayaDeterministic(params, resolvedNiche);
+    case "shirt":
+    case "dress":
+    case "jacket":
+      return calculateShirtDeterministic(params, resolvedNiche);
+    default:
+      return calculateSize(params);
+  }
 }
