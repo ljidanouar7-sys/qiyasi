@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
     const niche     = String(category.niche ?? "");
 
     // ── Cache — Upstash auto-deserializes JSON, so cached may already be an object ──
-    const cacheKey = `size:v3:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${userPreference}`;
+    const cacheKey = `size:v4:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${userPreference}`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       const data = typeof cached === "string" ? JSON.parse(cached) : cached;
