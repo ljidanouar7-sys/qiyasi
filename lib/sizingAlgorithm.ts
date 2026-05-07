@@ -71,8 +71,14 @@ export function calculateSize(
 
   console.log(`[sizing] sizeByHeight="${rows[hIdx].size}" (idx=${hIdx})  sizeByWeight="${rows[wIdx].size}" (idx=${wIdx})`);
 
-  // ── Step B: constraint — take the larger index (satisfies both dimensions) ──
-  const baseIdx  = Math.max(hIdx, wIdx);
+  // ── Step B: base index ────────────────────────────────────────────────────────
+  // Normal gap (≤2): take max — satisfies the binding dimension.
+  // Outlier gap (>2): compromise at ceil((hIdx+wIdx)/2) to avoid over-sizing
+  // a tall-slim or short-heavy body (e.g. h=195 w=65 → XXL would be a tent).
+  const gap     = Math.abs(hIdx - wIdx);
+  const baseIdx = gap > 2
+    ? Math.ceil((hIdx + wIdx) / 2)
+    : Math.max(hIdx, wIdx);
   const baseSize = rows[baseIdx].size;
 
   // ── Step C: body modifiers ──────────────────────────────────────────────────
@@ -80,19 +86,24 @@ export function calculateSize(
   const reasons: string[] = [];
   const { shoulders, belly, userPreference } = mods;
 
-  if (shoulders === "wide" || shoulders === "broad") {
+  // Girth modifier: shoulders + belly are grouped and capped at +1 combined
+  // (prevents the "tent" effect when both are prominent).
+  const broadShoulders = shoulders === "wide" || shoulders === "broad";
+  const prominentBelly = belly === "big" || belly === "prominent";
+  const narrowShoulders = shoulders === "narrow";
+
+  if (broadShoulders || prominentBelly) {
     offset += 1;
-    reasons.push("كتفيك العريضة رفعت المقاس");
-  } else if (shoulders === "narrow") {
+    const girthReasons: string[] = [];
+    if (broadShoulders) girthReasons.push("كتفيك العريضة");
+    if (prominentBelly) girthReasons.push("حجم البطن");
+    reasons.push(`${girthReasons.join(" و")} رفعا المقاس`);
+  } else if (narrowShoulders) {
     offset -= 1;
     reasons.push("كتفيك الضيقة خفضت المقاس");
   }
 
-  if (belly === "big" || belly === "prominent") {
-    offset += 1;
-    reasons.push("حجم البطن رفع المقاس");
-  }
-
+  // Preference modifier — independent of girth
   if (userPreference === "loose" || userPreference === "oversized") {
     offset += 1;
     reasons.push("تفضيلك للمقاس الواسع رفعه");
@@ -126,6 +137,8 @@ export function calculateSize(
   let baseReason: string;
   if (hIdx === wIdx) {
     baseReason = `طولك ووزنك يتفقان على مقاس ${baseSize}`;
+  } else if (gap > 2) {
+    baseReason = `طولك يقترح ${rows[hIdx].size} ووزنك يقترح ${rows[wIdx].size} — الفرق كبير فاعتمدنا مقاساً وسطاً ${baseSize}`;
   } else if (hIdx > wIdx) {
     baseReason = `طولك يستوجب ${rows[hIdx].size} بينما وزنك يقترح ${rows[wIdx].size} — اعتمدنا ${baseSize} لضمان الطول الكافي`;
   } else {
