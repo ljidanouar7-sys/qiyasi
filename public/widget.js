@@ -597,8 +597,8 @@
     console.log("[SSM] submit — tag:", tag, "| h:", answers.height, "w:", answers.weight, "shoulders:", answers.shoulders, "belly:", answers.belly, "pref:", answers.user_preference);
 
     if (!tag) {
-      console.warn("[SSM] No product tag found — cannot calculate size.");
-      showError("تعذّر التعرف على هذا المنتج في النظام. يرجى التواصل مع المتجر.");
+      console.warn("[SSM] No product tag found — closing modal silently.");
+      closeModal();
       return;
     }
 
@@ -617,40 +617,28 @@
       .then(r => {
         if (r.ok) return r.json();
         return r.json()
-          .catch(() => ({ error: String(r.status) }))
+          .catch(() => null)
           .then(errBody => {
             console.error("[SSM] API error", r.status, errBody);
-            return Promise.reject({ status: r.status, body: errBody });
+            return null;
           });
       })
       .then(data => {
         console.log("[SSM] API response:", data);
         if (data && data.size) {
-          showResult(data.size, false, data.alternatives || [], data.confidence || 0);
+          showResult(data.size);
         } else {
-          console.warn("[SSM] API returned empty size — size chart may need to be re-saved.");
-          showError("لم يتم العثور على مقاس مناسب. يرجى التواصل مع المتجر لتحديث جدول المقاسات.");
+          console.warn("[SSM] No size returned — closing modal silently.");
+          closeModal();
         }
       })
       .catch(err => {
-        if (err && err.status) {
-          if (err.status === 403) {
-            showError("هذا المتجر غير مفعّل في النظام. يرجى التواصل مع المتجر.");
-          } else if (err.status === 404) {
-            showError("لم يتم العثور على هذا المنتج في قاعدة البيانات. يرجى التواصل مع المتجر.");
-          } else if (err.status === 429) {
-            showError("تم تجاوز الحد المسموح به من الطلبات. يرجى المحاولة بعد دقيقة.");
-          } else {
-            showError("حدث خطأ في الخادم (" + err.status + "). يرجى المحاولة مجدداً.");
-          }
-        } else {
-          console.error("[SSM] Network error:", err);
-          showError("تعذّر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.");
-        }
+        console.error("[SSM] Network error:", err);
+        closeModal();
       });
   }
 
-  function showResult(size, isFallback, alternatives, confidence) {
+  function showResult(size) {
     const outOfStock = isSizeOutOfStock(size);
     const body       = gid("ssm-body");
     body.innerHTML   = "";
@@ -658,46 +646,21 @@
     const result = document.createElement("div");
     result.className = "ssm-result";
 
-    // Icon
     const iconEl = document.createElement("div");
     iconEl.className = "ssm-result-icon";
     iconEl.textContent = outOfStock ? "😔" : "🎉";
     result.appendChild(iconEl);
 
-    // Label
     const labelEl = document.createElement("div");
     labelEl.className = "ssm-result-label";
     labelEl.textContent = "المقاس المناسب لك هو";
     result.appendChild(labelEl);
 
-    // Size
     const sizeEl = document.createElement("div");
     sizeEl.className = "ssm-result-size";
     sizeEl.textContent = size;
     result.appendChild(sizeEl);
 
-    // Confidence badge + alternatives (only from real API, not fallback)
-    if (!isFallback && confidence > 0) {
-      const metaEl = document.createElement("div");
-      metaEl.style.cssText = "display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:14px";
-
-      const confEl = document.createElement("span");
-      const confColor = confidence >= 90 ? "#059669" : confidence >= 70 ? "#d97706" : "#dc2626";
-      const confBg    = confidence >= 90 ? "#d1fae5" : confidence >= 70 ? "#fef3c7" : "#fee2e2";
-      confEl.style.cssText = `background:${confBg};color:${confColor};font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px`;
-      confEl.textContent = `دقة ${confidence}%`;
-      metaEl.appendChild(confEl);
-
-      if (alternatives && alternatives.length > 0) {
-        const altEl = document.createElement("span");
-        altEl.style.cssText = "font-size:12px;color:#6b7280";
-        altEl.textContent = `بدائل: ${alternatives.join(" · ")}`;
-        metaEl.appendChild(altEl);
-      }
-      result.appendChild(metaEl);
-    }
-
-    // Out of stock warning
     if (outOfStock) {
       const badge = document.createElement("div");
       badge.className = "ssm-stock-warn";
@@ -705,7 +668,6 @@
       result.appendChild(badge);
     }
 
-    // Restart button
     const restartBtn = document.createElement("button");
     restartBtn.className = "ssm-restart";
     restartBtn.textContent = "🔄 أعد الحساب";
