@@ -55,12 +55,16 @@ export async function POST(req: NextRequest) {
   const CORS             = corsHeaders(rawOrigin);
 
   // ── Parse body ─────────────────────────────────────────────────────────────
-  let tag: string, height: number, weight: number;
+  let tag: string, height: number, weight: number,
+      shoulders: string, belly: string, userPreference: string;
   try {
     const body = await req.json();
-    tag    = body.tag;
-    height = Number(body.answers?.height ?? body.height ?? 0);
-    weight = Number(body.answers?.weight ?? body.weight ?? 0);
+    tag            = body.tag;
+    height         = Number(body.answers?.height ?? body.height ?? 0);
+    weight         = Number(body.answers?.weight ?? body.weight ?? 0);
+    shoulders      = String(body.shoulders      ?? body.answers?.shoulders      ?? "");
+    belly          = String(body.belly          ?? body.answers?.belly          ?? "");
+    userPreference = String(body.userPreference ?? body.user_preference ?? body.answers?.userPreference ?? body.answers?.user_preference ?? "");
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
   }
@@ -132,15 +136,15 @@ export async function POST(req: NextRequest) {
   const sizeChart = category.size_chart as SizeChart;
   const niche     = String(category.niche ?? "");
 
-  // ── Cache — niche included so a category niche change invalidates immediately ──
-  const cacheKey = `size:v2:${merchantId}:${tag}:${niche}:${height}:${weight}`;
+  // ── Cache — all inputs included so any change invalidates immediately ────────
+  const cacheKey = `size:v3:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${userPreference}`;
   const cached   = await redis.get(cacheKey);
   if (cached) {
     return NextResponse.json(JSON.parse(cached as string), { headers: CORS });
   }
 
   // ── Calculate ──────────────────────────────────────────────────────────────
-  const result = calculateSize(niche, height, weight, sizeChart);
+  const result = calculateSize(niche, height, weight, sizeChart, { shoulders, belly, userPreference });
 
   log("info", "size_calculated", {
     domain: normalizedOrigin,
@@ -153,6 +157,7 @@ export async function POST(req: NextRequest) {
     size:         result.size,
     confidence:   result.confidence,
     alternatives: result.alternatives,
+    reasoning:    result.reasoning,
   };
 
   await redis.set(cacheKey, JSON.stringify(responseBody), { ex: 3600 });

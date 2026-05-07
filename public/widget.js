@@ -582,8 +582,11 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tag,
-        height: answers.height,
-        weight: answers.weight,
+        height:         answers.height,
+        weight:         answers.weight,
+        shoulders:      answers.shoulders,
+        belly:          answers.belly,
+        userPreference: answers.user_preference,
       }),
     })
       .then(r => r.ok ? r.json() : null)

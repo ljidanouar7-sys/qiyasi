@@ -31,12 +31,16 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
 
   // ── Parse body ─────────────────────────────────────────────────────────────
-  let tag: string, height: number, weight: number;
+  let tag: string, height: number, weight: number,
+      shoulders: string, belly: string, userPreference: string;
   try {
     const body = await req.json();
-    tag    = body.tag;
-    height = Number(body.answers?.height ?? body.height ?? 0);
-    weight = Number(body.answers?.weight ?? body.weight ?? 0);
+    tag            = body.tag;
+    height         = Number(body.answers?.height ?? body.height ?? 0);
+    weight         = Number(body.answers?.weight ?? body.weight ?? 0);
+    shoulders      = String(body.shoulders      ?? body.answers?.shoulders      ?? "");
+    belly          = String(body.belly          ?? body.answers?.belly          ?? "");
+    userPreference = String(body.userPreference ?? body.user_preference ?? body.answers?.userPreference ?? body.answers?.user_preference ?? "");
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
   }
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest) {
   const sizeChart = category.size_chart as SizeChart;
 
   // ── Calculate ──────────────────────────────────────────────────────────────
-  const result = calculateSize(category.niche as string, height, weight, sizeChart);
+  const result = calculateSize(category.niche as string, height, weight, sizeChart, { shoulders, belly, userPreference });
 
   log("info", "size_calculated", {
     tag,
@@ -84,5 +88,6 @@ export async function POST(req: NextRequest) {
     size:         result.size,
     confidence:   result.confidence,
     alternatives: result.alternatives,
+    reasoning:    result.reasoning,
   }, { headers: CORS });
 }

@@ -10,7 +10,8 @@ const ratelimit = makeRatelimit(100, "1 m", "qiyasi_widget");
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { apiKey, height, weight, categoryId } = body;
+  const { apiKey, height, weight, categoryId,
+          shoulders, belly, userPreference, user_preference } = body;
 
   if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
 
@@ -79,11 +80,17 @@ export async function POST(req: NextRequest) {
   const niche     = String(cat.niche ?? "");
 
   // ── Calculate ──────────────────────────────────────────────────
-  const result = calculateSize(niche, h, w, sizeChart);
+  const mods = {
+    shoulders:      String(shoulders      ?? ""),
+    belly:          String(belly          ?? ""),
+    userPreference: String(userPreference ?? user_preference ?? ""),
+  };
+  const result = calculateSize(niche, h, w, sizeChart, mods);
 
   return NextResponse.json({
     size:         result.size,
     confidence:   result.confidence,
     alternatives: result.alternatives,
+    reasoning:    result.reasoning,
   });
 }
