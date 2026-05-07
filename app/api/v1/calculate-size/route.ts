@@ -130,16 +130,17 @@ export async function POST(req: NextRequest) {
   }
 
   const sizeChart = category.size_chart as SizeChart;
+  const niche     = String(category.niche ?? "");
 
-  // ── Cache ──────────────────────────────────────────────────────────────────
-  const cacheKey = `size:v2:${merchantId}:${tag}:${height}:${weight}`;
+  // ── Cache — niche included so a category niche change invalidates immediately ──
+  const cacheKey = `size:v2:${merchantId}:${tag}:${niche}:${height}:${weight}`;
   const cached   = await redis.get(cacheKey);
   if (cached) {
     return NextResponse.json(JSON.parse(cached as string), { headers: CORS });
   }
 
   // ── Calculate ──────────────────────────────────────────────────────────────
-  const result = calculateSize(category.niche as string, height, weight, sizeChart);
+  const result = calculateSize(niche, height, weight, sizeChart);
 
   log("info", "size_calculated", {
     domain: normalizedOrigin,
