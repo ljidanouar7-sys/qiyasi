@@ -614,7 +614,15 @@
         userPreference: answers.user_preference,
       }),
     })
-      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(r => {
+        if (r.ok) return r.json();
+        return r.json()
+          .catch(() => ({ error: String(r.status) }))
+          .then(errBody => {
+            console.error("[SSM] API error", r.status, errBody);
+            return Promise.reject({ status: r.status, body: errBody });
+          });
+      })
       .then(data => {
         console.log("[SSM] API response:", data);
         if (data && data.size) {
@@ -625,8 +633,20 @@
         }
       })
       .catch(err => {
-        console.error("[SSM] API error:", err);
-        showError("حدث خطأ أثناء الاتصال. يرجى التحقق من اتصالك والمحاولة مجدداً.");
+        if (err && err.status) {
+          if (err.status === 403) {
+            showError("هذا المتجر غير مفعّل في النظام. يرجى التواصل مع المتجر.");
+          } else if (err.status === 404) {
+            showError("لم يتم العثور على هذا المنتج في قاعدة البيانات. يرجى التواصل مع المتجر.");
+          } else if (err.status === 429) {
+            showError("تم تجاوز الحد المسموح به من الطلبات. يرجى المحاولة بعد دقيقة.");
+          } else {
+            showError("حدث خطأ في الخادم (" + err.status + "). يرجى المحاولة مجدداً.");
+          }
+        } else {
+          console.error("[SSM] Network error:", err);
+          showError("تعذّر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.");
+        }
       });
   }
 
