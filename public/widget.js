@@ -565,15 +565,40 @@
     },
   };
 
+  function showError(msg) {
+    const body = gid("ssm-body");
+    body.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "text-align:center;padding:30px 20px";
+
+    const icon = document.createElement("div");
+    icon.style.cssText = "font-size:40px;margin-bottom:12px";
+    icon.textContent = "⚠️";
+
+    const msgEl = document.createElement("div");
+    msgEl.style.cssText = "font-size:15px;color:#374151;line-height:1.7;direction:rtl;margin-bottom:20px";
+    msgEl.textContent = msg;
+
+    const btn = document.createElement("button");
+    btn.className = "ssm-restart";
+    btn.textContent = "🔄 أعد المحاولة";
+    btn.addEventListener("click", () => { step = 0; answers = {}; render(); });
+
+    wrap.appendChild(icon);
+    wrap.appendChild(msgEl);
+    wrap.appendChild(btn);
+    body.appendChild(wrap);
+  }
+
   function submit() {
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>الخياط الذكي يحلل مقاسك...</p></div>`;
 
     const tag = extractProductTag();
-    console.log("[SSM] submit — tag:", tag, "| height:", answers.height, "| weight:", answers.weight);
+    console.log("[SSM] submit — tag:", tag, "| h:", answers.height, "w:", answers.weight, "shoulders:", answers.shoulders, "belly:", answers.belly, "pref:", answers.user_preference);
 
     if (!tag) {
-      console.log("[SSM] No tag found — using BMI fallback");
-      setTimeout(() => showResult(fallbackSize(answers), true, [], 0), 600);
+      console.warn("[SSM] No product tag found — cannot calculate size.");
+      showError("تعذّر التعرف على هذا المنتج في النظام. يرجى التواصل مع المتجر.");
       return;
     }
 
@@ -589,19 +614,19 @@
         userPreference: answers.user_preference,
       }),
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
       .then(data => {
         console.log("[SSM] API response:", data);
         if (data && data.size) {
           showResult(data.size, false, data.alternatives || [], data.confidence || 0);
         } else {
-          console.log("[SSM] API failed — using BMI fallback");
-          showResult(fallbackSize(answers), true, [], 0);
+          console.warn("[SSM] API returned empty size — size chart may need to be re-saved.");
+          showError("لم يتم العثور على مقاس مناسب. يرجى التواصل مع المتجر لتحديث جدول المقاسات.");
         }
       })
       .catch(err => {
-        console.log("[SSM] Error:", err, "— using BMI fallback");
-        showResult(fallbackSize(answers), true, [], 0);
+        console.error("[SSM] API error:", err);
+        showError("حدث خطأ أثناء الاتصال. يرجى التحقق من اتصالك والمحاولة مجدداً.");
       });
   }
 
