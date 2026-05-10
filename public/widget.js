@@ -65,9 +65,7 @@
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
 #ssm-figure-wrap{display:flex;gap:14px;align-items:flex-start;margin-bottom:8px}
 #ssm-fig-body-col{position:relative;width:42%;flex-shrink:0;background:#f8fafc;border-radius:12px;overflow:hidden;align-self:stretch;min-height:220px}
-.ssm-body-img-base{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center top;display:block;pointer-events:none}
-.ssm-fig-zone{position:absolute;left:0;right:0;overflow:hidden;transform-origin:center center;transition:transform .12s ease-out}
-.ssm-fig-zone img{position:absolute;left:0;width:100%;object-fit:cover;object-position:center top;pointer-events:none;display:block}
+#ssm-body-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
 #ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:10px;direction:rtl;min-width:0;justify-content:space-between}
 .ssm-slider-row{display:flex;flex-direction:column;gap:4px}
 .ssm-slider-label{display:flex;justify-content:space-between;align-items:center}
@@ -184,17 +182,54 @@
     answers.shoulder_offset = sh < bu - 5 ? -2 : sh > bu + 5 ? 2 : 0;
   }
 
+  // ── Body morph zones (module scope — shared by drawMorphedBody + renderFigureStep) ──
+  const ZONES = [
+    { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', topPct: 0.20, hPct: 0.12 },
+    { id: 'bust',     label: 'الصدر', color: '#0d9488', topPct: 0.32, hPct: 0.13 },
+    { id: 'waist',    label: 'الخصر', color: '#f59e0b', topPct: 0.45, hPct: 0.10 },
+    { id: 'hip',      label: 'الورك', color: '#ef4444', topPct: 0.55, hPct: 0.14 },
+  ];
+  let INITS = {};
+
+  function drawMorphedBody(canvas, img, cw, ch, dpr) {
+    if (!img || !img.complete || !img.naturalWidth) return;
+    dpr = dpr || 1;
+    const ctx  = canvas.getContext('2d');
+    const imgW = img.naturalWidth;
+    const imgH = img.naturalHeight;
+    const N    = 60;
+    ctx.clearRect(0, 0, cw, ch);
+    for (let i = 0; i < N; i++) {
+      const t = (i + 0.5) / N;
+      let totalExpansion = 0;
+      for (const z of ZONES) {
+        const f      = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
+        const center = z.topPct + z.hPct / 2;
+        const sigma  = z.hPct / 2.5;
+        const diff   = t - center;
+        totalExpansion += (f - 1) * Math.exp(-(diff * diff) / (2 * sigma * sigma));
+      }
+      const scale = 1 + totalExpansion;
+      const srcY1 = Math.floor((i / N)       * imgH);
+      const srcH  = Math.max(1, Math.floor(((i + 1) / N) * imgH) - srcY1);
+      const dstY1 = Math.floor((i / N)       * ch);
+      const dstH  = Math.max(1, Math.floor(((i + 1) / N) * ch) - dstY1);
+      const dstW  = cw * scale;
+      const dstX  = (cw - dstW) / 2;
+      ctx.drawImage(img, 0, srcY1, imgW, srcH, dstX, dstY1, dstW, dstH);
+    }
+  }
+
   // ── Render figure step ──
   function renderFigureStep(body) {
     if (!figureState) _initFigureState();
 
-    // topPct / hPct = fraction of image height for each morph zone
-    const ZONES = [
-      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', topPct: 0.20, hPct: 0.12 },
-      { id: 'bust',     label: 'الصدر', color: '#0d9488', topPct: 0.32, hPct: 0.13 },
-      { id: 'waist',    label: 'الخصر', color: '#f59e0b', topPct: 0.45, hPct: 0.10 },
-      { id: 'hip',      label: 'الورك', color: '#ef4444', topPct: 0.55, hPct: 0.14 },
-    ];
+    INITS = {
+      shoulder: figureState._initShoulder,
+      bust:     figureState._initBust,
+      waist:    figureState._initWaist,
+      hip:      figureState._initHip,
+    };
 
     const wrap = document.createElement('div');
     wrap.id = 'ssm-figure-wrap';
@@ -206,55 +241,24 @@
     const imgFile = answers.gender === 'male' ? 'ssm_body_male.jpeg' : 'ssm_body_female.jpeg';
     const imgSrc  = `${API_BASE}/${imgFile}`;
 
-    // Base image — always visible, unscaled, fills the column
-    const baseImg = document.createElement('img');
-    baseImg.className = 'ssm-body-img-base';
-    baseImg.src = imgSrc;
-    baseImg.alt = '';
-    imgCol.appendChild(baseImg);
-
-    // Zone overlay divs — each clips & scales a horizontal strip of the image
-    const INITS = {
-      shoulder: figureState._initShoulder,
-      bust:     figureState._initBust,
-      waist:    figureState._initWaist,
-      hip:      figureState._initHip,
-    };
-    const zoneEls = {};
-
-    for (const z of ZONES) {
-      const zone = document.createElement('div');
-      zone.className = 'ssm-fig-zone';
-      zone.style.top    = (z.topPct * 100).toFixed(1) + '%';
-      zone.style.height = (z.hPct  * 100).toFixed(1) + '%';
-
-      // Inner image: positioned so the correct slice of the original image
-      // is visible through the zone's overflow:hidden clip.
-      // top    = -(zoneTop / zoneHeight) * 100%  of zone-div height
-      // height = (1 / zoneHeight) * 100%          of zone-div height
-      const zimg = document.createElement('img');
-      zimg.src = imgSrc;
-      zimg.alt = '';
-      zimg.style.top    = (-(z.topPct / z.hPct) * 100).toFixed(1) + '%';
-      zimg.style.height = (100 / z.hPct).toFixed(1) + '%';
-
-      zone.appendChild(zimg);
-      imgCol.appendChild(zone);
-      zoneEls[z.id] = zone;
-    }
-
+    const canvas = document.createElement('canvas');
+    canvas.id = 'ssm-body-canvas';
+    imgCol.appendChild(canvas);
     wrap.appendChild(imgCol);
+
+    let _bodyImg = null, _canvasReady = false;
+    let _dpr = 1, _cw = 160, _ch = 280;
+    function _attemptDraw() {
+      if (_bodyImg && _canvasReady) drawMorphedBody(canvas, _bodyImg, _cw, _ch, _dpr);
+    }
+    const bodyImg = new Image();
+    bodyImg.crossOrigin = 'anonymous';
+    bodyImg.src = imgSrc;
+    bodyImg.onload = () => { _bodyImg = bodyImg; _attemptDraw(); };
 
     // ── Sliders column (second in DOM → LEFT side in RTL flex) ──
     const slidersCol = document.createElement('div');
     slidersCol.id = 'ssm-fig-sliders';
-
-    function updateZones() {
-      for (const z of ZONES) {
-        const f = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
-        zoneEls[z.id].style.transform = `scaleX(${f.toFixed(3)})`;
-      }
-    }
 
     for (const z of ZONES) {
       const row = document.createElement('div');
@@ -300,7 +304,7 @@
           sl.value = String(c);
           ve.textContent = c + ' سم';
           _updateFigureAnswers();
-          updateZones();
+          drawMorphedBody(canvas, _bodyImg, _cw, _ch, _dpr);
         }
         btnM.addEventListener('click', () => setVal(figureState[zid] - 1));
         btnP.addEventListener('click', () => setVal(figureState[zid] + 1));
@@ -315,8 +319,18 @@
     }
 
     wrap.appendChild(slidersCol);
-    updateZones();
     body.appendChild(wrap);
+
+    requestAnimationFrame(() => {
+      _dpr = window.devicePixelRatio || 1;
+      _cw  = imgCol.offsetWidth  || 160;
+      _ch  = imgCol.offsetHeight || 280;
+      canvas.width  = Math.round(_cw * _dpr);
+      canvas.height = Math.round(_ch * _dpr);
+      canvas.getContext('2d').scale(_dpr, _dpr);
+      _canvasReady = true;
+      _attemptDraw();
+    });
   }
 
   // ======= Helpers =======
