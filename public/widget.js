@@ -63,9 +63,11 @@
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
-#ssm-figure-wrap{display:flex;gap:14px;height:250px;margin-bottom:8px}
-#ssm-fig-body-col{width:38%;flex-shrink:0;background:#f8fafc;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-#ssm-fig-body-col svg{display:block;height:100%;width:auto}
+#ssm-figure-wrap{display:flex;gap:14px;align-items:flex-start;margin-bottom:8px}
+#ssm-fig-body-col{position:relative;width:42%;flex-shrink:0;background:#f8fafc;border-radius:12px;overflow:hidden;align-self:stretch;min-height:220px}
+.ssm-body-img-base{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center top;display:block;pointer-events:none}
+.ssm-fig-zone{position:absolute;left:0;right:0;overflow:hidden;transform-origin:center center;transition:transform .12s ease-out}
+.ssm-fig-zone img{position:absolute;left:0;width:100%;object-fit:cover;object-position:center top;pointer-events:none;display:block}
 #ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:10px;direction:rtl;min-width:0;justify-content:space-between}
 .ssm-slider-row{display:flex;flex-direction:column;gap:4px}
 .ssm-slider-label{display:flex;justify-content:space-between;align-items:center}
@@ -159,71 +161,6 @@
   let step = 0, answers = {}, figureState = null;
   let _sizeChart = null, _merchantTags = [];
 
-  // ── SVG body path builder ──
-  // Generates a smooth closed body silhouette path.
-  // sh/bu/wa/hi are scale factors (1.0 = default, clamped 0.7–1.4).
-  function buildBodyPath(gender, sh, bu, wa, hi) {
-    const cx = 60;
-    const cl = v => Math.max(0.7, Math.min(1.4, v));
-    sh = cl(sh); bu = cl(bu); wa = cl(wa); hi = cl(hi);
-
-    function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
-
-    // Scale factor at a given Y — zones blend smoothly into each other
-    function sc(y) {
-      if (y <= 38)  return 1;
-      if (y <= 60)  return sh;
-      if (y <= 72)  return lerp(sh, bu, (y - 60) / 12);
-      if (y <= 86)  return bu;
-      if (y <= 97)  return lerp(bu, wa, (y - 86) / 11);
-      if (y <= 110) return wa;
-      if (y <= 124) return lerp(wa, hi, (y - 110) / 14);
-      if (y <= 138) return hi;
-      return 1;
-    }
-
-    // [y, base right half-width]
-    const F = [ // female — hourglass
-      [28,5.5],[38,5],[48,27],[60,19],[72,27],[86,22],
-      [97,18],[110,20],[124,30],[138,27],
-      [152,15],[170,13],[200,10],[224,8],[240,6.5],[252,9.5],
-    ];
-    const M = [ // male — V-shape
-      [28,6],[38,6],[48,34],[60,27],[72,28],[86,27],
-      [97,24],[110,24],[124,26],[138,23],
-      [152,18],[170,16],[200,13],[224,10],[240,8],[252,11],
-    ];
-    const slices = gender === 'male' ? M : F;
-
-    // Apply zone scale to each slice
-    const right = slices.map(([y, hw]) => [+(cx + hw * sc(y)).toFixed(2), y]);
-    const left  = slices.slice().reverse().map(([y, hw]) => [+(cx - hw * sc(y)).toFixed(2), y]);
-
-    // Catmull-Rom → cubic bezier segments (produces smooth organic curves)
-    function crSegs(pts) {
-      return pts.slice(0, -1).map((_, i) => {
-        const p0 = pts[Math.max(0, i - 1)];
-        const p1 = pts[i];
-        const p2 = pts[i + 1];
-        const p3 = pts[Math.min(pts.length - 1, i + 2)];
-        return [
-          +(p1[0] + (p2[0] - p0[0]) / 6).toFixed(2),
-          +(p1[1] + (p2[1] - p0[1]) / 6).toFixed(2),
-          +(p2[0] - (p3[0] - p1[0]) / 6).toFixed(2),
-          +(p2[1] - (p3[1] - p1[1]) / 6).toFixed(2),
-          p2[0], p2[1],
-        ];
-      });
-    }
-
-    function segsToD(segs) {
-      return segs.map(([x1,y1,x2,y2,ex,ey]) => `C${x1},${y1} ${x2},${y2} ${ex},${ey}`).join(' ');
-    }
-
-    const r0 = right[0], l0 = left[0];
-    return `M${r0[0]},${r0[1]} ${segsToD(crSegs(right))} L${l0[0]},${l0[1]} ${segsToD(crSegs(left))} Z`;
-  }
-
   // ── Figure state ──
   function _initFigureState() {
     const h  = answers.height || 165;
@@ -251,63 +188,73 @@
   function renderFigureStep(body) {
     if (!figureState) _initFigureState();
 
+    // topPct / hPct = fraction of image height for each morph zone
     const ZONES = [
-      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6' },
-      { id: 'bust',     label: 'الصدر', color: '#0d9488' },
-      { id: 'waist',    label: 'الخصر', color: '#f59e0b' },
-      { id: 'hip',      label: 'الورك', color: '#ef4444' },
+      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', topPct: 0.20, hPct: 0.12 },
+      { id: 'bust',     label: 'الصدر', color: '#0d9488', topPct: 0.32, hPct: 0.13 },
+      { id: 'waist',    label: 'الخصر', color: '#f59e0b', topPct: 0.45, hPct: 0.10 },
+      { id: 'hip',      label: 'الورك', color: '#ef4444', topPct: 0.55, hPct: 0.14 },
     ];
 
     const wrap = document.createElement('div');
     wrap.id = 'ssm-figure-wrap';
 
-    // ── Right side: SVG body silhouette ──
-    const bodyCol = document.createElement('div');
-    bodyCol.id = 'ssm-fig-body-col';
+    // ── Image column (first in DOM → RIGHT side in RTL flex) ──
+    const imgCol = document.createElement('div');
+    imgCol.id = 'ssm-fig-body-col';
 
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', '0 0 120 275');
-    svg.setAttribute('width', '120');
-    svg.setAttribute('height', '275');
+    const imgFile = answers.gender === 'male' ? 'ssm_body_male.jpeg' : 'ssm_body_female.jpeg';
+    const imgSrc  = `${API_BASE}/${imgFile}`;
 
-    // Head (fixed, does not morph)
-    const head = document.createElementNS(ns, 'ellipse');
-    head.setAttribute('cx', '60');
-    head.setAttribute('cy', '13');
-    head.setAttribute('rx', '11');
-    head.setAttribute('ry', '14');
-    head.setAttribute('fill', '#cbd5e1');
-    svg.appendChild(head);
+    // Base image — always visible, unscaled, fills the column
+    const baseImg = document.createElement('img');
+    baseImg.className = 'ssm-body-img-base';
+    baseImg.src = imgSrc;
+    baseImg.alt = '';
+    imgCol.appendChild(baseImg);
 
-    // Body silhouette (morphs with sliders)
-    const bodyPath = document.createElementNS(ns, 'path');
-    bodyPath.setAttribute('fill', '#d1d5db');
-
+    // Zone overlay divs — each clips & scales a horizontal strip of the image
     const INITS = {
       shoulder: figureState._initShoulder,
       bust:     figureState._initBust,
       waist:    figureState._initWaist,
       hip:      figureState._initHip,
     };
+    const zoneEls = {};
 
-    function refreshBody() {
-      const sh = figureState.shoulder / INITS.shoulder;
-      const bu = figureState.bust     / INITS.bust;
-      const wa = figureState.waist    / INITS.waist;
-      const hi = figureState.hip      / INITS.hip;
-      bodyPath.setAttribute('d', buildBodyPath(answers.gender || 'female', sh, bu, wa, hi));
+    for (const z of ZONES) {
+      const zone = document.createElement('div');
+      zone.className = 'ssm-fig-zone';
+      zone.style.top    = (z.topPct * 100).toFixed(1) + '%';
+      zone.style.height = (z.hPct  * 100).toFixed(1) + '%';
+
+      // Inner image: positioned so the correct slice of the original image
+      // is visible through the zone's overflow:hidden clip.
+      // top    = -(zoneTop / zoneHeight) * 100%  of zone-div height
+      // height = (1 / zoneHeight) * 100%          of zone-div height
+      const zimg = document.createElement('img');
+      zimg.src = imgSrc;
+      zimg.alt = '';
+      zimg.style.top    = (-(z.topPct / z.hPct) * 100).toFixed(1) + '%';
+      zimg.style.height = (100 / z.hPct).toFixed(1) + '%';
+
+      zone.appendChild(zimg);
+      imgCol.appendChild(zone);
+      zoneEls[z.id] = zone;
     }
 
-    refreshBody();
-    svg.appendChild(bodyPath);
-    bodyCol.appendChild(svg);
-    // Body col goes first in DOM → in RTL flex it appears on the RIGHT visually
-    wrap.appendChild(bodyCol);
+    wrap.appendChild(imgCol);
 
-    // ── Left side: 4 sliders ──
+    // ── Sliders column (second in DOM → LEFT side in RTL flex) ──
     const slidersCol = document.createElement('div');
     slidersCol.id = 'ssm-fig-sliders';
+
+    function updateZones() {
+      for (const z of ZONES) {
+        const f = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
+        zoneEls[z.id].style.transform = `scaleX(${f.toFixed(3)})`;
+      }
+    }
 
     for (const z of ZONES) {
       const row = document.createElement('div');
@@ -346,7 +293,6 @@
       const btnP = document.createElement('button');
       btnP.type = 'button'; btnP.textContent = '+';
 
-      // IIFE to capture zid/sl/ve correctly per iteration
       (function(zid, sl, ve) {
         function setVal(v) {
           const c = Math.max(60, Math.min(150, Math.round(v)));
@@ -354,7 +300,7 @@
           sl.value = String(c);
           ve.textContent = c + ' سم';
           _updateFigureAnswers();
-          refreshBody();
+          updateZones();
         }
         btnM.addEventListener('click', () => setVal(figureState[zid] - 1));
         btnP.addEventListener('click', () => setVal(figureState[zid] + 1));
@@ -369,6 +315,7 @@
     }
 
     wrap.appendChild(slidersCol);
+    updateZones();
     body.appendChild(wrap);
   }
 
