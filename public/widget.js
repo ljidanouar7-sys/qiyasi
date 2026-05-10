@@ -1,18 +1,15 @@
 (function () {
-  // Detect the API origin from the script tag — works even when currentScript is null
-  // (e.g. Salla or any platform that loads scripts dynamically via JS)
   const API_BASE = (() => {
     if (document.currentScript && document.currentScript.src) {
       return new URL(document.currentScript.src).origin;
     }
-    // Fallback: scan all loaded script tags for widget.js
     const all = document.querySelectorAll('script[src]');
     for (const s of all) {
       if (s.src && (s.src.includes('/widget.js') || s.src.includes('qiyasi'))) {
         try { return new URL(s.src).origin; } catch {}
       }
     }
-    console.warn('[SSM] Could not detect API origin — defaulting to current page origin. Button may not work.');
+    console.warn('[SSM] Could not detect API origin — defaulting to current page origin.');
     return window.location.origin;
   })();
 
@@ -32,21 +29,17 @@
 #ssm-close-btn:hover{background:rgba(255,255,255,.35)}
 .ssm-progress-wrap{display:flex;align-items:center;gap:10px}
 .ssm-progress-bar{flex:1;background:rgba(255,255,255,.3);border-radius:99px;height:5px}
-.ssm-progress-fill{background:#fff;height:5px;border-radius:99px}
+.ssm-progress-fill{background:#fff;height:5px;border-radius:99px;transition:width .3s}
 .ssm-step-count{font-size:12px;opacity:.85;white-space:nowrap}
 .ssm-body{padding:24px;direction:rtl}
 .ssm-question{font-size:19px;font-weight:700;color:var(--ssm-text,#000000);margin-bottom:6px;line-height:1.4}
 .ssm-hint{font-size:13px;color:#6b7280;margin-bottom:22px}
 .ssm-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
-.ssm-card{flex:1;min-width:120px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;background:#fafafa}
-.ssm-card.ssm-card-emoji{min-width:90px;max-width:130px}
-.ssm-card.ssm-card-img{min-width:110px;max-width:170px;padding:10px 8px 8px;}
+.ssm-card{flex:1;min-width:100px;max-width:145px;border:2px solid #e5e7eb;border-radius:14px;padding:16px 10px 12px;cursor:pointer;text-align:center;background:#fafafa}
 .ssm-card:hover{border-color:var(--ssm-c);background:var(--ssm-cl)}
 .ssm-card.active{border-color:var(--ssm-c);background:var(--ssm-cl);box-shadow:0 0 0 3px var(--ssm-cb)}
-.ssm-card svg{display:block;margin:0 auto 10px}
 .ssm-card .card-emoji{font-size:2.6rem;line-height:1;margin:0 auto 10px;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .ssm-card .card-label{font-size:13px;font-weight:700;color:var(--ssm-text,#000000)}
-.ssm-card .card-sub{font-size:11px;color:#6b7280;margin-top:3px}
 .ssm-number-group{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:20px}
 .ssm-num-btn{width:44px;height:44px;border-radius:50%;border:2px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
 .ssm-num-btn:hover{background:var(--ssm-c);color:#fff}
@@ -63,41 +56,39 @@
 .ssm-result-label{font-size:15px;color:#6b7280;margin-bottom:8px}
 .ssm-result-size{font-size:72px;font-weight:900;color:var(--ssm-c);line-height:1;margin-bottom:16px}
 .ssm-result-msg{font-size:14px;color:#374151;line-height:1.6;margin-bottom:12px}
-.ssm-result-reasoning{font-size:12px;color:#6b7280;background:#f9fafb;border-radius:8px;padding:8px 12px;margin-bottom:16px;line-height:1.6;text-align:right;direction:rtl}
-.ssm-result-disclaimer{font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:8px 12px;border-radius:8px;margin-bottom:16px;direction:rtl;text-align:right}
+.ssm-result-alts{font-size:13px;color:#6b7280;margin-bottom:12px}
 .ssm-stock-warn{display:inline-block;background:#fff3cd;border:1px solid #ffc107;color:#856404;font-size:13px;font-weight:700;padding:8px 16px;border-radius:10px;margin-bottom:16px}
 .ssm-restart{background:#f3f4f6;border:none;padding:10px 24px;border-radius:10px;cursor:pointer;font-size:14px;color:#374151}
 .ssm-restart:hover{background:#e5e7eb}
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
+#ssm-figure-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:8px}
+.ssm-fig-vals{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:216px;direction:rtl}
+.ssm-fig-val{font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;background:#f8fafc;display:flex;justify-content:space-between}
   `;
   document.head.appendChild(style);
 
-  // ======= White mode (no brand color found) =======
+  // ======= Brand color =======
   function applyWhiteMode() {
-    const root = document.documentElement;
-    root.style.setProperty('--ssm-c',    '#6b7280');
-    root.style.setProperty('--ssm-cd',   '#4b5563');
-    root.style.setProperty('--ssm-cl',   '#f3f4f6');
-    root.style.setProperty('--ssm-cb',   '#d1d5db');
-    root.style.setProperty('--ssm-text', '#111827');
+    const r = document.documentElement;
+    r.style.setProperty('--ssm-c',    '#6b7280');
+    r.style.setProperty('--ssm-cd',   '#4b5563');
+    r.style.setProperty('--ssm-cl',   '#f3f4f6');
+    r.style.setProperty('--ssm-cb',   '#d1d5db');
+    r.style.setProperty('--ssm-text', '#111827');
   }
-
-  // Returns {r,g,b} if element has a valid brand color, else null
   function extractColor(el) {
     try {
       const bg = window.getComputedStyle(el).backgroundColor;
       if (!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') return null;
-      const m = bg.match(/\d+/g);
-      if (!m) return null;
+      const m = bg.match(/\d+/g); if (!m) return null;
       const [r, g, b] = m.map(Number);
-      if (r > 240 && g > 240 && b > 240) return null; // white
-      if (r < 30  && g < 30  && b < 30)  return null; // black
+      if (r > 240 && g > 240 && b > 240) return null;
+      if (r < 30  && g < 30  && b < 30)  return null;
       return { r, g, b };
-    } catch(e) { return null; }
+    } catch { return null; }
   }
-
   function applyColor({ r, g, b }) {
     const dark   = v => Math.max(0,   Math.round(v * 0.8));
     const light  = v => Math.min(255, Math.round(255 - (255 - v) * 0.12));
@@ -108,28 +99,28 @@
     root.style.setProperty('--ssm-cl', `rgb(${light(r)},${light(g)},${light(b)})`);
     root.style.setProperty('--ssm-cb', `rgb(${border(r)},${border(g)},${border(b)})`);
   }
-
-  // ======= Auto-detect brand color =======
   function applyBrandColor(cartBtn) {
     try {
-      // 1. Try the cart button itself
       const c = extractColor(cartBtn);
       if (c) { applyColor(c); return; }
-
-      // 2. Fallback: scan all buttons/links for a colored one
       for (const el of document.querySelectorAll('button,[role="button"],a')) {
         const fc = extractColor(el);
         if (fc) { applyColor(fc); return; }
       }
-
-      // 3. Nothing found → white mode
       applyWhiteMode();
-    } catch(e) { applyWhiteMode(); }
+    } catch { applyWhiteMode(); }
   }
 
-
-  // ======= Fixed quiz steps =======
+  // ======= Quiz steps =======
   const STEPS = [
+    {
+      id: "gender", type: "cards",
+      q: "ما جنسك؟", hint: "يؤثر على شكل الجسم في الخطوة التالية.",
+      options: [
+        { v: "female", icon: "👩", label: "أنثى" },
+        { v: "male",   icon: "👨", label: "ذكر"  },
+      ],
+    },
     {
       id: "height", type: "number",
       q: "كم طولك؟", hint: "أدخل طولك بالسنتيمتر.",
@@ -141,65 +132,198 @@
       unit: "كغ", min: 35, max: 200, def: 70,
     },
     {
-      id: "shoulders", type: "cards",
-      q: "ما شكل كتفيك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
-      options: [
-        { v: "narrow",  label: "ضيقة",   imgSrc: "q-shoulders.jpg", imgPos: "0%"   },
-        { v: "average", label: "متوسطة", imgSrc: "q-shoulders.jpg", imgPos: "50%"  },
-        { v: "wide",    label: "عريضة",  imgSrc: "q-shoulders.jpg", imgPos: "100%" },
-      ],
+      id: "figure", type: "figure",
+      q: "حدد قياساتك", hint: "اسحب أطراف كل خط لضبط محيط الجسم بالسنتيمتر.",
     },
     {
-      id: "belly", type: "cards",
-      q: "ما شكل بطنك؟", hint: "إذا كنت مترددًا، اختر متوسطة.",
-      options: [
-        { v: "flat",    label: "ضيقة",   imgSrc: "q-belly.jpg", imgPos: "0%"   },
-        { v: "average", label: "متوسطة", imgSrc: "q-belly.jpg", imgPos: "50%"  },
-        { v: "big",     label: "كبيرة",  imgSrc: "q-belly.jpg", imgPos: "100%" },
-      ],
-    },
-    {
-      id: "user_preference", type: "cards",
+      id: "preference", type: "cards",
       q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
       options: [
-        { v: "fitted",  label: "مقيد",   imgSrc: "q-fit.jpg", imgPos: "0%"   },
-        { v: "regular", label: "عادي",   imgSrc: "q-fit.jpg", imgPos: "50%"  },
-        { v: "loose",   label: "واسع",   imgSrc: "q-fit.jpg", imgPos: "100%" },
+        { v: "slim",    icon: "📏", label: "ضيق"  },
+        { v: "regular", icon: "👌", label: "عادي" },
+        { v: "loose",   icon: "💨", label: "واسع" },
       ],
     },
   ];
 
-  let step = 0, answers = {};
-  let _sizeChart = null;
-  let _merchantTags = [];
+  // ── Module state ──
+  let step = 0, answers = {}, figureState = null, _drag = null;
+  let _sizeChart = null, _merchantTags = [];
+  const SVG_W = 200, SVG_H = 300, CX = 100;
 
+  // ── Document-level drag handlers (set once) ──
+  function _dragMove(e) {
+    if (!_drag) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const rect  = _drag.svgRect;
+    const scale = rect.width / SVG_W;
+    const svgX  = (clientX - rect.left) / scale;
+    figureState[_drag.id].hw = Math.max(18, Math.min(84, Math.abs(svgX - CX)));
+    _drag.redraw();
+    _updateFigureAnswers();
+  }
+  document.addEventListener('mousemove', _dragMove);
+  document.addEventListener('mouseup',   () => { _drag = null; });
+  document.addEventListener('touchmove', _dragMove, { passive: true });
+  document.addEventListener('touchend',  () => { _drag = null; });
+
+  // ── Figure state ──
+  function _initFigureState() {
+    const male = answers.gender === 'male';
+    figureState = {
+      shoulder: { hw: male ? 46 : 38 },
+      bust:     { hw: male ? 42 : 38 },
+      waist:    { hw: male ? 35 : 30 },
+      hip:      { hw: male ? 41 : 43 },
+    };
+    _updateFigureAnswers();
+  }
+
+  function _updateFigureAnswers() {
+    if (!figureState) return;
+    const sh = figureState.shoulder.hw, bu = figureState.bust.hw;
+    answers.bust  = Math.round(bu * 2 * 1.18);
+    answers.waist = Math.round(figureState.waist.hw * 2 * 1.18);
+    answers.hip   = Math.round(figureState.hip.hw  * 2 * 1.18);
+    answers.shoulder_offset = sh < bu - 10 ? -2 : sh > bu + 10 ? 2 : 0;
+  }
+
+  // ── Render figure step ──
+  function renderFigureStep(body) {
+    if (!figureState) _initFigureState();
+
+    const LINES = [
+      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', y: 75  },
+      { id: 'bust',     label: 'الصدر', color: '#0d9488', y: 110 },
+      { id: 'waist',    label: 'الخصر', color: '#f59e0b', y: 152 },
+      { id: 'hip',      label: 'الورك', color: '#ef4444', y: 186 },
+    ];
+
+    const wrap = document.createElement('div');
+    wrap.id = 'ssm-figure-wrap';
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
+    svg.style.cssText = `width:${SVG_W}px;height:${SVG_H}px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;display:block`;
+
+    // Body silhouette
+    const oval = document.createElementNS(ns, 'ellipse');
+    oval.setAttribute('cx','100'); oval.setAttribute('cy','162');
+    oval.setAttribute('rx','44');  oval.setAttribute('ry','102');
+    oval.setAttribute('fill','#e2e8f0'); svg.appendChild(oval);
+
+    const head = document.createElementNS(ns, 'ellipse');
+    head.setAttribute('cx','100'); head.setAttribute('cy','33');
+    head.setAttribute('rx','22');  head.setAttribute('ry','26');
+    head.setAttribute('fill','#cbd5e1'); svg.appendChild(head);
+
+    const neck = document.createElementNS(ns, 'rect');
+    neck.setAttribute('x','94'); neck.setAttribute('y','56');
+    neck.setAttribute('width','12'); neck.setAttribute('height','13');
+    neck.setAttribute('fill','#cbd5e1'); svg.appendChild(neck);
+
+    // Values div (updated on each drag)
+    const valsDiv = document.createElement('div');
+    valsDiv.className = 'ssm-fig-vals';
+
+    function updateVals() {
+      valsDiv.innerHTML = '';
+      for (const lc of LINES) {
+        const v = document.createElement('span');
+        v.className = 'ssm-fig-val';
+        v.style.borderRight = `3px solid ${lc.color}`;
+        const nameEl = document.createElement('span');
+        nameEl.style.color = lc.color;
+        nameEl.style.fontWeight = '700';
+        nameEl.textContent = lc.label;
+        const valEl = document.createElement('span');
+        valEl.style.color = '#374151';
+        if (lc.id === 'shoulder') {
+          const off = answers.shoulder_offset;
+          valEl.textContent = off === 0 ? 'عادي' : off > 0 ? 'عريض' : 'ضيق';
+        } else {
+          valEl.textContent = Math.round(figureState[lc.id].hw * 2 * 1.18) + ' سم';
+        }
+        v.appendChild(nameEl); v.appendChild(valEl);
+        valsDiv.appendChild(v);
+      }
+    }
+
+    // Draw lines with drag handles
+    for (const lc of LINES) {
+      const hw = figureState[lc.id].hw;
+      const g  = document.createElementNS(ns, 'g');
+      g.style.cursor = 'ew-resize';
+
+      const bar = document.createElementNS(ns, 'line');
+      bar.setAttribute('stroke', lc.color); bar.setAttribute('stroke-width', '3');
+      bar.setAttribute('stroke-linecap', 'round');
+
+      const lc_ = document.createElementNS(ns, 'circle');
+      lc_.setAttribute('r', '7'); lc_.setAttribute('fill', lc.color);
+
+      const rc_ = document.createElementNS(ns, 'circle');
+      rc_.setAttribute('r', '7'); rc_.setAttribute('fill', lc.color);
+
+      // Hit area (wider invisible rect for easier touch)
+      const hit = document.createElementNS(ns, 'rect');
+      hit.setAttribute('y', String(lc.y - 12));
+      hit.setAttribute('height', '24');
+      hit.setAttribute('fill', 'transparent');
+
+      const updateLine = () => {
+        const h = figureState[lc.id].hw;
+        bar.setAttribute('x1', String(CX - h)); bar.setAttribute('x2', String(CX + h));
+        bar.setAttribute('y1', String(lc.y));   bar.setAttribute('y2', String(lc.y));
+        lc_.setAttribute('cx', String(CX - h));  lc_.setAttribute('cy', String(lc.y));
+        rc_.setAttribute('cx', String(CX + h));  rc_.setAttribute('cy', String(lc.y));
+        hit.setAttribute('x', String(CX - h));
+        hit.setAttribute('width', String(h * 2));
+      };
+      updateLine();
+
+      g.appendChild(bar); g.appendChild(lc_); g.appendChild(rc_); g.appendChild(hit);
+      svg.appendChild(g);
+
+      const startDrag = () => {
+        _drag = {
+          id: lc.id,
+          svgRect: svg.getBoundingClientRect(),
+          redraw: () => { updateLine(); updateVals(); },
+        };
+      };
+      g.addEventListener('mousedown', startDrag);
+      g.addEventListener('touchstart', startDrag, { passive: true });
+    }
+
+    wrap.appendChild(svg);
+    wrap.appendChild(valsDiv);
+    updateVals();
+    body.appendChild(wrap);
+  }
+
+  // ======= Helpers =======
   function gid(id) { return document.getElementById(id); }
-
-  // Safe text helper — use instead of raw ${var} inside innerHTML
   function _esc(s) {
     return String(s ?? "")
       .replace(/&/g,"&amp;").replace(/</g,"&lt;")
       .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
   }
 
-  // ======= Read product title from page =======
   function readProductTitle() {
     const selectors = [
-      'h1.product-title', 'h1.product__title', 'h1[class*="product"]',
-      '.product-title', '.product__title', '.product-name',
-      '[class*="product-title"]', '[class*="product-name"]',
-      '[itemprop="name"]', 'h1',
+      'h1.product-title','h1.product__title','h1[class*="product"]',
+      '.product-title','.product__title','.product-name',
+      '[class*="product-title"]','[class*="product-name"]',
+      '[itemprop="name"]','h1',
     ];
     for (const sel of selectors) {
-      try {
-        const el = document.querySelector(sel);
-        if (el && el.textContent.trim()) return el.textContent.trim();
-      } catch(e) {}
+      try { const el = document.querySelector(sel); if (el && el.textContent.trim()) return el.textContent.trim(); } catch {}
     }
     return document.title || '';
   }
 
-  // ======= Match product title against merchant tags =======
   function findTagFromTitle() {
     if (!_merchantTags.length) return null;
     const title = readProductTitle().toLowerCase();
@@ -209,55 +333,35 @@
     return null;
   }
 
-  // ======= Extract product tag =======
   function extractProductTag() {
-    const meta = document.querySelector('meta[name="product-tag"]');
-    if (meta) return meta.getAttribute("content");
+    const meta   = document.querySelector('meta[name="product-tag"]');
+    if (meta)   return meta.getAttribute("content");
     const dataEl = document.querySelector('[data-product-tag]');
     if (dataEl) return dataEl.getAttribute("data-product-tag");
     const hidden = document.querySelector('input[name="product-tag"], #product-tag');
     if (hidden) return hidden.value;
     const m = document.body.className.match(/product-tag-([\w-]+)/);
-    if (m) return m[1];
+    if (m)      return m[1];
     return findTagFromTitle();
   }
 
-  // ======= Fetch merchant tags =======
-  // Returns true if merchant is active, false if blocked/inactive
   async function fetchMerchantTags() {
     const url = `${API_BASE}/api/get-tags`;
-    console.log('[SSM] fetchMerchantTags → GET', url);
     try {
       const r = await fetch(url);
-      console.log('[SSM] get-tags status:', r.status);
-      if (!r.ok) {
-        console.log('[SSM] get-tags failed — merchant blocked or domain not registered');
-        return false;
-      }
+      if (!r.ok) return false;
       const data = await r.json();
-      console.log('[SSM] get-tags data:', data);
       if (data && data.tags) _merchantTags = data.tags;
       return true;
-    } catch (e) {
-      console.log('[SSM] get-tags network error:', e);
-      return false;
-    }
+    } catch { return false; }
   }
 
-  function fallbackSize(ans) {
-    const h = ans.height || 165, w = ans.weight || 70;
-    const bmi = w / Math.pow(h / 100, 2);
-    return bmi < 18.5 ? "S" : bmi < 23 ? "M" : bmi < 27 ? "L" : "XL";
-  }
-
-  // ======= Size normalization =======
   function normalizeSize(s) {
     const str = s.toString().toUpperCase().trim();
     const letterMatch = str.match(/\b(4XL|3XL|XXL|XL|XS|S|M|L)\b/);
     const numMatch    = str.match(/\b(\d{2,3})\b/);
     return { letter: letterMatch ? letterMatch[1] : null, num: numMatch ? numMatch[1] : null, raw: str };
   }
-
   function sizesMatch(a, b) {
     const na = normalizeSize(a), nb = normalizeSize(b);
     if (na.raw === nb.raw) return true;
@@ -265,8 +369,6 @@
     if (na.num   && nb.num   && na.num   === nb.num)   return true;
     return false;
   }
-
-  // ======= Check if recommended size is out of stock =======
   function isSizeOutOfStock(size) {
     const els = document.querySelectorAll(
       '[data-size],[data-value],.size-option,.variant-option,' +
@@ -275,53 +377,14 @@
       'label.swatch,.product-form__option button'
     );
     for (const el of els) {
-      const txt = (
-        el.textContent ||
-        el.getAttribute('data-size') ||
-        el.getAttribute('data-value') ||
-        el.getAttribute('value') || ''
-      ).trim();
+      const txt = (el.textContent||el.getAttribute('data-size')||el.getAttribute('data-value')||el.getAttribute('value')||'').trim();
       if (!sizesMatch(txt, size)) continue;
-      if (
-        el.disabled ||
-        el.getAttribute('aria-disabled') === 'true' ||
-        el.classList.contains('out-of-stock') ||
-        el.classList.contains('unavailable') ||
-        el.classList.contains('sold-out') ||
-        el.classList.contains('disabled') ||
-        (el.style.opacity && parseFloat(el.style.opacity) < 0.5)
-      ) return true;
+      if (el.disabled||el.getAttribute('aria-disabled')==='true'||
+          el.classList.contains('out-of-stock')||el.classList.contains('unavailable')||
+          el.classList.contains('sold-out')||el.classList.contains('disabled')||
+          (el.style.opacity && parseFloat(el.style.opacity) < 0.5)) return true;
     }
     return false;
-  }
-
-  // ======= Auto-detect stock from DOM =======
-  function buildStockFromDOM() {
-    const stock = {};
-    const els = document.querySelectorAll(
-      '[data-size],[data-value],.size-option,.variant-option,' +
-      'salla-variants button,salla-product-options button,' +
-      '[class*="size"] button,[class*="variant"] button,' +
-      'label.swatch,.product-form__option button'
-    );
-    for (const el of els) {
-      const txt = (
-        el.textContent ||
-        el.getAttribute('data-size') ||
-        el.getAttribute('data-value') ||
-        el.getAttribute('value') || ''
-      ).trim();
-      if (!txt || txt.length > 25) continue;
-      const isOOS = el.disabled ||
-        el.getAttribute('aria-disabled') === 'true' ||
-        el.classList.contains('out-of-stock') ||
-        el.classList.contains('unavailable') ||
-        el.classList.contains('sold-out') ||
-        el.classList.contains('disabled') ||
-        (el.style.opacity && parseFloat(el.style.opacity) < 0.5);
-      stock[txt] = isOOS ? 0 : 1;
-    }
-    return Object.keys(stock).length > 0 ? stock : null;
   }
 
   // ======= Modal =======
@@ -355,28 +418,19 @@
     'أضف للسلة','أضف إلى السلة','إضافة للسلة','اشتر الآن','اطلب الآن','أضف','شراء',
   ];
   const CART_SELECTORS = [
-    // Salla platform (web components — inject next to the component itself)
-    'salla-add-to-cart',
-    'salla-buy-now',
-    // Salla button inside component (may work if shadow DOM not used)
-    'salla-add-to-cart button',
-    // Generic
+    'salla-add-to-cart','salla-buy-now','salla-add-to-cart button',
     'button[name="add"]','.add-to-cart','.single_add_to_cart_button',
     '.product-form__submit','.btn-add-to-cart','[id*="AddToCart"]',
-    '[class*="add-to-cart"]','[class*="addtocart"]',
-    // Broad fallback
-    'button[type="submit"]',
+    '[class*="add-to-cart"]','[class*="addtocart"]','button[type="submit"]',
   ];
-
   function findCartButton() {
     for (const sel of CART_SELECTORS) {
-      try { const el = document.querySelector(sel); if (el) return el; } catch(e) {}
+      try { const el = document.querySelector(sel); if (el) return el; } catch {}
     }
     for (const el of document.querySelectorAll('button,[role="button"],input[type="submit"]')) {
       const txt = (el.textContent || el.value || '').toLowerCase().trim();
       if (CART_KEYWORDS.some(k => txt.includes(k))) return el;
     }
-    console.log('[SSM] findCartButton: no cart button found on this page');
     return null;
   }
 
@@ -386,143 +440,87 @@
     if (!target) return;
     applyBrandColor(target);
     const btn = document.createElement("button");
-    btn.id = "ssm-trigger";
-    btn.type = "button";
+    btn.id = "ssm-trigger"; btn.type = "button";
     btn.innerHTML = "📏 احسب مقاسي";
     btn.onclick = () => { setupModal(); openModal(); };
     target.insertAdjacentElement("afterend", btn);
-    console.log('[SSM] button injected successfully next to:', target);
   }
 
-  function openModal()  { step = 0; answers = {}; gid("ssm-overlay").classList.add("open"); render(); }
-  function closeModal() { gid("ssm-overlay").classList.remove("open"); }
+  function openModal()  {
+    step = 0; answers = {}; figureState = null; _drag = null;
+    gid("ssm-overlay").classList.add("open");
+    render();
+  }
+  function closeModal() { gid("ssm-overlay").classList.remove("open"); _drag = null; }
 
   // ======= Render =======
   function render() {
     const s    = STEPS[step];
     const body = gid("ssm-body");
 
-    // Update header progress
     gid("ssm-fill").style.width = (((step + 1) / STEPS.length) * 100) + "%";
     gid("ssm-count").textContent = `الخطوة ${step + 1} من ${STEPS.length}`;
 
     body.innerHTML = "";
 
     const qEl = document.createElement("div");
-    qEl.className = "ssm-question";
-    qEl.textContent = s.q;
+    qEl.className = "ssm-question"; qEl.textContent = s.q;
     body.appendChild(qEl);
 
     const hEl = document.createElement("div");
-    hEl.className = "ssm-hint";
-    hEl.textContent = s.hint;
+    hEl.className = "ssm-hint"; hEl.textContent = s.hint;
     body.appendChild(hEl);
 
     if (s.type === "number") {
-      const v     = answers[s.id] ?? s.def;
+      const v = answers[s.id] ?? s.def;
       const group = document.createElement("div");
       group.className = "ssm-number-group";
 
-      const btnMinus = document.createElement("button");
-      btnMinus.className = "ssm-num-btn";
-      btnMinus.textContent = "−";
-      btnMinus.addEventListener("click", () => window._ssm.adj(s.id, -1));
+      const btnM = document.createElement("button");
+      btnM.className = "ssm-num-btn"; btnM.textContent = "−";
+      btnM.addEventListener("click", () => window._ssm.adj(s.id, -1));
 
       const inp = document.createElement("input");
-      inp.className = "ssm-num-input";
-      inp.id    = "numinput";
-      inp.type  = "number";
-      inp.value = String(v);
-      inp.min   = String(s.min);
-      inp.max   = String(s.max);
+      inp.className = "ssm-num-input"; inp.id = "numinput";
+      inp.type = "number"; inp.value = String(v);
+      inp.min = String(s.min); inp.max = String(s.max);
       inp.addEventListener("input", () => window._ssm.setVal(s.id, +inp.value));
 
-      const btnPlus = document.createElement("button");
-      btnPlus.className = "ssm-num-btn";
-      btnPlus.textContent = "+";
-      btnPlus.addEventListener("click", () => window._ssm.adj(s.id, 1));
+      const btnP = document.createElement("button");
+      btnP.className = "ssm-num-btn"; btnP.textContent = "+";
+      btnP.addEventListener("click", () => window._ssm.adj(s.id, 1));
 
       const unit = document.createElement("span");
-      unit.className = "ssm-unit";
-      unit.textContent = s.unit;
+      unit.className = "ssm-unit"; unit.textContent = s.unit;
 
-      group.appendChild(btnMinus);
-      group.appendChild(inp);
-      group.appendChild(btnPlus);
-      group.appendChild(unit);
+      group.appendChild(btnM); group.appendChild(inp);
+      group.appendChild(btnP); group.appendChild(unit);
       body.appendChild(group);
 
     } else if (s.type === "cards") {
-      const isEmoji = s.options.some(o => o.icon);
-      const isImg   = s.options.some(o => o.imgSrc);
-      const cards   = document.createElement("div");
+      const cards = document.createElement("div");
       cards.className = "ssm-cards";
-
       for (const o of s.options) {
         const card = document.createElement("div");
-        const cls  = ["ssm-card"];
-        if (isEmoji) cls.push("ssm-card-emoji");
-        if (isImg)   cls.push("ssm-card-img");
-        if (answers[s.id] === o.v) cls.push("active");
-        card.className = cls.join(" ");
+        card.className = "ssm-card" + (answers[s.id] === o.v ? " active" : "");
         card.addEventListener("click", () => window._ssm.pick(s.id, o.v));
-
-        if (o.imgSrc) {
-          const lbl = document.createElement("div");
-          lbl.className = "card-label";
-          lbl.style.marginBottom = "8px";
-          lbl.textContent = o.label;
-          card.appendChild(lbl);
-
-          const imgWrap = document.createElement("div");
-          imgWrap.style.cssText = "width:100%;height:175px;overflow:hidden;border-radius:8px;";
-          const imgDiv = document.createElement("div");
-          imgDiv.style.width           = "100%";
-          imgDiv.style.height          = "260px";
-          imgDiv.style.backgroundImage = `url('${API_BASE}/images/${_esc(o.imgSrc)}')`;
-          imgDiv.style.backgroundSize     = "300% auto";
-          imgDiv.style.backgroundPosition = `${_esc(o.imgPos)} top`;
-          imgDiv.style.backgroundRepeat   = "no-repeat";
-          imgDiv.style.marginTop          = "-55px";
-          imgWrap.appendChild(imgDiv);
-          card.appendChild(imgWrap);
-
-        } else if (o.svg) {
-          card.innerHTML = o.svg; // o.svg is hardcoded in STEPS — static, not user data
-          const lbl = document.createElement("div");
-          lbl.className = "card-label";
-          lbl.textContent = o.label;
-          card.appendChild(lbl);
-          if (o.sub) {
-            const sub = document.createElement("div");
-            sub.className = "card-sub";
-            sub.textContent = o.sub;
-            card.appendChild(sub);
-          }
-        } else {
+        if (o.icon) {
           const ico = document.createElement("div");
-          ico.className = "card-emoji";
-          ico.textContent = o.icon;
+          ico.className = "card-emoji"; ico.textContent = o.icon;
           card.appendChild(ico);
-
-          const lbl = document.createElement("div");
-          lbl.className = "card-label";
-          lbl.textContent = o.label;
-          card.appendChild(lbl);
-
-          if (o.sub) {
-            const sub = document.createElement("div");
-            sub.className = "card-sub";
-            sub.textContent = o.sub;
-            card.appendChild(sub);
-          }
         }
+        const lbl = document.createElement("div");
+        lbl.className = "card-label"; lbl.textContent = o.label;
+        card.appendChild(lbl);
         cards.appendChild(card);
       }
       body.appendChild(cards);
+
+    } else if (s.type === "figure") {
+      renderFigureStep(body);
     }
 
-    // Nav buttons
+    // Nav
     const isLast = step === STEPS.length - 1;
     const nav = document.createElement("div");
     nav.className = "ssm-nav";
@@ -537,16 +535,12 @@
     nextBtn.textContent = isLast ? "✨ احسب مقاسي" : "التالي ←";
     nextBtn.addEventListener("click", () => window._ssm.next());
 
-    nav.appendChild(backBtn);
-    nav.appendChild(nextBtn);
+    nav.appendChild(backBtn); nav.appendChild(nextBtn);
     body.appendChild(nav);
   }
 
   window._ssm = {
-    pick(id, v) {
-      answers[id] = v; // saved to local state immediately
-      render();
-    },
+    pick(id, v) { answers[id] = v; render(); },
     adj(id, d) {
       const s = STEPS[step];
       answers[id] = Math.min(s.max, Math.max(s.min, (answers[id] ?? s.def) + d));
@@ -561,6 +555,8 @@
         if (!answers[s.id]) { alert("رجاءً أدخل قيمة"); return; }
       }
       if (s.type === "cards" && !answers[s.id]) { alert("رجاءً اختر خياراً"); return; }
+      // Reset figure when gender changes so it re-initializes with correct defaults
+      if (s.id === 'gender') figureState = null;
       if (step < STEPS.length - 1) { step++; render(); } else { submit(); }
     },
   };
@@ -570,23 +566,16 @@
     body.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.cssText = "text-align:center;padding:30px 20px";
-
     const icon = document.createElement("div");
     icon.style.cssText = "font-size:40px;margin-bottom:12px";
     icon.textContent = "⚠️";
-
     const msgEl = document.createElement("div");
     msgEl.style.cssText = "font-size:15px;color:#374151;line-height:1.7;direction:rtl;margin-bottom:20px";
     msgEl.textContent = msg;
-
     const btn = document.createElement("button");
-    btn.className = "ssm-restart";
-    btn.textContent = "🔄 أعد المحاولة";
-    btn.addEventListener("click", () => { step = 0; answers = {}; render(); });
-
-    wrap.appendChild(icon);
-    wrap.appendChild(msgEl);
-    wrap.appendChild(btn);
+    btn.className = "ssm-restart"; btn.textContent = "🔄 أعد المحاولة";
+    btn.addEventListener("click", () => { step = 0; answers = {}; figureState = null; render(); });
+    wrap.appendChild(icon); wrap.appendChild(msgEl); wrap.appendChild(btn);
     body.appendChild(wrap);
   }
 
@@ -594,51 +583,44 @@
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>الخياط الذكي يحلل مقاسك...</p></div>`;
 
     const tag = extractProductTag();
-    console.log("[SSM] submit — tag:", tag, "| h:", answers.height, "w:", answers.weight, "shoulders:", answers.shoulders, "belly:", answers.belly, "pref:", answers.user_preference);
-
-    if (!tag) {
-      console.warn("[SSM] No product tag found — closing modal silently.");
-      closeModal();
-      return;
-    }
+    if (!tag) { closeModal(); return; }
 
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tag,
-        height:         answers.height,
-        weight:         answers.weight,
-        shoulders:      answers.shoulders,
-        belly:          answers.belly,
-        userPreference: answers.user_preference,
+        gender:          answers.gender          || "female",
+        height:          answers.height          || 165,
+        bust:            answers.bust            || 90,
+        waist:           answers.waist           || 72,
+        hip:             answers.hip             || 96,
+        shoulder_offset: answers.shoulder_offset || 0,
+        preference:      answers.preference      || "regular",
       }),
     })
       .then(r => {
         if (r.ok) return r.json();
-        return r.json()
-          .catch(() => null)
-          .then(errBody => {
-            console.error("[SSM] API error", r.status, errBody);
-            return null;
-          });
+        return r.json().catch(() => null).then(errBody => {
+          if (r.status === 403) showError("هذا المتجر غير مُفعَّل أو غير مُسجَّل في النظام.");
+          else if (r.status === 404) showError("لم يتم العثور على جدول المقاسات لهذا المنتج.");
+          else if (r.status === 429) showError("طلبات كثيرة — انتظر دقيقة ثم أعد المحاولة.");
+          else showError("حدث خطأ أثناء الاتصال بالخادم. أعد المحاولة.");
+          console.error("[SSM] API error", r.status, errBody);
+          return null;
+        });
       })
       .then(data => {
-        console.log("[SSM] API response:", data);
-        if (data && data.size) {
-          showResult(data.size);
-        } else {
-          console.warn("[SSM] No size returned — closing modal silently.");
-          closeModal();
-        }
+        if (data && data.size) showResult(data);
+        else if (data) closeModal();
       })
-      .catch(err => {
-        console.error("[SSM] Network error:", err);
-        closeModal();
-      });
+      .catch(() => showError("تعذّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة."));
   }
 
-  function showResult(size) {
+  function showResult(data) {
+    const size       = data.size;
+    const conf       = data.confidence;
+    const alts       = data.alternatives || [];
     const outOfStock = isSizeOutOfStock(size);
     const body       = gid("ssm-body");
     body.innerHTML   = "";
@@ -661,6 +643,20 @@
     sizeEl.textContent = size;
     result.appendChild(sizeEl);
 
+    if (conf) {
+      const confEl = document.createElement("div");
+      confEl.style.cssText = "font-size:13px;color:#6b7280;margin-bottom:8px";
+      confEl.textContent = `نسبة التطابق: ${conf}%`;
+      result.appendChild(confEl);
+    }
+
+    if (alts.length > 0) {
+      const altsEl = document.createElement("div");
+      altsEl.className = "ssm-result-alts";
+      altsEl.textContent = `بدائل محتملة: ${alts.join(" · ")}`;
+      result.appendChild(altsEl);
+    }
+
     if (outOfStock) {
       const badge = document.createElement("div");
       badge.className = "ssm-stock-warn";
@@ -671,32 +667,24 @@
     const restartBtn = document.createElement("button");
     restartBtn.className = "ssm-restart";
     restartBtn.textContent = "🔄 أعد الحساب";
-    restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
+    restartBtn.addEventListener("click", () => { step = 0; answers = {}; figureState = null; render(); });
     result.appendChild(restartBtn);
 
     body.appendChild(result);
-    window._ssm_restart = () => { step = 0; answers = {}; render(); };
   }
 
   // ======= Public API =======
   window.SizeMatcher = {
     init(config = {}) {
       _sizeChart = null;
-
       let currentIv = null;
       async function startInject() {
-        console.log('[SSM] startInject — API_BASE:', API_BASE, '| page:', location.href);
         const active = await fetchMerchantTags();
-        console.log('[SSM] merchant active:', active, '| tags:', _merchantTags);
-        if (!active) {
-          console.log('[SSM] merchant not active or domain not registered — no button');
-          return;
-        }
+        if (!active) return;
         const old = document.getElementById("ssm-trigger");
         if (old) old.remove();
         _sizeChart = null;
-        setupModal();
-        inject();
+        setupModal(); inject();
         if (currentIv) clearInterval(currentIv);
         let tries = 0;
         currentIv = setInterval(() => {
@@ -704,27 +692,18 @@
           if (document.getElementById("ssm-trigger") || ++tries > 40) clearInterval(currentIv);
         }, 200);
       }
-
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", startInject);
       } else {
         startInject();
       }
-
       // SPA navigation
       let lastUrl = location.href;
       setInterval(() => {
-        if (location.href !== lastUrl) {
-          lastUrl = location.href;
-          _sizeChart = null;
-          setTimeout(startInject, 300);
-        }
+        if (location.href !== lastUrl) { lastUrl = location.href; _sizeChart = null; setTimeout(startInject, 300); }
       }, 300);
-
       const _push = history.pushState.bind(history);
-      history.pushState = function (...a) {
-        _push(...a); _sizeChart = null; setTimeout(startInject, 300);
-      };
+      history.pushState = function (...a) { _push(...a); _sizeChart = null; setTimeout(startInject, 300); };
       window.addEventListener("popstate", () => { _sizeChart = null; setTimeout(startInject, 300); });
     },
     open() { setupModal(); openModal(); },
