@@ -63,9 +63,19 @@
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
-#ssm-figure-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:8px}
-.ssm-fig-vals{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:216px;direction:rtl}
-.ssm-fig-val{font-size:12px;font-weight:700;padding:6px 10px;border-radius:8px;background:#f8fafc;display:flex;justify-content:space-between}
+#ssm-figure-wrap{display:flex;gap:14px;align-items:flex-start;margin-bottom:8px}
+#ssm-fig-img-col{position:relative;width:42%;flex-shrink:0;background:#f0f4f8;border-radius:14px;overflow:hidden;align-self:stretch;min-height:220px}
+#ssm-fig-img-col img{width:100%;height:100%;object-fit:cover;object-position:top center;display:block}
+.ssm-fig-zone{position:absolute;left:8%;right:8%;border-radius:8px;opacity:0.25;transform-origin:center center;transition:transform .15s,opacity .15s}
+#ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:12px;direction:rtl;min-width:0}
+.ssm-slider-row{display:flex;flex-direction:column;gap:4px}
+.ssm-slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
+.ssm-slider-name{font-size:13px;font-weight:700}
+.ssm-slider-val{font-size:12px;font-weight:700;min-width:44px;text-align:left;direction:ltr}
+.ssm-slider-ctrl{display:flex;align-items:center;gap:5px}
+.ssm-slider-ctrl button{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;padding:0;line-height:1}
+.ssm-slider-ctrl button:hover{background:var(--ssm-c);color:#fff}
+.ssm-slider-ctrl input[type=range]{flex:1;accent-color:var(--ssm-c);cursor:pointer;min-width:0;height:4px}
   `;
   document.head.appendChild(style);
 
@@ -133,7 +143,7 @@
     },
     {
       id: "figure", type: "figure",
-      q: "حدد قياساتك", hint: "اسحب أطراف كل خط لضبط محيط الجسم بالسنتيمتر.",
+      q: "حدد قياساتك", hint: "استخدم المؤشرات لضبط محيط جسمك بالسنتيمتر.",
     },
     {
       id: "preference", type: "cards",
@@ -147,159 +157,152 @@
   ];
 
   // ── Module state ──
-  let step = 0, answers = {}, figureState = null, _drag = null;
+  let step = 0, answers = {}, figureState = null;
   let _sizeChart = null, _merchantTags = [];
-  const SVG_W = 200, SVG_H = 300, CX = 100;
-
-  // ── Document-level drag handlers (set once) ──
-  function _dragMove(e) {
-    if (!_drag) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const rect  = _drag.svgRect;
-    const scale = rect.width / SVG_W;
-    const svgX  = (clientX - rect.left) / scale;
-    figureState[_drag.id].hw = Math.max(18, Math.min(84, Math.abs(svgX - CX)));
-    _drag.redraw();
-    _updateFigureAnswers();
-  }
-  document.addEventListener('mousemove', _dragMove);
-  document.addEventListener('mouseup',   () => { _drag = null; });
-  document.addEventListener('touchmove', _dragMove, { passive: true });
-  document.addEventListener('touchend',  () => { _drag = null; });
 
   // ── Figure state ──
   function _initFigureState() {
-    const male = answers.gender === 'male';
+    const h  = answers.height || 165;
+    const bu = Math.round(h * 0.54);
+    const wa = Math.round(h * 0.43);
+    const hi = Math.round(h * 0.57);
+    const sh = bu;
     figureState = {
-      shoulder: { hw: male ? 46 : 38 },
-      bust:     { hw: male ? 42 : 38 },
-      waist:    { hw: male ? 35 : 30 },
-      hip:      { hw: male ? 41 : 43 },
+      shoulder: sh, bust: bu, waist: wa, hip: hi,
+      _initShoulder: sh, _initBust: bu, _initWaist: wa, _initHip: hi,
     };
     _updateFigureAnswers();
   }
 
   function _updateFigureAnswers() {
     if (!figureState) return;
-    const sh = figureState.shoulder.hw, bu = figureState.bust.hw;
-    answers.bust  = Math.round(bu * 2 * 1.18);
-    answers.waist = Math.round(figureState.waist.hw * 2 * 1.18);
-    answers.hip   = Math.round(figureState.hip.hw  * 2 * 1.18);
-    answers.shoulder_offset = sh < bu - 10 ? -2 : sh > bu + 10 ? 2 : 0;
+    answers.bust  = figureState.bust;
+    answers.waist = figureState.waist;
+    answers.hip   = figureState.hip;
+    const sh = figureState.shoulder, bu = figureState.bust;
+    answers.shoulder_offset = sh < bu - 5 ? -2 : sh > bu + 5 ? 2 : 0;
   }
 
   // ── Render figure step ──
   function renderFigureStep(body) {
     if (!figureState) _initFigureState();
 
-    const LINES = [
-      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', y: 75  },
-      { id: 'bust',     label: 'الصدر', color: '#0d9488', y: 110 },
-      { id: 'waist',    label: 'الخصر', color: '#f59e0b', y: 152 },
-      { id: 'hip',      label: 'الورك', color: '#ef4444', y: 186 },
+    const ZONES = [
+      { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', top: '16%', h: '9%'  },
+      { id: 'bust',     label: 'الصدر', color: '#0d9488', top: '27%', h: '11%' },
+      { id: 'waist',    label: 'الخصر', color: '#f59e0b', top: '41%', h: '9%'  },
+      { id: 'hip',      label: 'الورك', color: '#ef4444', top: '52%', h: '13%' },
     ];
 
     const wrap = document.createElement('div');
     wrap.id = 'ssm-figure-wrap';
 
-    const ns = 'http://www.w3.org/2000/svg';
-    const svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${SVG_W} ${SVG_H}`);
-    svg.style.cssText = `width:${SVG_W}px;height:${SVG_H}px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;display:block`;
+    // ── Left: mannequin image + morph overlays ──
+    const imgCol = document.createElement('div');
+    imgCol.id = 'ssm-fig-img-col';
 
-    // Body silhouette
-    const oval = document.createElementNS(ns, 'ellipse');
-    oval.setAttribute('cx','100'); oval.setAttribute('cy','162');
-    oval.setAttribute('rx','44');  oval.setAttribute('ry','102');
-    oval.setAttribute('fill','#e2e8f0'); svg.appendChild(oval);
+    const imgFile = answers.gender === 'male' ? 'ssm_body_male.jpeg' : 'ssm_body_female.jpeg';
+    const img = document.createElement('img');
+    img.src = `${API_BASE}/${imgFile}`;
+    img.alt = '';
+    img.onerror = () => { img.style.display = 'none'; };
+    imgCol.appendChild(img);
 
-    const head = document.createElementNS(ns, 'ellipse');
-    head.setAttribute('cx','100'); head.setAttribute('cy','33');
-    head.setAttribute('rx','22');  head.setAttribute('ry','26');
-    head.setAttribute('fill','#cbd5e1'); svg.appendChild(head);
+    const zoneEls = {};
+    for (const z of ZONES) {
+      const zone = document.createElement('div');
+      zone.className = 'ssm-fig-zone';
+      zone.style.top    = z.top;
+      zone.style.height = z.h;
+      zone.style.background = z.color;
+      imgCol.appendChild(zone);
+      zoneEls[z.id] = zone;
+    }
 
-    const neck = document.createElementNS(ns, 'rect');
-    neck.setAttribute('x','94'); neck.setAttribute('y','56');
-    neck.setAttribute('width','12'); neck.setAttribute('height','13');
-    neck.setAttribute('fill','#cbd5e1'); svg.appendChild(neck);
+    wrap.appendChild(imgCol);
 
-    // Values div (updated on each drag)
-    const valsDiv = document.createElement('div');
-    valsDiv.className = 'ssm-fig-vals';
+    // ── Right: 4 sliders ──
+    const slidersCol = document.createElement('div');
+    slidersCol.id = 'ssm-fig-sliders';
 
-    function updateVals() {
-      valsDiv.innerHTML = '';
-      for (const lc of LINES) {
-        const v = document.createElement('span');
-        v.className = 'ssm-fig-val';
-        v.style.borderRight = `3px solid ${lc.color}`;
-        const nameEl = document.createElement('span');
-        nameEl.style.color = lc.color;
-        nameEl.style.fontWeight = '700';
-        nameEl.textContent = lc.label;
-        const valEl = document.createElement('span');
-        valEl.style.color = '#374151';
-        if (lc.id === 'shoulder') {
-          const off = answers.shoulder_offset;
-          valEl.textContent = off === 0 ? 'عادي' : off > 0 ? 'عريض' : 'ضيق';
-        } else {
-          valEl.textContent = Math.round(figureState[lc.id].hw * 2 * 1.18) + ' سم';
-        }
-        v.appendChild(nameEl); v.appendChild(valEl);
-        valsDiv.appendChild(v);
+    const INITS = {
+      shoulder: figureState._initShoulder,
+      bust:     figureState._initBust,
+      waist:    figureState._initWaist,
+      hip:      figureState._initHip,
+    };
+
+    function updateZones() {
+      for (const z of ZONES) {
+        const f = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
+        zoneEls[z.id].style.transform = `scaleX(${f.toFixed(3)})`;
       }
     }
 
-    // Draw lines with drag handles
-    for (const lc of LINES) {
-      const hw = figureState[lc.id].hw;
-      const g  = document.createElementNS(ns, 'g');
-      g.style.cursor = 'ew-resize';
+    for (const z of ZONES) {
+      const row = document.createElement('div');
+      row.className = 'ssm-slider-row';
 
-      const bar = document.createElementNS(ns, 'line');
-      bar.setAttribute('stroke', lc.color); bar.setAttribute('stroke-width', '3');
-      bar.setAttribute('stroke-linecap', 'round');
+      const labelRow = document.createElement('div');
+      labelRow.className = 'ssm-slider-label';
 
-      const lc_ = document.createElementNS(ns, 'circle');
-      lc_.setAttribute('r', '7'); lc_.setAttribute('fill', lc.color);
+      const nameEl = document.createElement('span');
+      nameEl.className = 'ssm-slider-name';
+      nameEl.style.color = z.color;
+      nameEl.textContent = z.label;
 
-      const rc_ = document.createElementNS(ns, 'circle');
-      rc_.setAttribute('r', '7'); rc_.setAttribute('fill', lc.color);
+      const valEl = document.createElement('span');
+      valEl.className = 'ssm-slider-val';
+      valEl.style.color = z.color;
+      valEl.textContent = figureState[z.id] + ' سم';
 
-      // Hit area (wider invisible rect for easier touch)
-      const hit = document.createElementNS(ns, 'rect');
-      hit.setAttribute('y', String(lc.y - 12));
-      hit.setAttribute('height', '24');
-      hit.setAttribute('fill', 'transparent');
+      labelRow.appendChild(nameEl);
+      labelRow.appendChild(valEl);
+      row.appendChild(labelRow);
 
-      const updateLine = () => {
-        const h = figureState[lc.id].hw;
-        bar.setAttribute('x1', String(CX - h)); bar.setAttribute('x2', String(CX + h));
-        bar.setAttribute('y1', String(lc.y));   bar.setAttribute('y2', String(lc.y));
-        lc_.setAttribute('cx', String(CX - h));  lc_.setAttribute('cy', String(lc.y));
-        rc_.setAttribute('cx', String(CX + h));  rc_.setAttribute('cy', String(lc.y));
-        hit.setAttribute('x', String(CX - h));
-        hit.setAttribute('width', String(h * 2));
-      };
-      updateLine();
+      const ctrl = document.createElement('div');
+      ctrl.className = 'ssm-slider-ctrl';
 
-      g.appendChild(bar); g.appendChild(lc_); g.appendChild(rc_); g.appendChild(hit);
-      svg.appendChild(g);
+      const btnM = document.createElement('button');
+      btnM.type = 'button';
+      btnM.textContent = '−';
 
-      const startDrag = () => {
-        _drag = {
-          id: lc.id,
-          svgRect: svg.getBoundingClientRect(),
-          redraw: () => { updateLine(); updateVals(); },
-        };
-      };
-      g.addEventListener('mousedown', startDrag);
-      g.addEventListener('touchstart', startDrag, { passive: true });
+      const slider = document.createElement('input');
+      slider.type  = 'range';
+      slider.min   = '60';
+      slider.max   = '150';
+      slider.step  = '1';
+      slider.value = String(figureState[z.id]);
+
+      const btnP = document.createElement('button');
+      btnP.type = 'button';
+      btnP.textContent = '+';
+
+      // IIFE to correctly capture zid/sl/ve per loop iteration
+      (function(zid, sl, ve) {
+        function setVal(v) {
+          const c = Math.max(60, Math.min(150, Math.round(v)));
+          figureState[zid] = c;
+          sl.value = String(c);
+          ve.textContent = c + ' سم';
+          _updateFigureAnswers();
+          updateZones();
+        }
+        btnM.addEventListener('click', () => setVal(figureState[zid] - 1));
+        btnP.addEventListener('click', () => setVal(figureState[zid] + 1));
+        sl.addEventListener('input',   () => setVal(+sl.value));
+      })(z.id, slider, valEl);
+
+      ctrl.appendChild(btnM);
+      ctrl.appendChild(slider);
+      ctrl.appendChild(btnP);
+      row.appendChild(ctrl);
+
+      slidersCol.appendChild(row);
     }
 
-    wrap.appendChild(svg);
-    wrap.appendChild(valsDiv);
-    updateVals();
+    wrap.appendChild(slidersCol);
+    updateZones();
     body.appendChild(wrap);
   }
 
@@ -447,11 +450,11 @@
   }
 
   function openModal()  {
-    step = 0; answers = {}; figureState = null; _drag = null;
+    step = 0; answers = {}; figureState = null;
     gid("ssm-overlay").classList.add("open");
     render();
   }
-  function closeModal() { gid("ssm-overlay").classList.remove("open"); _drag = null; }
+  function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
   // ======= Render =======
   function render() {
@@ -612,7 +615,7 @@
       })
       .then(data => {
         if (data && data.size) showResult(data);
-        else if (data) closeModal();
+        else if (data) showError("لم يتمكن النظام من تحديد مقاسك — يبدو أن جدول مقاسات هذا المنتج يحتاج إلى تحديث. يرجى التواصل مع المتجر.");
       })
       .catch(() => showError("تعذّر الاتصال بالخادم — تحقق من الإنترنت وأعد المحاولة."));
   }
