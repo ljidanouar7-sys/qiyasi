@@ -198,15 +198,17 @@
   ];
   let INITS = {};
 
-  // Lateral Gaussian width — narrow enough to leave hands/arms untouched
-  const BODY_SIGMA = 0.14;
+  // Shoulders expand WIDE (actual silhouette change)
+  // Bust/waist/hip inflate NARROW from center ("balloon inside") — outline barely moves
+  const SHOULDER_SIGMA = 0.16;
+  const VOLUME_SIGMA   = 0.09;
 
-  // Smooth backward x-warp: dest pixel at dstNx came from srcNx in source image
-  // Body center expands organically; edges stay fixed — no hard boundaries
-  function _warpX(dstNx, expansion) {
-    const d   = dstNx - 0.5;
-    const lat = Math.exp(-(d * d) / (2 * BODY_SIGMA * BODY_SIGMA));
-    return Math.max(0, Math.min(1, dstNx - expansion * lat * d));
+  // Combined backward x-warp: two independent lateral Gaussians
+  function _combinedWarpX(dstNx, shoulderExp, volumeExp) {
+    const d    = dstNx - 0.5;
+    const latS = Math.exp(-(d * d) / (2 * SHOULDER_SIGMA * SHOULDER_SIGMA));
+    const latV = Math.exp(-(d * d) / (2 * VOLUME_SIGMA   * VOLUME_SIGMA));
+    return Math.max(0, Math.min(1, dstNx - d * (shoulderExp * latS + volumeExp * latV)));
   }
 
   function drawMorphedBody(canvas, img, cw, ch, dpr) {
@@ -215,21 +217,25 @@
     const ctx  = canvas.getContext('2d');
     const imgW = img.naturalWidth;
     const imgH = img.naturalHeight;
-    const NH   = 60; // horizontal bands
-    const NV   = 40; // vertical strips per band
+    const NH   = 60;
+    const NV   = 40;
     ctx.clearRect(0, 0, cw, ch);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
     for (let i = 0; i < NH; i++) {
       const t = (i + 0.5) / NH;
-      let totalExpansion = 0;
+      let shoulderExp = 0; // wide — shoulders actually widen
+      let volumeExp   = 0; // narrow — balloon inflation from center
+
       for (const z of ZONES) {
         const f      = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
         const center = z.topPct + z.hPct / 2;
         const sigma  = z.hPct / 2.5;
         const diff   = t - center;
-        totalExpansion += (f - 1) * Math.exp(-(diff * diff) / (2 * sigma * sigma));
+        const gauss  = Math.exp(-(diff * diff) / (2 * sigma * sigma));
+        if (z.id === 'shoulder') shoulderExp += (f - 1) * gauss;
+        else                     volumeExp   += (f - 1) * gauss;
       }
 
       const srcY1 = Math.floor((i / NH) * imgH);
@@ -242,8 +248,8 @@
         const dstX2 = Math.floor(((j + 1) / NV) * cw);
         const dstW  = Math.max(1, dstX2 - dstX1);
 
-        const srcNxL = _warpX(dstX1 / cw, totalExpansion);
-        const srcNxR = _warpX(dstX2 / cw, totalExpansion);
+        const srcNxL = _combinedWarpX(dstX1 / cw, shoulderExp, volumeExp);
+        const srcNxR = _combinedWarpX(dstX2 / cw, shoulderExp, volumeExp);
         const srcX   = srcNxL * imgW;
         const srcW   = Math.max(1, (srcNxR - srcNxL) * imgW);
 
