@@ -63,7 +63,7 @@
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
-.ssm-card-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block}
+.ssm-card-img{width:100%;aspect-ratio:3/4;border-radius:8px;margin-bottom:8px;background-repeat:no-repeat;overflow:hidden;}
   `;
   document.head.appendChild(style);
 
@@ -125,18 +125,18 @@
       id: "shoulders", type: "cards",
       q: "ما شكل كتفيك؟", hint: "اختر الوصف الأقرب لشكل كتفيك.",
       options: [
-        { v: "narrow", label: "ضيقة",  img: "images/q-fit.jpg"       },
-        { v: "normal", label: "عادية", img: "images/q-shoulders.jpg" },
-        { v: "broad",  label: "عريضة", img: "images/q-belly.jpg"     },
+        { v: "narrow", label: "ضيقة",  img: "images/q-shoulders.jpg", panel: 0 },
+        { v: "normal", label: "عادية", img: "images/q-shoulders.jpg", panel: 1 },
+        { v: "broad",  label: "عريضة", img: "images/q-shoulders.jpg", panel: 2 },
       ],
     },
     {
       id: "belly", type: "cards",
       q: "ما شكل بطنك؟", hint: "اختر الوصف الأقرب لمنطقة البطن.",
       options: [
-        { v: "flat",    label: "مسطح",  img: "images/q-fit.jpg"       },
-        { v: "average", label: "متوسط", img: "images/q-shoulders.jpg" },
-        { v: "large",   label: "كبير",  img: "images/q-belly.jpg"     },
+        { v: "flat",    label: "مسطح",  img: "images/q-belly.jpg", panel: 0 },
+        { v: "average", label: "متوسط", img: "images/q-belly.jpg", panel: 1 },
+        { v: "large",   label: "كبير",  img: "images/q-belly.jpg", panel: 2 },
       ],
     },
     {
@@ -356,11 +356,14 @@
         card.className = "ssm-card" + (answers[s.id] === o.v ? " active" : "");
         card.addEventListener("click", () => window._ssm.pick(s.id, o.v));
         if (o.img) {
-          const imgEl = document.createElement("img");
-          imgEl.className = "ssm-card-img";
-          imgEl.src = `${API_BASE}/${o.img}`;
-          imgEl.alt = o.label;
-          card.appendChild(imgEl);
+          const imgDiv = document.createElement("div");
+          imgDiv.className = "ssm-card-img";
+          const xPct = (o.panel || 0) * 50;
+          imgDiv.style.cssText =
+            `background-image:url('${API_BASE}/${o.img}');` +
+            `background-size:300% auto;` +
+            `background-position:${xPct}% 40%;`;
+          card.appendChild(imgDiv);
         } else if (o.icon) {
           const ico = document.createElement("div");
           ico.className = "card-emoji"; ico.textContent = o.icon;
