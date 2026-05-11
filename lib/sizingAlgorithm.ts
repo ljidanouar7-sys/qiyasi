@@ -185,6 +185,42 @@ function scoreLogicC(
   return baseScore * lengthMult;
 }
 
+// ── Measurement estimation from height/weight/body-shape answers ───────────────
+
+export type MeasurementEstimate = {
+  bust:            number;
+  waist:           number;
+  hip:             number;
+  shoulder_offset: -2 | 0 | 2;
+};
+
+export function estimateMeasurements(
+  height:    number,
+  weight:    number,
+  shoulders: string,
+  belly:     string
+): MeasurementEstimate {
+  const bmi      = weight / ((height / 100) ** 2);
+  const bmiDelta = bmi - 22;
+
+  let bust  = Math.round(height * 0.525 + bmiDelta * 0.8);
+  let waist = Math.round(height * 0.420 + bmiDelta * 1.2);
+  let hip   = Math.round(height * 0.565 + bmiDelta * 0.9);
+
+  if (belly === "flat")  { waist -= 4; hip -= 3; }
+  if (belly === "large") { bust  += 2; waist += 6; hip += 4; }
+
+  bust  = Math.max(60,  Math.min(160, bust));
+  waist = Math.max(50,  Math.min(150, waist));
+  hip   = Math.max(65,  Math.min(165, hip));
+
+  const shoulder_offset: -2 | 0 | 2 =
+    shoulders === "narrow" ? -2 :
+    shoulders === "broad"  ?  2 : 0;
+
+  return { bust, waist, hip, shoulder_offset };
+}
+
 // ── Main export ────────────────────────────────────────────────────────────────
 
 export function calculateSize(input: AlgoInput): SizeResult {

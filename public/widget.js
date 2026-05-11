@@ -63,25 +63,7 @@
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
-#ssm-figure-wrap{display:flex;gap:14px;align-items:stretch;margin-bottom:8px;direction:ltr}
-#ssm-fig-body-col{position:relative;flex:0 0 52%;background:#f4f6f8;border-radius:16px;overflow:hidden;min-height:340px}
-#ssm-body-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
-#ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:18px;direction:rtl;min-width:0;justify-content:center}
-.ssm-slider-row{display:flex;flex-direction:column;gap:6px}
-.ssm-slider-head{display:flex;justify-content:space-between;align-items:center;direction:rtl}
-.ssm-slider-name{font-size:13px;font-weight:700}
-.ssm-slider-val{font-size:12px;color:#6b7280;direction:ltr}
-.ssm-slider-ctrl{display:flex;align-items:center;gap:5px;direction:ltr}
-.ssm-slider-btn{width:28px;height:28px;border-radius:7px;border:1.5px solid #d1d5db;background:#fff;color:#374151;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0;line-height:1;font-weight:400}
-.ssm-slider-btn:hover{border-color:var(--ssm-c);color:var(--ssm-c)}
-.ssm-slider-track{position:relative;flex:1;height:36px;display:flex;align-items:center}
-.ssm-slider-track input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;margin:0;direction:ltr}
-.ssm-slider-visual{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:6px;pointer-events:none}
-.ssm-slider-rail{width:100%;height:100%;background:#e5e7eb;border-radius:99px;position:relative;overflow:visible}
-.ssm-slider-fill{position:absolute;top:0;left:0;height:100%;border-radius:99px}
-.ssm-slider-thumb{position:absolute;top:50%;width:20px;height:20px;background:#fff;border:2.5px solid;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.15)}
-.ssm-slider-ticks{position:absolute;top:50%;left:0;right:0;display:flex;justify-content:space-between;padding:0 2px;transform:translateY(-50%)}
-.ssm-slider-tick{width:1.5px;height:9px;background:#c7c7c7;border-radius:1px}
+.ssm-card-img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;margin-bottom:8px;display:block}
   `;
   document.head.appendChild(style);
 
@@ -130,14 +112,6 @@
   // ======= Quiz steps =======
   const STEPS = [
     {
-      id: "gender", type: "cards",
-      q: "ما جنسك؟", hint: "يؤثر على شكل الجسم في الخطوة التالية.",
-      options: [
-        { v: "female", icon: "👩", label: "أنثى" },
-        { v: "male",   icon: "👨", label: "ذكر"  },
-      ],
-    },
-    {
       id: "height", type: "number",
       q: "كم طولك؟", hint: "أدخل طولك بالسنتيمتر.",
       unit: "سم", min: 130, max: 220, def: 165,
@@ -148,8 +122,22 @@
       unit: "كغ", min: 35, max: 200, def: 70,
     },
     {
-      id: "figure", type: "figure",
-      q: "حدد قياساتك", hint: "استخدم المؤشرات لضبط محيط جسمك بالسنتيمتر.",
+      id: "shoulders", type: "cards",
+      q: "ما شكل كتفيك؟", hint: "اختر الوصف الأقرب لشكل كتفيك.",
+      options: [
+        { v: "narrow", label: "ضيقة",  img: "images/q-fit.jpg"       },
+        { v: "normal", label: "عادية", img: "images/q-shoulders.jpg" },
+        { v: "broad",  label: "عريضة", img: "images/q-belly.jpg"     },
+      ],
+    },
+    {
+      id: "belly", type: "cards",
+      q: "ما شكل بطنك؟", hint: "اختر الوصف الأقرب لمنطقة البطن.",
+      options: [
+        { v: "flat",    label: "مسطح",  img: "images/q-fit.jpg"       },
+        { v: "average", label: "متوسط", img: "images/q-shoulders.jpg" },
+        { v: "large",   label: "كبير",  img: "images/q-belly.jpg"     },
+      ],
     },
     {
       id: "preference", type: "cards",
@@ -163,247 +151,8 @@
   ];
 
   // ── Module state ──
-  let step = 0, answers = {}, figureState = null;
+  let step = 0, answers = {};
   let _sizeChart = null, _merchantTags = [];
-
-  // ── Figure state ──
-  function _initFigureState() {
-    const h  = answers.height || 165;
-    const bu = Math.round(h * 0.54);
-    const wa = Math.round(h * 0.43);
-    const hi = Math.round(h * 0.57);
-    const sh = bu;
-    figureState = {
-      shoulder: sh, bust: bu, waist: wa, hip: hi,
-      _initShoulder: sh, _initBust: bu, _initWaist: wa, _initHip: hi,
-    };
-    _updateFigureAnswers();
-  }
-
-  function _updateFigureAnswers() {
-    if (!figureState) return;
-    answers.bust  = figureState.bust;
-    answers.waist = figureState.waist;
-    answers.hip   = figureState.hip;
-    const sh = figureState.shoulder, bu = figureState.bust;
-    answers.shoulder_offset = sh < bu - 5 ? -2 : sh > bu + 5 ? 2 : 0;
-  }
-
-  // ── Body morph zones (module scope — shared by drawMorphedBody + renderFigureStep) ──
-  const ZONES = [
-    { id: 'shoulder', label: 'الكتف', color: '#8b5cf6', topPct: 0.10, hPct: 0.09 },
-    { id: 'bust',     label: 'الصدر', color: '#0d9488', topPct: 0.19, hPct: 0.11 },
-    { id: 'waist',    label: 'الخصر', color: '#f59e0b', topPct: 0.36, hPct: 0.09 },
-    { id: 'hip',      label: 'الورك', color: '#ef4444', topPct: 0.47, hPct: 0.11 },
-  ];
-  let INITS = {};
-
-  // Shoulders expand WIDE (actual silhouette change)
-  // Bust/waist/hip inflate NARROW from center ("balloon inside") — outline barely moves
-  const SHOULDER_SIGMA = 0.16;
-  const VOLUME_SIGMA   = 0.09;
-
-  // Combined backward x-warp: two independent lateral Gaussians
-  function _combinedWarpX(dstNx, shoulderExp, volumeExp) {
-    const d    = dstNx - 0.5;
-    const latS = Math.exp(-(d * d) / (2 * SHOULDER_SIGMA * SHOULDER_SIGMA));
-    const latV = Math.exp(-(d * d) / (2 * VOLUME_SIGMA   * VOLUME_SIGMA));
-    return Math.max(0, Math.min(1, dstNx - d * (shoulderExp * latS + volumeExp * latV)));
-  }
-
-  function drawMorphedBody(canvas, img, cw, ch, dpr) {
-    if (!img || !img.complete || !img.naturalWidth) return;
-    dpr = dpr || 1;
-    const ctx  = canvas.getContext('2d');
-    const imgW = img.naturalWidth;
-    const imgH = img.naturalHeight;
-    const NH   = 60;
-    const NV   = 40;
-    ctx.clearRect(0, 0, cw, ch);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    for (let i = 0; i < NH; i++) {
-      const t = (i + 0.5) / NH;
-      let shoulderExp = 0; // wide — shoulders actually widen
-      let volumeExp   = 0; // narrow — balloon inflation from center
-
-      for (const z of ZONES) {
-        const f      = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
-        const center = z.topPct + z.hPct / 2;
-        const sigma  = z.hPct / 2.5;
-        const diff   = t - center;
-        const gauss  = Math.exp(-(diff * diff) / (2 * sigma * sigma));
-        if (z.id === 'shoulder') shoulderExp += (f - 1) * gauss;
-        else                     volumeExp   += (f - 1) * gauss;
-      }
-
-      const srcY1 = Math.floor((i / NH) * imgH);
-      const srcH  = Math.max(1, Math.floor(((i + 1) / NH) * imgH) - srcY1);
-      const dstY1 = Math.floor((i / NH) * ch);
-      const dstH  = Math.max(1, Math.floor(((i + 1) / NH) * ch) - dstY1);
-
-      for (let j = 0; j < NV; j++) {
-        const dstX1 = Math.floor((j / NV) * cw);
-        const dstX2 = Math.floor(((j + 1) / NV) * cw);
-        const dstW  = Math.max(1, dstX2 - dstX1);
-
-        const srcNxL = _combinedWarpX(dstX1 / cw, shoulderExp, volumeExp);
-        const srcNxR = _combinedWarpX(dstX2 / cw, shoulderExp, volumeExp);
-        const srcX   = srcNxL * imgW;
-        const srcW   = Math.max(1, (srcNxR - srcNxL) * imgW);
-
-        ctx.drawImage(img, srcX, srcY1, srcW, srcH, dstX1, dstY1, dstW, dstH);
-      }
-    }
-  }
-
-  // ── Render figure step ──
-  function renderFigureStep(body) {
-    if (!figureState) _initFigureState();
-
-    INITS = {
-      shoulder: figureState._initShoulder,
-      bust:     figureState._initBust,
-      waist:    figureState._initWaist,
-      hip:      figureState._initHip,
-    };
-
-    const wrap = document.createElement('div');
-    wrap.id = 'ssm-figure-wrap';
-
-    // ── Image column (first in DOM → RIGHT side in RTL flex) ──
-    const imgCol = document.createElement('div');
-    imgCol.id = 'ssm-fig-body-col';
-
-    const imgFile = answers.gender === 'male' ? 'images/body-male.png' : 'images/body-female.png';
-    const imgSrc  = `${API_BASE}/${imgFile}`;
-
-    const canvas = document.createElement('canvas');
-    canvas.id = 'ssm-body-canvas';
-    imgCol.appendChild(canvas);
-    wrap.appendChild(imgCol);
-
-    let _bodyImg = null, _canvasReady = false;
-    let _dpr = 1, _cw = 160, _ch = 280;
-    function _attemptDraw() {
-      if (_bodyImg && _canvasReady) drawMorphedBody(canvas, _bodyImg, _cw, _ch, _dpr);
-    }
-    const bodyImg = new Image();
-    bodyImg.crossOrigin = 'anonymous';
-    bodyImg.src = imgSrc;
-    bodyImg.onload = () => { _bodyImg = bodyImg; _attemptDraw(); };
-
-    // ── Sliders column (second in DOM → LEFT side in RTL flex) ──
-    const slidersCol = document.createElement('div');
-    slidersCol.id = 'ssm-fig-sliders';
-
-    const SMIN = 60, SMAX = 150, TICKS = 5;
-
-    for (const z of ZONES) {
-      const row = document.createElement('div');
-      row.className = 'ssm-slider-row';
-
-      // Header: name (right) + value (left)
-      const head = document.createElement('div');
-      head.className = 'ssm-slider-head';
-      const nameEl = document.createElement('span');
-      nameEl.className = 'ssm-slider-name';
-      nameEl.style.color = z.color;
-      nameEl.textContent = z.label;
-      const valEl = document.createElement('span');
-      valEl.className = 'ssm-slider-val';
-      valEl.textContent = figureState[z.id] + ' سم';
-      head.appendChild(nameEl);
-      head.appendChild(valEl);
-      row.appendChild(head);
-
-      // Controls: [−] track [+]  — all LTR so slider increases left→right
-      const ctrl = document.createElement('div');
-      ctrl.className = 'ssm-slider-ctrl';
-
-      const btnM = document.createElement('button');
-      btnM.type = 'button'; btnM.className = 'ssm-slider-btn'; btnM.textContent = '−';
-
-      const trackWrap = document.createElement('div');
-      trackWrap.className = 'ssm-slider-track';
-
-      const slider = document.createElement('input');
-      slider.type = 'range';
-      slider.min  = String(SMIN);
-      slider.max  = String(SMAX);
-      slider.step = '1';
-      slider.value = String(figureState[z.id]);
-      slider.setAttribute('dir', 'ltr');
-
-      const visual = document.createElement('div');
-      visual.className = 'ssm-slider-visual';
-      const rail = document.createElement('div');
-      rail.className = 'ssm-slider-rail';
-
-      const ticksEl = document.createElement('div');
-      ticksEl.className = 'ssm-slider-ticks';
-      for (let t = 0; t < TICKS; t++) {
-        const tk = document.createElement('div'); tk.className = 'ssm-slider-tick';
-        ticksEl.appendChild(tk);
-      }
-      rail.appendChild(ticksEl);
-
-      const fillEl  = document.createElement('div'); fillEl.className  = 'ssm-slider-fill';
-      const thumbEl = document.createElement('div'); thumbEl.className = 'ssm-slider-thumb';
-      rail.appendChild(fillEl);
-      rail.appendChild(thumbEl);
-      visual.appendChild(rail);
-      trackWrap.appendChild(slider);
-      trackWrap.appendChild(visual);
-
-      const btnP = document.createElement('button');
-      btnP.type = 'button'; btnP.className = 'ssm-slider-btn'; btnP.textContent = '+';
-
-      ctrl.appendChild(btnM);
-      ctrl.appendChild(trackWrap);
-      ctrl.appendChild(btnP);
-      row.appendChild(ctrl);
-
-      (function(zid, sl, ve, fill, thumb) {
-        function updateVisual(pct) {
-          fill.style.width       = pct + '%';
-          fill.style.background  = z.color;
-          thumb.style.left       = pct + '%';
-          thumb.style.borderColor = z.color;
-        }
-        function setVal(v) {
-          const c = Math.max(SMIN, Math.min(SMAX, Math.round(v)));
-          figureState[zid] = c;
-          sl.value = String(c);
-          ve.textContent = c + ' سم';
-          updateVisual((c - SMIN) / (SMAX - SMIN) * 100);
-          _updateFigureAnswers();
-          drawMorphedBody(canvas, _bodyImg, _cw, _ch, _dpr);
-        }
-        btnM.addEventListener('click', () => setVal(figureState[zid] - 1));
-        btnP.addEventListener('click', () => setVal(figureState[zid] + 1));
-        sl.addEventListener('input', () => setVal(+sl.value));
-        updateVisual((figureState[zid] - SMIN) / (SMAX - SMIN) * 100);
-      })(z.id, slider, valEl, fillEl, thumbEl);
-
-      slidersCol.appendChild(row);
-    }
-
-    wrap.appendChild(slidersCol);
-    body.appendChild(wrap);
-
-    requestAnimationFrame(() => {
-      _dpr = window.devicePixelRatio || 1;
-      _cw  = imgCol.offsetWidth  || 160;
-      _ch  = imgCol.offsetHeight || 280;
-      canvas.width  = Math.round(_cw * _dpr);
-      canvas.height = Math.round(_ch * _dpr);
-      canvas.getContext('2d').scale(_dpr, _dpr);
-      _canvasReady = true;
-      _attemptDraw();
-    });
-  }
 
   // ======= Helpers =======
   function gid(id) { return document.getElementById(id); }
@@ -549,7 +298,7 @@
   }
 
   function openModal()  {
-    step = 0; answers = {}; figureState = null;
+    step = 0; answers = {};
     gid("ssm-overlay").classList.add("open");
     render();
   }
@@ -606,7 +355,13 @@
         const card = document.createElement("div");
         card.className = "ssm-card" + (answers[s.id] === o.v ? " active" : "");
         card.addEventListener("click", () => window._ssm.pick(s.id, o.v));
-        if (o.icon) {
+        if (o.img) {
+          const imgEl = document.createElement("img");
+          imgEl.className = "ssm-card-img";
+          imgEl.src = `${API_BASE}/${o.img}`;
+          imgEl.alt = o.label;
+          card.appendChild(imgEl);
+        } else if (o.icon) {
           const ico = document.createElement("div");
           ico.className = "card-emoji"; ico.textContent = o.icon;
           card.appendChild(ico);
@@ -617,9 +372,6 @@
         cards.appendChild(card);
       }
       body.appendChild(cards);
-
-    } else if (s.type === "figure") {
-      renderFigureStep(body);
     }
 
     // Nav
@@ -657,7 +409,6 @@
         if (!answers[s.id]) { alert("رجاءً أدخل قيمة"); return; }
       }
       if (s.type === "cards" && !answers[s.id]) { alert("رجاءً اختر خياراً"); return; }
-      if (s.id === 'gender') figureState = null;
       if (step < STEPS.length - 1) { step++; render(); } else { submit(); }
     },
   };
@@ -675,7 +426,7 @@
     msgEl.textContent = msg;
     const btn = document.createElement("button");
     btn.className = "ssm-restart"; btn.textContent = "🔄 أعد المحاولة";
-    btn.addEventListener("click", () => { step = 0; answers = {}; figureState = null; render(); });
+    btn.addEventListener("click", () => { step = 0; answers = {}; render(); });
     wrap.appendChild(icon); wrap.appendChild(msgEl); wrap.appendChild(btn);
     body.appendChild(wrap);
   }
@@ -691,13 +442,11 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tag,
-        gender:          answers.gender          || "female",
-        height:          answers.height          || 165,
-        bust:            answers.bust            || 90,
-        waist:           answers.waist           || 72,
-        hip:             answers.hip             || 96,
-        shoulder_offset: answers.shoulder_offset || 0,
-        preference:      answers.preference      || "regular",
+        height:     answers.height     || 165,
+        weight:     answers.weight     || 70,
+        shoulders:  answers.shoulders  || "normal",
+        belly:      answers.belly      || "average",
+        preference: answers.preference || "regular",
       }),
     })
       .then(r => {
@@ -768,7 +517,7 @@
     const restartBtn = document.createElement("button");
     restartBtn.className = "ssm-restart";
     restartBtn.textContent = "🔄 أعد الحساب";
-    restartBtn.addEventListener("click", () => { step = 0; answers = {}; figureState = null; render(); });
+    restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
     result.appendChild(restartBtn);
 
     body.appendChild(result);
