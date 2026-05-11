@@ -238,7 +238,7 @@
     const imgCol = document.createElement('div');
     imgCol.id = 'ssm-fig-body-col';
 
-    const imgFile = answers.gender === 'male' ? 'ssm_body_male.jpeg' : 'ssm_body_female.jpeg';
+    const imgFile = answers.gender === 'male' ? 'ssm_body_male.png' : 'ssm_body_female.png';
     const imgSrc  = `${API_BASE}/${imgFile}`;
 
     const canvas = document.createElement('canvas');
