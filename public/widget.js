@@ -143,9 +143,9 @@
       id: "preference", type: "cards",
       q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
       options: [
-        { v: "slim",    icon: "📏", label: "ضيق"  },
-        { v: "regular", icon: "👌", label: "عادي" },
-        { v: "loose",   icon: "💨", label: "واسع" },
+        { v: "slim",    label: "ضيق",  img: "images/q-fit.jpg", panel: 0 },
+        { v: "regular", label: "عادي", img: "images/q-fit.jpg", panel: 1 },
+        { v: "loose",   label: "واسع", img: "images/q-fit.jpg", panel: 2 },
       ],
     },
   ];
@@ -362,7 +362,7 @@
           imgDiv.style.cssText =
             `background-image:url('${API_BASE}/${o.img}');` +
             `background-size:300% auto;` +
-            `background-position:${xPct}% 40%;`;
+            `background-position:${xPct}% 58%;`;
           card.appendChild(imgDiv);
         } else if (o.icon) {
           const ico = document.createElement("div");
