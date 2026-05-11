@@ -191,6 +191,10 @@
   ];
   let INITS = {};
 
+  // Fraction of image width where the body silhouette sits (arms + background outside this stay fixed)
+  const BODY_LEFT  = 0.28;
+  const BODY_RIGHT = 0.72;
+
   function drawMorphedBody(canvas, img, cw, ch, dpr) {
     if (!img || !img.complete || !img.naturalWidth) return;
     dpr = dpr || 1;
@@ -199,6 +203,13 @@
     const imgH = img.naturalHeight;
     const N    = 60;
     ctx.clearRect(0, 0, cw, ch);
+
+    const sBodyL = BODY_LEFT  * imgW;
+    const sBodyR = BODY_RIGHT * imgW;
+    const sBodyW = sBodyR - sBodyL;
+    const sLeftW = sBodyL;
+    const sRightW = imgW - sBodyR;
+
     for (let i = 0; i < N; i++) {
       const t = (i + 0.5) / N;
       let totalExpansion = 0;
@@ -210,13 +221,25 @@
         totalExpansion += (f - 1) * Math.exp(-(diff * diff) / (2 * sigma * sigma));
       }
       const scale = 1 + totalExpansion;
+
       const srcY1 = Math.floor((i / N)       * imgH);
       const srcH  = Math.max(1, Math.floor(((i + 1) / N) * imgH) - srcY1);
       const dstY1 = Math.floor((i / N)       * ch);
       const dstH  = Math.max(1, Math.floor(((i + 1) / N) * ch) - dstY1);
-      const dstW  = cw * scale;
-      const dstX  = (cw - dstW) / 2;
-      ctx.drawImage(img, 0, srcY1, imgW, srcH, dstX, dstY1, dstW, dstH);
+
+      // Scaled body center — kept centered in canvas
+      const dBodyW = (sBodyW / imgW) * cw * scale;
+      const dBodyL = (cw - dBodyW) / 2;
+      const dBodyR = dBodyL + dBodyW;
+
+      // Left background: pinned to canvas left edge, never stretches
+      if (sLeftW > 0 && dBodyL > 0)
+        ctx.drawImage(img, 0,      srcY1, sLeftW,  srcH, 0,      dstY1, dBodyL,      dstH);
+      // Body center: only this region morphs
+      ctx.drawImage(img, sBodyL,   srcY1, sBodyW,  srcH, dBodyL, dstY1, dBodyW,      dstH);
+      // Right background: pinned to canvas right edge, never stretches
+      if (sRightW > 0 && cw - dBodyR > 0)
+        ctx.drawImage(img, sBodyR, srcY1, sRightW, srcH, dBodyR, dstY1, cw - dBodyR, dstH);
     }
   }
 
