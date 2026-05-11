@@ -63,18 +63,22 @@
 .ssm-loading{text-align:center;padding:40px;color:#6b7280}
 .ssm-spinner{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:var(--ssm-c);border-radius:50%;animation:ssm-spin .8s linear infinite;margin:0 auto 16px}
 @keyframes ssm-spin{to{transform:rotate(360deg)}}
-#ssm-figure-wrap{display:flex;gap:14px;align-items:flex-start;margin-bottom:8px}
-#ssm-fig-body-col{position:relative;width:42%;flex-shrink:0;background:#f8fafc;border-radius:12px;overflow:hidden;align-self:stretch;min-height:220px}
+#ssm-figure-wrap{display:flex;gap:16px;align-items:stretch;margin-bottom:8px}
+#ssm-fig-body-col{position:relative;width:50%;flex-shrink:0;background:#f4f6f8;border-radius:16px;overflow:hidden;min-height:320px}
 #ssm-body-canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
-#ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:10px;direction:rtl;min-width:0;justify-content:space-between}
-.ssm-slider-row{display:flex;flex-direction:column;gap:4px}
+#ssm-fig-sliders{flex:1;display:flex;flex-direction:column;gap:18px;direction:rtl;min-width:0;justify-content:center;padding:4px 0}
+.ssm-slider-row{display:flex;flex-direction:column;gap:6px}
 .ssm-slider-label{display:flex;justify-content:space-between;align-items:center}
-.ssm-slider-name{font-size:13px;font-weight:700}
-.ssm-slider-val{font-size:12px;font-weight:700;min-width:44px;text-align:left;direction:ltr}
-.ssm-slider-ctrl{display:flex;align-items:center;gap:5px}
-.ssm-slider-ctrl button{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--ssm-c);background:#fff;color:var(--ssm-c);font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;padding:0;line-height:1}
-.ssm-slider-ctrl button:hover{background:var(--ssm-c);color:#fff}
-.ssm-slider-ctrl input[type=range]{flex:1;accent-color:var(--ssm-c);cursor:pointer;min-width:0;height:4px}
+.ssm-slider-name{font-size:13px;font-weight:700;letter-spacing:.3px}
+.ssm-slider-val{font-size:12px;font-weight:700;min-width:44px;text-align:left;direction:ltr;color:#6b7280}
+.ssm-slider-track{position:relative;height:36px;display:flex;align-items:center}
+.ssm-slider-track input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:2;margin:0}
+.ssm-slider-visual{position:absolute;inset:0;display:flex;align-items:center;pointer-events:none}
+.ssm-slider-rail{width:100%;height:6px;background:#e5e7eb;border-radius:99px;position:relative;overflow:visible}
+.ssm-slider-fill{position:absolute;top:0;left:0;height:100%;background:var(--ssm-c);border-radius:99px;transition:width .05s}
+.ssm-slider-thumb{position:absolute;top:50%;width:20px;height:20px;background:#fff;border:2.5px solid var(--ssm-c);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.15);transition:left .05s}
+.ssm-slider-ticks{position:absolute;top:50%;width:100%;display:flex;justify-content:space-between;transform:translateY(-50%);padding:0 1px}
+.ssm-slider-tick{width:2px;height:10px;background:#d1d5db;border-radius:1px}
   `;
   document.head.appendChild(style);
 
@@ -191,8 +195,8 @@
   ];
   let INITS = {};
 
-  // Lateral Gaussian width — controls how far the warp spreads from body center
-  const BODY_SIGMA = 0.20;
+  // Lateral Gaussian width — narrow enough to leave hands/arms untouched
+  const BODY_SIGMA = 0.14;
 
   // Smooth backward x-warp: dest pixel at dstNx came from srcNx in source image
   // Body center expands organically; edges stay fixed — no hard boundaries
@@ -283,61 +287,87 @@
     const slidersCol = document.createElement('div');
     slidersCol.id = 'ssm-fig-sliders';
 
+    const SMIN = 60, SMAX = 150, TICKS = 7;
+
     for (const z of ZONES) {
       const row = document.createElement('div');
       row.className = 'ssm-slider-row';
 
+      // Label row
       const labelRow = document.createElement('div');
       labelRow.className = 'ssm-slider-label';
-
       const nameEl = document.createElement('span');
       nameEl.className = 'ssm-slider-name';
       nameEl.style.color = z.color;
       nameEl.textContent = z.label;
-
       const valEl = document.createElement('span');
       valEl.className = 'ssm-slider-val';
-      valEl.style.color = z.color;
       valEl.textContent = figureState[z.id] + ' سم';
-
       labelRow.appendChild(nameEl);
       labelRow.appendChild(valEl);
       row.appendChild(labelRow);
 
-      const ctrl = document.createElement('div');
-      ctrl.className = 'ssm-slider-ctrl';
-
-      const btnM = document.createElement('button');
-      btnM.type = 'button'; btnM.textContent = '−';
+      // Segmented visual track
+      const trackWrap = document.createElement('div');
+      trackWrap.className = 'ssm-slider-track';
 
       const slider = document.createElement('input');
       slider.type  = 'range';
-      slider.min   = '60';
-      slider.max   = '150';
+      slider.min   = String(SMIN);
+      slider.max   = String(SMAX);
       slider.step  = '1';
       slider.value = String(figureState[z.id]);
 
-      const btnP = document.createElement('button');
-      btnP.type = 'button'; btnP.textContent = '+';
+      const visual = document.createElement('div');
+      visual.className = 'ssm-slider-visual';
+      const rail = document.createElement('div');
+      rail.className = 'ssm-slider-rail';
 
-      (function(zid, sl, ve) {
+      // Tick marks
+      const ticksEl = document.createElement('div');
+      ticksEl.className = 'ssm-slider-ticks';
+      for (let t = 0; t < TICKS; t++) {
+        const tk = document.createElement('div');
+        tk.className = 'ssm-slider-tick';
+        ticksEl.appendChild(tk);
+      }
+      rail.appendChild(ticksEl);
+
+      const fillEl  = document.createElement('div');
+      fillEl.className = 'ssm-slider-fill';
+      const thumbEl = document.createElement('div');
+      thumbEl.className = 'ssm-slider-thumb';
+      thumbEl.style.borderColor = z.color;
+      rail.appendChild(fillEl);
+      rail.appendChild(thumbEl);
+      visual.appendChild(rail);
+      trackWrap.appendChild(slider);
+      trackWrap.appendChild(visual);
+      row.appendChild(trackWrap);
+
+      (function(zid, sl, ve, fill, thumb) {
+        function updateVisual(pct) {
+          fill.style.width  = pct + '%';
+          fill.style.background = z.color;
+          thumb.style.left  = pct + '%';
+          thumb.style.borderColor = z.color;
+        }
         function setVal(v) {
-          const c = Math.max(60, Math.min(150, Math.round(v)));
+          const c = Math.max(SMIN, Math.min(SMAX, Math.round(v)));
           figureState[zid] = c;
           sl.value = String(c);
           ve.textContent = c + ' سم';
+          const pct = (c - SMIN) / (SMAX - SMIN) * 100;
+          updateVisual(pct);
           _updateFigureAnswers();
           drawMorphedBody(canvas, _bodyImg, _cw, _ch, _dpr);
         }
-        btnM.addEventListener('click', () => setVal(figureState[zid] - 1));
-        btnP.addEventListener('click', () => setVal(figureState[zid] + 1));
-        sl.addEventListener('input',   () => setVal(+sl.value));
-      })(z.id, slider, valEl);
+        sl.addEventListener('input', () => setVal(+sl.value));
+        // Init visual
+        const initPct = (figureState[zid] - SMIN) / (SMAX - SMIN) * 100;
+        updateVisual(initPct);
+      })(z.id, slider, valEl, fillEl, thumbEl);
 
-      ctrl.appendChild(btnM);
-      ctrl.appendChild(slider);
-      ctrl.appendChild(btnP);
-      row.appendChild(ctrl);
       slidersCol.appendChild(row);
     }
 
