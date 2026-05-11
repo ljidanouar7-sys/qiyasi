@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // ── Fetch Size Chart ───────────────────────────────────────────────────────
     const { data: category } = await supabase
       .from("categories")
-      .select("size_chart, niche, fabric_type")
+      .select("size_chart, niche, fabric_type, gender")
       .eq("merchant_id", merchantId)
       .ilike("tag", tag)
       .single();
@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
     const sizeChart  = category.size_chart as SizeChart;
     const niche      = String(category.niche      ?? "");
     const fabricType = String(category.fabric_type ?? "semi");
+    const gender     = category.gender === "male" ? "male" : "female";
 
     // ── Cache ──────────────────────────────────────────────────────────────────
     const cacheKey = `size:v6:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${preference}:${fabricType}`;
@@ -149,7 +150,7 @@ export async function POST(req: NextRequest) {
     // ── Calculate ──────────────────────────────────────────────────────────────
     const result = calculateSize({
       niche,
-      gender:          "female",
+      gender,
       height,
       bust,
       waist,
