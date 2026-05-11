@@ -438,7 +438,7 @@
     gid("ssm-body").innerHTML = `<div class="ssm-loading"><div class="ssm-spinner"></div><p>الخياط الذكي يحلل مقاسك...</p></div>`;
 
     const tag = extractProductTag();
-    if (!tag) { closeModal(); return; }
+    if (!tag) { showError("تعذّر تحديد المنتج — يرجى التواصل مع المتجر."); return; }
 
     fetch(`${API_BASE}/api/calculate-size`, {
       method: "POST",
