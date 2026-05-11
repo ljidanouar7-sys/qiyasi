@@ -191,9 +191,16 @@
   ];
   let INITS = {};
 
-  // Fraction of image width where the body silhouette sits (arms + background outside this stay fixed)
-  const BODY_LEFT  = 0.28;
-  const BODY_RIGHT = 0.72;
+  // Lateral Gaussian width — controls how far the warp spreads from body center
+  const BODY_SIGMA = 0.20;
+
+  // Smooth backward x-warp: dest pixel at dstNx came from srcNx in source image
+  // Body center expands organically; edges stay fixed — no hard boundaries
+  function _warpX(dstNx, expansion) {
+    const d   = dstNx - 0.5;
+    const lat = Math.exp(-(d * d) / (2 * BODY_SIGMA * BODY_SIGMA));
+    return Math.max(0, Math.min(1, dstNx - expansion * lat * d));
+  }
 
   function drawMorphedBody(canvas, img, cw, ch, dpr) {
     if (!img || !img.complete || !img.naturalWidth) return;
@@ -201,17 +208,12 @@
     const ctx  = canvas.getContext('2d');
     const imgW = img.naturalWidth;
     const imgH = img.naturalHeight;
-    const N    = 60;
+    const NH   = 60; // horizontal bands
+    const NV   = 40; // vertical strips per band
     ctx.clearRect(0, 0, cw, ch);
 
-    const sBodyL = BODY_LEFT  * imgW;
-    const sBodyR = BODY_RIGHT * imgW;
-    const sBodyW = sBodyR - sBodyL;
-    const sLeftW = sBodyL;
-    const sRightW = imgW - sBodyR;
-
-    for (let i = 0; i < N; i++) {
-      const t = (i + 0.5) / N;
+    for (let i = 0; i < NH; i++) {
+      const t = (i + 0.5) / NH;
       let totalExpansion = 0;
       for (const z of ZONES) {
         const f      = Math.max(0.7, Math.min(1.4, figureState[z.id] / INITS[z.id]));
@@ -220,26 +222,24 @@
         const diff   = t - center;
         totalExpansion += (f - 1) * Math.exp(-(diff * diff) / (2 * sigma * sigma));
       }
-      const scale = 1 + totalExpansion;
 
-      const srcY1 = Math.floor((i / N)       * imgH);
-      const srcH  = Math.max(1, Math.floor(((i + 1) / N) * imgH) - srcY1);
-      const dstY1 = Math.floor((i / N)       * ch);
-      const dstH  = Math.max(1, Math.floor(((i + 1) / N) * ch) - dstY1);
+      const srcY1 = Math.floor((i / NH) * imgH);
+      const srcH  = Math.max(1, Math.floor(((i + 1) / NH) * imgH) - srcY1);
+      const dstY1 = Math.floor((i / NH) * ch);
+      const dstH  = Math.max(1, Math.floor(((i + 1) / NH) * ch) - dstY1);
 
-      // Scaled body center — kept centered in canvas
-      const dBodyW = (sBodyW / imgW) * cw * scale;
-      const dBodyL = (cw - dBodyW) / 2;
-      const dBodyR = dBodyL + dBodyW;
+      for (let j = 0; j < NV; j++) {
+        const dstX1 = Math.floor((j / NV) * cw);
+        const dstX2 = Math.floor(((j + 1) / NV) * cw);
+        const dstW  = Math.max(1, dstX2 - dstX1);
 
-      // Left background: pinned to canvas left edge, never stretches
-      if (sLeftW > 0 && dBodyL > 0)
-        ctx.drawImage(img, 0,      srcY1, sLeftW,  srcH, 0,      dstY1, dBodyL,      dstH);
-      // Body center: only this region morphs
-      ctx.drawImage(img, sBodyL,   srcY1, sBodyW,  srcH, dBodyL, dstY1, dBodyW,      dstH);
-      // Right background: pinned to canvas right edge, never stretches
-      if (sRightW > 0 && cw - dBodyR > 0)
-        ctx.drawImage(img, sBodyR, srcY1, sRightW, srcH, dBodyR, dstY1, cw - dBodyR, dstH);
+        const srcNxL = _warpX(dstX1 / cw, totalExpansion);
+        const srcNxR = _warpX(dstX2 / cw, totalExpansion);
+        const srcX   = srcNxL * imgW;
+        const srcW   = Math.max(1, (srcNxR - srcNxL) * imgW);
+
+        ctx.drawImage(img, srcX, srcY1, srcW, srcH, dstX1, dstY1, dstW, dstH);
+      }
     }
   }
 
