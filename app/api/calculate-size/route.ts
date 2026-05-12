@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Ratelimit } from "@upstash/ratelimit";
-import { calculateSize, estimateMeasurements } from "@/lib/sizingAlgorithm";
+import { calculateSize } from "@/lib/sizingAlgorithm";
 import type { SizeChart } from "@/lib/globalSizeCharts";
 import { log } from "@/lib/logger";
 import { redis } from "@/lib/rate-limit";
@@ -82,8 +82,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "weight must be between 30 and 250 kg" }, { status: 400, headers: CORS });
     }
 
-    const { bust, waist, hip, shoulder_offset } = estimateMeasurements(height, weight, shoulders, belly);
-
     // ── Domain Validation ──────────────────────────────────────────────────────
     const { data: domainRow } = await supabase
       .from("merchant_domains")
@@ -125,7 +123,7 @@ export async function POST(req: NextRequest) {
     // ── Fetch Size Chart ───────────────────────────────────────────────────────
     const { data: category } = await supabase
       .from("categories")
-      .select("size_chart, niche, fabric_type, gender")
+      .select("size_chart, niche")
       .eq("merchant_id", merchantId)
       .ilike("tag", tag)
       .single();
@@ -134,13 +132,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Category not found" }, { status: 404, headers: CORS });
     }
 
-    const sizeChart  = category.size_chart as SizeChart;
-    const niche      = String(category.niche      ?? "");
-    const fabricType = String(category.fabric_type ?? "semi");
-    const gender     = category.gender === "male" ? "male" : "female";
+    const sizeChart = category.size_chart as SizeChart;
+    const niche     = String(category.niche ?? "");
 
     // ── Cache ──────────────────────────────────────────────────────────────────
-    const cacheKey = `size:v6:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${preference}:${fabricType}`;
+    const cacheKey = `size:v7:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${preference}`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       const data = typeof cached === "string" ? JSON.parse(cached) : cached;
@@ -150,29 +146,24 @@ export async function POST(req: NextRequest) {
     // ── Calculate ──────────────────────────────────────────────────────────────
     const result = calculateSize({
       niche,
-      gender,
       height,
-      bust,
-      waist,
-      hip,
-      shoulder_offset,
-      preference:  preference as "slim" | "regular" | "loose",
-      fabric_type: fabricType as "stretch" | "semi" | "rigid",
-      size_chart:  sizeChart.rows,
+      weight,
+      shoulders,
+      belly,
+      preference: preference as "slim" | "regular" | "loose",
+      size_chart: sizeChart.rows,
     });
 
     log("info", "size_calculated", {
       domain: normalizedOrigin,
       merchantId,
-      size:       result.size,
-      confidence: result.confidence,
+      size: result.size,
     });
 
     const responseBody = {
       size:         result.size,
-      confidence:   result.confidence,
+      status:       result.status,
       alternatives: result.alternatives,
-      body_shape:   result.body_shape,
     };
 
     await redis.set(cacheKey, JSON.stringify(responseBody), { ex: 3600 });

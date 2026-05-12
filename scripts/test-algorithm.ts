@@ -1,103 +1,85 @@
 /**
  * Local algorithm test — no DB needed.
- * Tests calculateSize() with the new measurement-based input format.
+ * Tests calculateSize() with the new height/weight-based input format.
  */
 
 import { calculateSize } from "../lib/sizingAlgorithm";
 import type { AlgoInput } from "../lib/sizingAlgorithm";
-import { LONG_CLOTHING_DEFAULT_CHART, T_SHIRT_DEFAULT_CHART } from "../lib/globalSizeCharts";
+import { ABAYA_DEFAULT_CHART, T_SHIRT_DEFAULT_CHART } from "../lib/globalSizeCharts";
 
 interface TestCase {
-  label:           string;
-  height:          number;
-  bust:            number;
-  waist:           number;
-  hip:             number;
-  shoulder_offset: -2 | 0 | 2;
-  expected?:       string;
+  label:     string;
+  height:    number;
+  weight:    number;
+  shoulders: "narrow" | "normal" | "broad";
+  belly:     "flat" | "average" | "large";
+  expected?: string;
 }
 
-const TEST_CASES: TestCase[] = [
-  { label: "XS — صغيرة جداً",        height: 150, bust: 80,  waist: 62,  hip: 86,  shoulder_offset:  0, expected: "XS"  },
-  { label: "S  — صغيرة",             height: 158, bust: 87,  waist: 68,  hip: 93,  shoulder_offset:  0, expected: "S"   },
-  { label: "M  — متوسطة",            height: 165, bust: 93,  waist: 75,  hip: 99,  shoulder_offset:  0, expected: "M"   },
-  { label: "L  — كبيرة",             height: 172, bust: 100, waist: 82,  hip: 106, shoulder_offset:  0, expected: "L"   },
-  { label: "XL — كبيرة جداً",        height: 178, bust: 107, waist: 89,  hip: 113, shoulder_offset:  0, expected: "XL"  },
-  { label: "XXL — ضخمة",             height: 185, bust: 115, waist: 97,  hip: 121, shoulder_offset:  0, expected: "XXL" },
-  { label: "كتف عريض +2",            height: 165, bust: 90,  waist: 72,  hip: 96,  shoulder_offset: +2, expected: "M"   },
-  { label: "كتف ضيق -2",             height: 165, bust: 90,  waist: 72,  hip: 96,  shoulder_offset: -2, expected: "M"   },
-  { label: "خصر ضيق / ورك واسع",     height: 163, bust: 88,  waist: 62,  hip: 100, shoulder_offset:  0 },
-  { label: "جسم تفاحة (خصر = ورك)",  height: 168, bust: 95,  waist: 88,  hip: 95,  shoulder_offset:  0 },
+const ABAYA_CASES: TestCase[] = [
+  { label: "XS — قصيرة خفيفة",        height: 150, weight: 50,  shoulders: "normal", belly: "average", expected: "XS"  },
+  { label: "S  — S بطول",              height: 158, weight: 60,  shoulders: "normal", belly: "average", expected: "S"   },
+  { label: "M  — متوسطة",             height: 165, weight: 72,  shoulders: "normal", belly: "average", expected: "M"   },
+  { label: "L  — كبيرة",              height: 173, weight: 84,  shoulders: "normal", belly: "average", expected: "L"   },
+  { label: "XL — كبيرة جداً",         height: 181, weight: 96,  shoulders: "normal", belly: "average", expected: "XL"  },
+  { label: "XXL — ضخمة",              height: 188, weight: 108, shoulders: "normal", belly: "average", expected: "XXL" },
+  { label: "بطن كبير → يرتفع",        height: 163, weight: 67,  shoulders: "normal", belly: "large",   expected: "L"   },
+  { label: "بطن مسطح → يبقى",         height: 163, weight: 70,  shoulders: "normal", belly: "flat",    expected: "M"   },
+  { label: "طول L وزن M → L (Floor)", height: 173, weight: 70,  shoulders: "normal", belly: "average", expected: "L"   },
 ];
 
-function badge(conf: number) {
-  return conf >= 90 ? "🟢" : conf >= 70 ? "🟡" : conf > 0 ? "🔴" : "⬛";
-}
+const TSHIRT_CASES: TestCase[] = [
+  { label: "XS تيشيرت",               height: 150, weight: 50,  shoulders: "normal", belly: "average", expected: "XS"  },
+  { label: "M تيشيرت",                height: 165, weight: 72,  shoulders: "normal", belly: "average", expected: "M"   },
+  { label: "كتف عريض → L",            height: 165, weight: 72,  shoulders: "broad",  belly: "average", expected: "L"   },
+  { label: "طول يرتفع الى L",         height: 178, weight: 70,  shoulders: "normal", belly: "average", expected: "L"   },
+];
 
-function runNiche(
-  nicheLabel: string,
-  niche: string,
-  chart: typeof LONG_CLOTHING_DEFAULT_CHART,
-  gender: "female" | "male" = "female",
-  fabric: "stretch" | "semi" | "rigid" = "semi",
-) {
-  console.log(`\n${"─".repeat(72)}`);
-  console.log(`  NICHE: ${nicheLabel}  (${niche})  fabric=${fabric}`);
-  console.log(`${"─".repeat(72)}`);
-  console.log(`  ${"الوصف".padEnd(28)} مقاس  ثقة   بدائل         شكل`);
-  console.log(`  ${"─".repeat(68)}`);
+function runTests(label: string, niche: string, cases: TestCase[], chart: typeof ABAYA_DEFAULT_CHART) {
+  console.log(`\n${"─".repeat(70)}`);
+  console.log(`  ${label}`);
+  console.log(`${"─".repeat(70)}`);
 
-  for (const tc of TEST_CASES) {
+  let passed = 0, total = 0;
+  for (const tc of cases) {
     const input: AlgoInput = {
       niche,
-      gender,
-      height:          tc.height,
-      bust:            tc.bust,
-      waist:           tc.waist,
-      hip:             tc.hip,
-      shoulder_offset: tc.shoulder_offset,
-      preference:      "regular",
-      fabric_type:     fabric,
-      size_chart:      chart.rows,
+      height:     tc.height,
+      weight:     tc.weight,
+      shoulders:  tc.shoulders,
+      belly:      tc.belly,
+      preference: "regular",
+      size_chart: chart.rows,
     };
     const r   = calculateSize(input);
     const alt = r.alternatives.length ? r.alternatives.join(", ") : "—";
     const ok  = tc.expected ? (r.size === tc.expected ? "✅" : `❌(exp ${tc.expected})`) : "";
+    if (tc.expected) { total++; if (r.size === tc.expected) passed++; }
     console.log(
-      `  ${badge(r.confidence)} ${tc.label.padEnd(26)} ` +
-      `${(r.size || "—").padEnd(6)}${String(r.confidence).padEnd(6)}` +
-      `${alt.padEnd(14)} ${r.body_shape}  ${ok}`
+      `  ${tc.label.padEnd(28)} → ${(r.size || "—").padEnd(5)}  alts: ${alt.padEnd(10)} ${ok}`
     );
   }
+  if (total > 0) console.log(`\n  النتيجة: ${passed}/${total} ✅`);
 }
 
-console.log("=".repeat(72));
-console.log("  QIYASI — MEASUREMENT-BASED ALGORITHM AUDIT");
-console.log("=".repeat(72));
+console.log("=".repeat(70));
+console.log("  QIYASI — HEIGHT/WEIGHT ALGORITHM AUDIT");
+console.log("=".repeat(70));
 
-const origLog  = console.log;
-const origWarn = console.warn;
-console.log  = (...args: unknown[]) => { if (!String(args[0]).startsWith("[sizing]")) origLog(...args); };
-console.warn = (...args: unknown[]) => { if (!String(args[0]).startsWith("[sizing]")) origWarn(...args); };
-
-runNiche("ملابس طويلة — stretch",  "long_clothing", LONG_CLOTHING_DEFAULT_CHART, "female", "stretch");
-runNiche("ملابس طويلة — semi",     "long_clothing", LONG_CLOTHING_DEFAULT_CHART, "female", "semi");
-runNiche("تيشيرت — semi",          "t_shirt",       T_SHIRT_DEFAULT_CHART,       "female", "semi");
-
-console.log = origLog;
-console.warn = origWarn;
+runTests("عبايات / ملابس طويلة", "long_clothing", ABAYA_CASES,  ABAYA_DEFAULT_CHART);
+runTests("تيشيرت",               "t_shirt",        TSHIRT_CASES, T_SHIRT_DEFAULT_CHART);
 
 // ── Edge: empty chart
-console.log("\n" + "─".repeat(72));
+console.log(`\n${"─".repeat(70)}`);
 console.log("  TEST: جدول فارغ");
 const emptyResult = calculateSize({
-  niche: "t_shirt", gender: "female", height: 165,
-  bust: 90, waist: 72, hip: 96, shoulder_offset: 0,
-  preference: "regular", fabric_type: "semi", size_chart: [],
+  niche: "t_shirt", height: 165, weight: 70,
+  shoulders: "normal", belly: "average",
+  preference: "regular", size_chart: [],
 });
-console.log(`  النتيجة: size="${emptyResult.size}" confidence=${emptyResult.confidence}`);
-console.log(`  ${emptyResult.size === "" && emptyResult.confidence === 0 ? "✅ صحيح" : "❌ خطأ"}`);
+console.log(`  النتيجة: size="${emptyResult.size}" status=${emptyResult.status}`);
+console.log(`  ${emptyResult.size === "" ? "✅ صحيح" : "❌ خطأ"}`);
 
-console.log("\n" + "=".repeat(72));
+console.log("\n" + "=".repeat(70));
 console.log("  DONE");
-console.log("=".repeat(72));
+console.log("=".repeat(70));

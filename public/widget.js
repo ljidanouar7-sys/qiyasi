@@ -471,7 +471,6 @@
 
   function showResult(data) {
     const size       = data.size;
-    const conf       = data.confidence;
     const alts       = data.alternatives || [];
     const outOfStock = isSizeOutOfStock(size);
     const body       = gid("ssm-body");
@@ -494,13 +493,6 @@
     sizeEl.className = "ssm-result-size";
     sizeEl.textContent = size;
     result.appendChild(sizeEl);
-
-    if (conf) {
-      const confEl = document.createElement("div");
-      confEl.style.cssText = "font-size:13px;color:#6b7280;margin-bottom:8px";
-      confEl.textContent = `نسبة التطابق: ${conf}%`;
-      result.appendChild(confEl);
-    }
 
     if (alts.length > 0) {
       const altsEl = document.createElement("div");

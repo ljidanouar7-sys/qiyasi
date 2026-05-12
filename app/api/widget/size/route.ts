@@ -10,7 +10,7 @@ const ratelimit = makeRatelimit(100, "1 m", "qiyasi_widget");
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { apiKey, categoryId, gender, height, bust, waist, hip, shoulder_offset, preference } = body;
+  const { apiKey, categoryId, height, weight, shoulders, belly, preference } = body;
 
   if (!apiKey) return NextResponse.json({ error: "API key required" }, { status: 400 });
 
@@ -50,17 +50,13 @@ export async function POST(req: NextRequest) {
 
   // ── Input validation ───────────────────────────────────────────
   const h = Number(height);
-  const b = Number(bust);
-  const w = Number(waist);
-  const p = Number(hip);
+  const w = Number(weight);
 
   if (!Number.isFinite(h) || h < 100 || h > 220) {
     return NextResponse.json({ error: "height must be between 100 and 220 cm" }, { status: 400 });
   }
-  for (const [field, val] of [["bust", b], ["waist", w], ["hip", p]] as [string, number][]) {
-    if (!Number.isFinite(val) || val < 50 || val > 180) {
-      return NextResponse.json({ error: `${field} must be between 50 and 180 cm` }, { status: 400 });
-    }
+  if (!Number.isFinite(w) || w < 30 || w > 250) {
+    return NextResponse.json({ error: "weight must be between 30 and 250 kg" }, { status: 400 });
   }
 
   // ── Get size chart scoped to this merchant's category ──────────
@@ -70,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const { data: cat } = await supabase
     .from("categories")
-    .select("size_chart, niche, fabric_type")
+    .select("size_chart, niche")
     .eq("id", categoryId)
     .eq("merchant_id", merchantId)
     .single();
@@ -79,29 +75,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Category not found" }, { status: 404 });
   }
 
-  const sizeChart  = cat.size_chart as SizeChart;
-  const fabricType = String(cat.fabric_type ?? "semi");
-  let   offset     = Number(shoulder_offset ?? 0);
-  if (![-2, 0, 2].includes(offset)) offset = 0;
+  const sizeChart = cat.size_chart as SizeChart;
 
   // ── Calculate ──────────────────────────────────────────────────
   const result = calculateSize({
-    niche:           String(cat.niche ?? ""),
-    gender:          (gender === "male" ? "male" : "female"),
-    height:          h,
-    bust:            b,
-    waist:           w,
-    hip:             p,
-    shoulder_offset: offset as -2 | 0 | 2,
-    preference:      (["slim","regular","loose"].includes(preference) ? preference : "regular") as "slim" | "regular" | "loose",
-    fabric_type:     fabricType as "stretch" | "semi" | "rigid",
-    size_chart:      sizeChart.rows,
+    niche:      String(cat.niche ?? ""),
+    height:     h,
+    weight:     w,
+    shoulders:  String(shoulders  ?? "normal"),
+    belly:      String(belly      ?? "average"),
+    preference: (["slim","regular","loose"].includes(preference) ? preference : "regular") as "slim" | "regular" | "loose",
+    size_chart: sizeChart.rows,
   });
 
   return NextResponse.json({
     size:         result.size,
-    confidence:   result.confidence,
+    status:       result.status,
     alternatives: result.alternatives,
-    body_shape:   result.body_shape,
   });
 }

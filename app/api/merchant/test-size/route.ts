@@ -31,19 +31,16 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS });
 
   // ── Parse body ─────────────────────────────────────────────────────────────
-  let tag: string, gender: string, height: number,
-      bust: number, waist: number, hip: number,
-      shoulderOffset: number, preference: string;
+  let tag: string, height: number, weight: number,
+      shoulders: string, belly: string, preference: string;
   try {
-    const body    = await req.json();
-    tag           = body.tag;
-    gender        = String(body.gender        ?? "female");
-    height        = Number(body.height        ?? 0);
-    bust          = Number(body.bust          ?? 0);
-    waist         = Number(body.waist         ?? 0);
-    hip           = Number(body.hip           ?? 0);
-    shoulderOffset = Number(body.shoulder_offset ?? 0);
-    preference    = String(body.preference    ?? "regular");
+    const body  = await req.json();
+    tag         = body.tag;
+    height      = Number(body.height     ?? 0);
+    weight      = Number(body.weight     ?? 0);
+    shoulders   = String(body.shoulders  ?? "normal");
+    belly       = String(body.belly      ?? "average");
+    preference  = String(body.preference ?? "regular");
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
   }
@@ -63,48 +60,40 @@ export async function POST(req: NextRequest) {
   // ── Fetch size chart ───────────────────────────────────────────────────────
   const { data: category } = await admin
     .from("categories")
-    .select("size_chart, name, niche, fabric_type")
+    .select("size_chart, niche")
     .eq("merchant_id", merchant.id)
     .ilike("tag", tag)
     .single();
 
   if (!category?.size_chart) {
     return NextResponse.json(
-      { error: `No category with tag: ${tag}` },
+      { error: "Category not found" },
       { status: 404, headers: CORS }
     );
   }
 
-  const sizeChart  = category.size_chart as SizeChart;
-  const fabricType = String(category.fabric_type ?? "semi");
-
-  if (![-2, 0, 2].includes(shoulderOffset)) shoulderOffset = 0;
+  const sizeChart = category.size_chart as SizeChart;
 
   // ── Calculate ──────────────────────────────────────────────────────────────
   const result = calculateSize({
-    niche:           String(category.niche ?? ""),
-    gender:          gender as "female" | "male",
+    niche:      String(category.niche ?? ""),
     height,
-    bust,
-    waist,
-    hip,
-    shoulder_offset: shoulderOffset as -2 | 0 | 2,
-    preference:      preference as "slim" | "regular" | "loose",
-    fabric_type:     fabricType as "stretch" | "semi" | "rigid",
-    size_chart:      sizeChart.rows,
+    weight,
+    shoulders,
+    belly,
+    preference: preference as "slim" | "regular" | "loose",
+    size_chart: sizeChart.rows,
   });
 
   log("info", "size_calculated", {
     tag,
     size:       result.size,
-    confidence: result.confidence,
     merchantId: merchant.id,
   });
 
   return NextResponse.json({
     size:         result.size,
-    confidence:   result.confidence,
+    status:       result.status,
     alternatives: result.alternatives,
-    body_shape:   result.body_shape,
   }, { headers: CORS });
 }
