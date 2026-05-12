@@ -456,7 +456,6 @@
         if (r.ok) return r.json();
         return r.json().catch(() => null).then(errBody => {
           if (r.status === 403) showError("هذا المتجر غير مُفعَّل أو غير مُسجَّل في النظام.");
-          else if (r.status === 404) showError("لم يتم العثور على جدول المقاسات لهذا المنتج.");
           else if (r.status === 429) showError("طلبات كثيرة — انتظر دقيقة ثم أعد المحاولة.");
           else showError("حدث خطأ أثناء الاتصال بالخادم. أعد المحاولة.");
           console.error("[SSM] API error", r.status, errBody);

@@ -131,7 +131,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!category?.size_chart) {
-      return NextResponse.json({ error: `No category for tag: ${tag}` }, { status: 404, headers: CORS });
+      return NextResponse.json({ error: "Category not found" }, { status: 404, headers: CORS });
     }
 
     const sizeChart  = category.size_chart as SizeChart;
