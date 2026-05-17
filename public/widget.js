@@ -157,12 +157,12 @@
       ],
     },
     {
-      id: "hips", type: "cards", yPos: 55,
+      id: "hips", type: "cards", yPos: 38,
       q: "ما حجم وركيك؟", hint: "اختر الوصف الأقرب لمنطقة الورك.",
       options: [
-        { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 0 },
-        { v: "normal", label: "عادي", img: "images/q-hips-f.jpg", panel: 1 },
-        { v: "small",  label: "ضيق",  img: "images/q-hips-f.jpg", panel: 2 },
+        { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 1, panelM: 0 },
+        { v: "normal", label: "عادي", img: "images/q-hips-f.jpg", panel: 0, panelM: 1 },
+        { v: "small",  label: "ضيق",  img: "images/q-hips-f.jpg", panel: 2, panelM: 2 },
       ],
     },
   ];
@@ -375,11 +375,12 @@
         if (o.img) {
           const imgDiv = document.createElement("div");
           imgDiv.className = "ssm-card-img";
-          const xPct = (o.panel || 0) * 50;
-          const yPct = s.yPos ?? 30;
+          const yPct  = s.yPos ?? 30;
           const gender = answers.gender || "female";
           const suffix = gender === "male" ? "-m.jpg" : "-f.jpg";
           const imgSrc = o.img.replace(/-(f|m)\.jpg$/, suffix);
+          const panelNum = gender === "male" ? (o.panelM ?? o.panel ?? 0) : (o.panel ?? 0);
+          const xPct  = panelNum * 50;
           imgDiv.style.cssText =
             `background-image:url('${API_BASE}/${imgSrc}');` +
             `background-size:300% auto;` +
