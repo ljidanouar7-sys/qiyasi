@@ -112,6 +112,14 @@
   // ======= Quiz steps =======
   const STEPS = [
     {
+      id: "gender", type: "cards",
+      q: "ما جنسك؟", hint: "اختر للحصول على نتيجة أدق.",
+      options: [
+        { v: "male",   label: "ذكر",  icon: "👨" },
+        { v: "female", label: "أنثى", icon: "👩" },
+      ],
+    },
+    {
       id: "height", type: "number",
       q: "كم طولك؟", hint: "أدخل طولك بالسنتيمتر.",
       unit: "سم", min: 130, max: 220, def: 165,
@@ -125,27 +133,36 @@
       id: "shoulders", type: "cards",
       q: "ما شكل كتفيك؟", hint: "اختر الوصف الأقرب لشكل كتفيك.",
       options: [
-        { v: "narrow", label: "ضيقة",  img: "images/q-shoulders.jpg", panel: 0 },
-        { v: "normal", label: "عادية", img: "images/q-shoulders.jpg", panel: 1 },
-        { v: "broad",  label: "عريضة", img: "images/q-shoulders.jpg", panel: 2 },
+        { v: "broad",  label: "عريضة", img: "images/q-shoulders-f.jpg", panel: 0 },
+        { v: "normal", label: "عادية", img: "images/q-shoulders-f.jpg", panel: 1 },
+        { v: "narrow", label: "رقيقة", img: "images/q-shoulders-f.jpg", panel: 2 },
       ],
     },
     {
-      id: "belly", type: "cards",
-      q: "ما شكل بطنك؟", hint: "اختر الوصف الأقرب لمنطقة البطن.",
+      id: "chest", type: "cards",
+      q: "ما حجم صدرك؟", hint: "اختر الوصف الأقرب لمنطقة الصدر.",
       options: [
-        { v: "flat",    label: "مسطح",  img: "images/q-belly.jpg", panel: 0 },
-        { v: "average", label: "متوسط", img: "images/q-belly.jpg", panel: 1 },
-        { v: "large",   label: "كبير",  img: "images/q-belly.jpg", panel: 2 },
+        { v: "large",  label: "كبير", img: "images/q-chest-f.jpg", panel: 0 },
+        { v: "normal", label: "عادي", img: "images/q-chest-f.jpg", panel: 1 },
+        { v: "small",  label: "صغير", img: "images/q-chest-f.jpg", panel: 2 },
       ],
     },
     {
-      id: "preference", type: "cards",
-      q: "كيف تفضل المقاس؟", hint: "تؤثر هذه الإجابة على اختيار المقاس النهائي.",
+      id: "waist", type: "cards",
+      q: "ما حجم خصرك؟", hint: "اختر الوصف الأقرب لمنطقة الخصر.",
       options: [
-        { v: "slim",    label: "ضيق",  img: "images/q-fit.jpg", panel: 0 },
-        { v: "regular", label: "عادي", img: "images/q-fit.jpg", panel: 1 },
-        { v: "loose",   label: "واسع", img: "images/q-fit.jpg", panel: 2 },
+        { v: "flat",   label: "ضيق",  img: "images/q-waist-f.jpg", panel: 0 },
+        { v: "normal", label: "عادي", img: "images/q-waist-f.jpg", panel: 1 },
+        { v: "large",  label: "كبير", img: "images/q-waist-f.jpg", panel: 2 },
+      ],
+    },
+    {
+      id: "hips", type: "cards",
+      q: "ما حجم وركيك؟", hint: "اختر الوصف الأقرب لمنطقة الورك.",
+      options: [
+        { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 0 },
+        { v: "normal", label: "عادي", img: "images/q-hips-f.jpg", panel: 1 },
+        { v: "small",  label: "ضيق",  img: "images/q-hips-f.jpg", panel: 2 },
       ],
     },
   ];
@@ -359,8 +376,11 @@
           const imgDiv = document.createElement("div");
           imgDiv.className = "ssm-card-img";
           const xPct = (o.panel || 0) * 50;
+          const gender = answers.gender || "female";
+          const suffix = gender === "male" ? "-m.jpg" : "-f.jpg";
+          const imgSrc = o.img.replace(/-(f|m)\.jpg$/, suffix);
           imgDiv.style.cssText =
-            `background-image:url('${API_BASE}/${o.img}');` +
+            `background-image:url('${API_BASE}/${imgSrc}');` +
             `background-size:300% auto;` +
             `background-position:${xPct}% 58%;`;
           card.appendChild(imgDiv);
@@ -445,11 +465,15 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tag,
-        height:     answers.height     || 165,
-        weight:     answers.weight     || 70,
-        shoulders:  answers.shoulders  || "normal",
-        belly:      answers.belly      || "average",
-        preference: answers.preference || "regular",
+        gender:    answers.gender    || "female",
+        height:    answers.height    || 165,
+        weight:    answers.weight    || 70,
+        shoulders: answers.shoulders || "normal",
+        chest:     answers.chest     || "normal",
+        waist:     answers.waist     || "normal",
+        hips:      answers.hips      || "normal",
+        belly:     "average",
+        preference:"regular",
       }),
     })
       .then(r => {
