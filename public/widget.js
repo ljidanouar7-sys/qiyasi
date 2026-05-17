@@ -133,9 +133,9 @@
       id: "shoulders", type: "cards", yPos: 15,
       q: "ما شكل كتفيك؟", hint: "اختر الوصف الأقرب لشكل كتفيك.",
       options: [
-        { v: "broad",  label: "عريضة", img: "images/q-shoulders-f.jpg", panel: 0 },
-        { v: "normal", label: "عادية", img: "images/q-shoulders-f.jpg", panel: 1 },
-        { v: "narrow", label: "رقيقة", img: "images/q-shoulders-f.jpg", panel: 2 },
+        { v: "broad",  label: "عريضة", img: "images/q-shoulders-f.jpg", panel: 2, panelM: 0 },
+        { v: "normal", label: "عادية", img: "images/q-shoulders-f.jpg", panel: 1, panelM: 1 },
+        { v: "narrow", label: "رقيقة", img: "images/q-shoulders-f.jpg", panel: 0, panelM: 2 },
       ],
     },
     {
@@ -160,9 +160,9 @@
       id: "hips", type: "cards", yPos: 38,
       q: "ما حجم وركيك؟", hint: "اختر الوصف الأقرب لمنطقة الورك.",
       options: [
-        { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 1, panelM: 0 },
-        { v: "normal", label: "عادي", img: "images/q-hips-f.jpg", panel: 0, panelM: 1 },
-        { v: "small",  label: "ضيق",  img: "images/q-hips-f.jpg", panel: 2, panelM: 2 },
+        { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 2, panelM: 0 },
+        { v: "normal", label: "عادي", img: "images/q-hips-f.jpg", panel: 1, panelM: 1 },
+        { v: "small",  label: "ضيق",  img: "images/q-hips-f.jpg", panel: 0, panelM: 2 },
       ],
     },
   ];
