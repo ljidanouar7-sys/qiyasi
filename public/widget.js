@@ -130,7 +130,7 @@
       unit: "كغ", min: 35, max: 200, def: 70,
     },
     {
-      id: "shoulders", type: "cards",
+      id: "shoulders", type: "cards", yPos: 15,
       q: "ما شكل كتفيك؟", hint: "اختر الوصف الأقرب لشكل كتفيك.",
       options: [
         { v: "broad",  label: "عريضة", img: "images/q-shoulders-f.jpg", panel: 0 },
@@ -139,7 +139,7 @@
       ],
     },
     {
-      id: "chest", type: "cards",
+      id: "chest", type: "cards", yPos: 20,
       q: "ما حجم صدرك؟", hint: "اختر الوصف الأقرب لمنطقة الصدر.",
       options: [
         { v: "large",  label: "كبير", img: "images/q-chest-f.jpg", panel: 0 },
@@ -148,7 +148,7 @@
       ],
     },
     {
-      id: "waist", type: "cards",
+      id: "waist", type: "cards", yPos: 40,
       q: "ما حجم خصرك؟", hint: "اختر الوصف الأقرب لمنطقة الخصر.",
       options: [
         { v: "flat",   label: "ضيق",  img: "images/q-waist-f.jpg", panel: 0 },
@@ -157,7 +157,7 @@
       ],
     },
     {
-      id: "hips", type: "cards",
+      id: "hips", type: "cards", yPos: 55,
       q: "ما حجم وركيك؟", hint: "اختر الوصف الأقرب لمنطقة الورك.",
       options: [
         { v: "large",  label: "كبير", img: "images/q-hips-f.jpg", panel: 0 },
@@ -376,13 +376,14 @@
           const imgDiv = document.createElement("div");
           imgDiv.className = "ssm-card-img";
           const xPct = (o.panel || 0) * 50;
+          const yPct = s.yPos ?? 30;
           const gender = answers.gender || "female";
           const suffix = gender === "male" ? "-m.jpg" : "-f.jpg";
           const imgSrc = o.img.replace(/-(f|m)\.jpg$/, suffix);
           imgDiv.style.cssText =
             `background-image:url('${API_BASE}/${imgSrc}');` +
             `background-size:300% auto;` +
-            `background-position:${xPct}% 58%;`;
+            `background-position:${xPct}% ${yPct}%;`;
           card.appendChild(imgDiv);
         } else if (o.icon) {
           const ico = document.createElement("div");
