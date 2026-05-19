@@ -55,15 +55,16 @@ export async function POST(req: NextRequest) {
   try {
     // ── Parse body ─────────────────────────────────────────────────────────────
     let tag: string, height: number, weight: number,
-        shoulders: string, belly: string, preference: string;
+        katif: string, sadr: string, khasr: string, warek: string;
     try {
-      const body  = await req.json();
-      tag         = body.tag;
-      height      = Number(body.height     ?? 0);
-      weight      = Number(body.weight     ?? 0);
-      shoulders   = String(body.shoulders  ?? "normal");
-      belly       = String(body.belly      ?? "average");
-      preference  = String(body.preference ?? "regular");
+      const body = await req.json();
+      tag    = body.tag;
+      height = Number(body.height ?? 0);
+      weight = Number(body.weight ?? 0);
+      katif  = String(body.katif ?? body.shoulders ?? "normal");
+      sadr   = String(body.sadr  ?? body.chest     ?? "normal");
+      khasr  = String(body.khasr ?? body.waist     ?? "normal");
+      warek  = String(body.warek ?? body.hips      ?? "normal");
     } catch {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
     }
@@ -136,7 +137,7 @@ export async function POST(req: NextRequest) {
     const niche     = String(category.niche ?? "");
 
     // ── Cache ──────────────────────────────────────────────────────────────────
-    const cacheKey = `size:v7:${merchantId}:${tag}:${niche}:${height}:${weight}:${shoulders}:${belly}:${preference}`;
+    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       const data = typeof cached === "string" ? JSON.parse(cached) : cached;
@@ -145,12 +146,8 @@ export async function POST(req: NextRequest) {
 
     // ── Calculate ──────────────────────────────────────────────────────────────
     const result = calculateSize({
-      niche,
-      height,
-      weight,
-      shoulders,
-      belly,
-      preference: preference as "slim" | "regular" | "loose",
+      niche, height, weight,
+      katif, sadr, khasr, warek,
       size_chart: sizeChart.rows,
     });
 

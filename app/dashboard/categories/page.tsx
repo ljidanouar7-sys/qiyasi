@@ -2,9 +2,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import {
-  ABAYA_DEFAULT_CHART,
-  T_SHIRT_DEFAULT_CHART,
-  type SizeRow,
+  FITTED_DEFAULT_CHART,
+  TSHIRT_DEFAULT_CHART,
   type SizeChart,
 } from "../../../lib/globalSizeCharts";
 
@@ -20,29 +19,28 @@ interface Category {
 }
 
 interface EditRow {
-  size:       string;
-  height_min: string;
-  height_max: string;
-  weight_min: string;
-  weight_max: string;
-  chest:      string;
-  hips:       string;
-  shoulder:   string;
-  length:     string;
+  size:      string;
+  bust_max:  string;
+  waist_max: string;
+  hip_max:   string;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const NICHES = [
-  { value: "long_clothing", label: "👗 ملابس طويلة (عبايات / جلابيب)" },
+  { value: "fitted",        label: "👗 فستان / عباية (نسائي)"           },
+  { value: "tshirt",        label: "👕 تيشيرت (رجالي)"                  },
+  { value: "long_clothing", label: "👗 ملابس طويلة"                     },
   { value: "dress",         label: "👗 فستان"                           },
-  { value: "t_shirt",       label: "👕 تيشيرت / قميص"                  },
+  { value: "t_shirt",       label: "👕 تيشيرت (قديم)"                   },
 ];
 
 const NICHE_HINTS: Record<string, string> = {
-  long_clothing: "يُحسب المقاس بالطول والوزن — يُختار الأكبر بين المؤشرين",
-  dress:         "يُحسب المقاس بالطول والوزن — يُختار الأكبر بين المؤشرين",
-  t_shirt:       "يُحسب المقاس بالوزن أساساً — يُعدَّل بشكل الكتف والطول",
+  fitted:        "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
+  tshirt:        "يُحسب المقاس بالطول والوزن + شكل الكتف والخصر",
+  long_clothing: "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
+  dress:         "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
+  t_shirt:       "يُحسب المقاس بالطول والوزن + شكل الكتف والخصر",
 };
 
 const FABRICS = [
@@ -57,68 +55,45 @@ const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 
 function chartToEditRows(chart: SizeChart): EditRow[] {
   return chart.rows.map(r => ({
-    size:       r.size,
-    height_min: String(r.height_min),
-    height_max: String(r.height_max),
-    weight_min: String(r.weight_min),
-    weight_max: String(r.weight_max),
-    chest:      String(r.chest),
-    hips:       String(r.hips     ?? ""),
-    shoulder:   String(r.shoulder ?? ""),
-    length:     String(r.length),
+    size:      r.size,
+    bust_max:  String(r.bust_max),
+    waist_max: String(r.waist_max),
+    hip_max:   String(r.hip_max),
   }));
 }
 
+function editRowsToChart(rows: EditRow[]): SizeChart {
+  return {
+    rows: rows.map(r => ({
+      size:      r.size,
+      bust_max:  parseFloat(r.bust_max)  || 0,
+      waist_max: parseFloat(r.waist_max) || 0,
+      hip_max:   parseFloat(r.hip_max)   || 0,
+    })),
+  };
+}
+
 function defaultEditRows(niche: string): EditRow[] {
-  const chart = niche === "t_shirt" ? T_SHIRT_DEFAULT_CHART : ABAYA_DEFAULT_CHART;
+  const chart = (niche === "tshirt" || niche === "t_shirt") ? TSHIRT_DEFAULT_CHART : FITTED_DEFAULT_CHART;
   return chartToEditRows(chart);
+}
+
+function emptyRow(): EditRow {
+  return { size: "S", bust_max: "", waist_max: "", hip_max: "" };
 }
 
 function jsonToEditRows(json: unknown, niche: string): EditRow[] {
   const j = json as { rows?: Record<string, unknown>[] } | null;
   if (!j?.rows?.length) return defaultEditRows(niche);
-  if ("height_min" in (j.rows[0] as object)) {
+  if ("bust_max" in (j.rows[0] as object)) {
     return j.rows.map(r => ({
-      size:       String(r.size       ?? ""),
-      height_min: String(r.height_min ?? ""),
-      height_max: String(r.height_max ?? ""),
-      weight_min: String(r.weight_min ?? ""),
-      weight_max: String(r.weight_max ?? ""),
-      chest:      String(r.chest      ?? ""),
-      hips:       String(r.hips       ?? ""),
-      shoulder:   String(r.shoulder   ?? ""),
-      length:     String(r.length     ?? ""),
+      size:      String(r.size      ?? ""),
+      bust_max:  String(r.bust_max  ?? ""),
+      waist_max: String(r.waist_max ?? ""),
+      hip_max:   String(r.hip_max   ?? ""),
     }));
   }
   return defaultEditRows(niche);
-}
-
-function editRowsToChart(rows: EditRow[], niche: string): SizeChart {
-  const showHips = niche !== "t_shirt";
-  return {
-    rows: rows.map(r => {
-      const row: SizeRow = {
-        size:       r.size,
-        height_min: Number(r.height_min) || 0,
-        height_max: Number(r.height_max) || 0,
-        weight_min: Number(r.weight_min) || 0,
-        weight_max: Number(r.weight_max) || 0,
-        chest:      Number(r.chest)      || 0,
-        length:     Number(r.length)     || 0,
-      };
-      if (showHips  && r.hips)     row.hips     = Number(r.hips)     || 0;
-      if (!showHips && r.shoulder) row.shoulder = Number(r.shoulder) || 0;
-      return row;
-    }),
-  };
-}
-
-function emptyRow(): EditRow {
-  return {
-    size: "S", height_min: "", height_max: "",
-    weight_min: "", weight_max: "",
-    chest: "", hips: "", shoulder: "", length: "",
-  };
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
@@ -135,18 +110,19 @@ export default function CategoriesPage() {
 
   const [catName,   setCatName]   = useState("");
   const [catTag,    setCatTag]    = useState("");
-  const [catNiche,  setCatNiche]  = useState<string>("long_clothing");
+  const [catNiche,  setCatNiche]  = useState<string>("fitted");
   const [catFabric, setCatFabric] = useState<string>("semi");
   const [rows,      setRows]      = useState<EditRow[]>(() => defaultEditRows("long_clothing"));
 
   // Test modal
   const [testCat,       setTestCat]       = useState<Category | null>(null);
-  const [testHeight,    setTestHeight]    = useState("165");
-  const [testWeight,    setTestWeight]    = useState("70");
-  const [testShoulders, setTestShoulders] = useState("normal");
-  const [testBelly,     setTestBelly]     = useState("average");
-  const [testPref,      setTestPref]      = useState("regular");
-  const [testResult,    setTestResult]    = useState<{
+  const [testHeight, setTestHeight] = useState("165");
+  const [testWeight, setTestWeight] = useState("70");
+  const [testKatif,  setTestKatif]  = useState("normal");
+  const [testSadr,   setTestSadr]   = useState("normal");
+  const [testKhasr,  setTestKhasr]  = useState("normal");
+  const [testWarek,  setTestWarek]  = useState("normal");
+  const [testResult, setTestResult] = useState<{
     size: string; status: string; alternatives: string[];
   } | null>(null);
   const [testError, setTestError] = useState("");
@@ -183,8 +159,8 @@ export default function CategoriesPage() {
 
   function openNew() {
     setEditingCat(null);
-    setCatName(""); setCatTag(""); setCatNiche("long_clothing"); setCatFabric("semi");
-    setRows(defaultEditRows("long_clothing"));
+    setCatName(""); setCatTag(""); setCatNiche("fitted"); setCatFabric("semi");
+    setRows(defaultEditRows("fitted"));
     setShowForm(true);
     setTimeout(() => document.getElementById("form-top")?.scrollIntoView({ behavior: "smooth" }), 50);
   }
@@ -193,7 +169,7 @@ export default function CategoriesPage() {
     setEditingCat(cat);
     setCatName(cat.name);
     setCatTag(cat.tag || "");
-    const niche = (["long_clothing", "dress", "t_shirt"].includes(cat.niche)) ? cat.niche : "long_clothing";
+    const niche = (["fitted","tshirt","long_clothing","dress","t_shirt"].includes(cat.niche)) ? cat.niche : "fitted";
     setCatNiche(niche);
     setCatFabric(cat.fabric_type || "semi");
     setRows(jsonToEditRows(cat.size_chart, niche));
@@ -236,7 +212,7 @@ export default function CategoriesPage() {
         tag:         catTag.trim().replace(/\s+/g, "-"),
         niche:       catNiche,
         fabric_type: catFabric,
-        size_chart:  editRowsToChart(rows, catNiche),
+        size_chart:  editRowsToChart(rows),
       };
       const { error } = editingCat
         ? await supabase.from("categories").update(payload).eq("id", editingCat.id)
@@ -265,12 +241,13 @@ export default function CategoriesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        tag:        testCat.tag,
-        height:     Number(testHeight),
-        weight:     Number(testWeight),
-        shoulders:  testShoulders,
-        belly:      testBelly,
-        preference: testPref,
+        tag:    testCat.tag,
+        height: Number(testHeight),
+        weight: Number(testWeight),
+        katif:  testKatif,
+        sadr:   testSadr,
+        khasr:  testKhasr,
+        warek:  testWarek,
       }),
     });
     const data = await res.json();
@@ -291,8 +268,6 @@ export default function CategoriesPage() {
       </div>
     );
   }
-
-  const showHips = catNiche !== "t_shirt";
 
   return (
     <div dir="rtl">
@@ -352,7 +327,7 @@ export default function CategoriesPage() {
 
             {editingCat && (() => {
               const j = editingCat.size_chart as { rows?: Record<string, unknown>[] } | null;
-              const isOld = j?.rows?.length && !("height_min" in (j.rows[0] as object));
+              const isOld = j?.rows?.length && !("bust_max" in (j.rows[0] as object));
               return isOld ? (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                   <p className="text-sm font-black text-amber-800 mb-0.5">⚠️ تنسيق قديم — أعد إدخال القياسات</p>
@@ -424,32 +399,20 @@ export default function CategoriesPage() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-xs border-collapse" style={{ minWidth: 580 }}>
+                <table className="w-full text-xs border-collapse" style={{ minWidth: 360 }}>
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th rowSpan={2} className="text-right px-3 py-2.5 font-black text-slate-700 w-20 border-b border-slate-200">المقاس</th>
-                      <th colSpan={2} className="text-center px-3 py-2 font-bold text-teal-700 border-r border-l border-teal-100 bg-teal-50/50">
-                        الطول (سم)
+                      <th className="text-right px-3 py-2.5 font-black text-slate-700 w-20">المقاس</th>
+                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-l border-blue-100">
+                        صدر bust_max (سم)
                       </th>
-                      <th colSpan={2} className="text-center px-3 py-2 font-bold text-teal-700 border-r border-teal-100 bg-teal-50/50">
-                        الوزن (كغ)
+                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-blue-100">
+                        خصر waist_max (سم)
                       </th>
-                      <th rowSpan={2} className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-l border-blue-100 border-b border-slate-200">
-                        صدر (سم)
+                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50">
+                        ورك hip_max (سم)
                       </th>
-                      <th rowSpan={2} className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-blue-100 border-b border-slate-200">
-                        {showHips ? "ورك (سم)" : "كتف (سم)"}
-                      </th>
-                      <th rowSpan={2} className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-b border-slate-200">
-                        طول الثوب (سم)
-                      </th>
-                      <th rowSpan={2} className="w-8 bg-slate-50 border-b border-slate-200" />
-                    </tr>
-                    <tr className="bg-slate-50/50 border-b border-slate-200 text-slate-400">
-                      <th className="text-center px-2 py-1 font-normal border-r border-l border-teal-50">من</th>
-                      <th className="text-center px-2 py-1 font-normal border-r border-teal-50">إلى</th>
-                      <th className="text-center px-2 py-1 font-normal border-r border-teal-50">من</th>
-                      <th className="text-center px-2 py-1 font-normal border-r border-teal-50">إلى</th>
+                      <th className="w-8 bg-slate-50" />
                     </tr>
                   </thead>
                   <tbody>
@@ -464,39 +427,25 @@ export default function CategoriesPage() {
                             {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </td>
-                        {(["height_min","height_max","weight_min","weight_max"] as (keyof EditRow)[]).map((field, fi) => (
-                          <td key={field} className={`px-1 py-2 ${fi % 2 === 0 ? "border-r border-l border-teal-50" : "border-r border-teal-50"}`}>
-                            <input
-                              type="number" value={row[field]}
-                              onChange={e => updateRow(ri, field, e.target.value)}
-                              placeholder={field.includes("height") ? (fi % 2 === 0 ? "155" : "163") : (fi % 2 === 0 ? "55" : "67")}
-                              className="w-14 border border-slate-200 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-teal-400 bg-white"
-                            />
-                          </td>
-                        ))}
                         <td className="px-1 py-2 border-r border-l border-blue-50">
-                          <input
-                            type="number" value={row.chest}
-                            onChange={e => updateRow(ri, "chest", e.target.value)}
-                            placeholder="49"
-                            className="w-14 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                          <input type="number" value={row.bust_max}
+                            onChange={e => updateRow(ri, "bust_max", e.target.value)}
+                            placeholder="104.1"
+                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
                           />
                         </td>
                         <td className="px-1 py-2 border-r border-blue-50">
-                          <input
-                            type="number"
-                            value={showHips ? row.hips : row.shoulder}
-                            onChange={e => updateRow(ri, showHips ? "hips" : "shoulder", e.target.value)}
-                            placeholder={showHips ? "53" : "46"}
-                            className="w-14 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                          <input type="number" value={row.waist_max}
+                            onChange={e => updateRow(ri, "waist_max", e.target.value)}
+                            placeholder="87.6"
+                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
                           />
                         </td>
                         <td className="px-1 py-2">
-                          <input
-                            type="number" value={row.length}
-                            onChange={e => updateRow(ri, "length", e.target.value)}
-                            placeholder="150"
-                            className="w-14 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                          <input type="number" value={row.hip_max}
+                            onChange={e => updateRow(ri, "hip_max", e.target.value)}
+                            placeholder="102.9"
+                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
                           />
                         </td>
                         <td className="px-2 py-2 text-center">
@@ -622,40 +571,53 @@ export default function CategoriesPage() {
                 </div>
               </div>
 
-              {/* Shoulders */}
+              {/* Katif */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">شكل الكتف</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">الكتف (katif)</label>
                 <div className="flex gap-2">
-                  {[{v:"narrow",l:"ضيقة"},{v:"normal",l:"عادية"},{v:"broad",l:"عريضة"}].map(s => (
-                    <button key={s.v} type="button" onClick={() => setTestShoulders(s.v)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testShoulders === s.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
+                  {[{v:"wide",l:"عريض"},{v:"normal",l:"عادي"},{v:"slim",l:"رقيق"}].map(s => (
+                    <button key={s.v} type="button" onClick={() => setTestKatif(s.v)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testKatif === s.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
                       {s.l}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Belly */}
+              {/* Sadr */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">شكل البطن</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">الصدر (sadr)</label>
                 <div className="flex gap-2">
-                  {[{v:"flat",l:"مسطح"},{v:"average",l:"متوسط"},{v:"large",l:"كبير"}].map(b => (
-                    <button key={b.v} type="button" onClick={() => setTestBelly(b.v)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testBelly === b.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
-                      {b.l}
+                  {[{v:"big",l:"كبير"},{v:"normal",l:"عادي"},{v:"slim",l:"رقيق"}].map(s => (
+                    <button key={s.v} type="button" onClick={() => setTestSadr(s.v)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testSadr === s.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
+                      {s.l}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Preference */}
+              {/* Khasr */}
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5">تفضيل المقاس</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">الخصر (khasr)</label>
                 <div className="flex gap-2">
-                  {[{v:"slim",l:"ضيق"},{v:"regular",l:"عادي"},{v:"loose",l:"واسع"}].map(p => (
-                    <button key={p.v} type="button" onClick={() => setTestPref(p.v)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testPref === p.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
-                      {p.l}
+                  {[{v:"big",l:"كبير"},{v:"normal",l:"عادي"},{v:"slim",l:"رقيق"}].map(s => (
+                    <button key={s.v} type="button" onClick={() => setTestKhasr(s.v)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testKhasr === s.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
+                      {s.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warek */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1.5">الورك (warek)</label>
+                <div className="flex gap-2">
+                  {[{v:"big",l:"كبير"},{v:"normal",l:"عادي"},{v:"slim",l:"رقيق"}].map(s => (
+                    <button key={s.v} type="button" onClick={() => setTestWarek(s.v)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition ${testWarek === s.v ? "border-teal-500 bg-teal-50 text-teal-700" : "border-slate-200 text-slate-500"}`}>
+                      {s.l}
                     </button>
                   ))}
                 </div>
