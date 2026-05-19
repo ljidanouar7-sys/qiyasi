@@ -28,19 +28,17 @@ interface EditRow {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const NICHES = [
-  { value: "fitted",        label: "👗 فستان / عباية (نسائي)"           },
-  { value: "tshirt",        label: "👕 تيشيرت (رجالي)"                  },
-  { value: "long_clothing", label: "👗 ملابس طويلة"                     },
-  { value: "dress",         label: "👗 فستان"                           },
-  { value: "t_shirt",       label: "👕 تيشيرت (قديم)"                   },
+  { value: "tshirt", label: "👕 تيشيرت (رجالي)"             },
+  { value: "fitted", label: "👗 كسوة ضيقة (نسائي)"          },
+  { value: "abaya",  label: "👗 عباية / لباس طويل (نسائي)"  },
+  { value: "thobe",  label: "👘 ثوب / جلابة (رجالي)"        },
 ];
 
 const NICHE_HINTS: Record<string, string> = {
-  fitted:        "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
-  tshirt:        "يُحسب المقاس بالطول والوزن + شكل الكتف والخصر",
-  long_clothing: "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
-  dress:         "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
-  t_shirt:       "يُحسب المقاس بالطول والوزن + شكل الكتف والخصر",
+  tshirt: "يُحسب المقاس بالطول والوزن + شكل الكتف والخصر",
+  fitted: "يُحسب المقاس بالـ BMI + شكل الصدر والخصر والورك",
+  abaya:  "يُحسب المقاس بالـ BMI + شكل الصدر والورك (الخصر لا يؤثر)",
+  thobe:  "يُحسب المقاس بالـ BMI + شكل الكتف والصدر (الخصر والورك لا يؤثران)",
 };
 
 const FABRICS = [
@@ -74,7 +72,9 @@ function editRowsToChart(rows: EditRow[]): SizeChart {
 }
 
 function defaultEditRows(niche: string): EditRow[] {
-  const chart = (niche === "tshirt" || niche === "t_shirt") ? TSHIRT_DEFAULT_CHART : FITTED_DEFAULT_CHART;
+  const chart = (niche === "tshirt" || niche === "t_shirt" || niche === "thobe")
+    ? TSHIRT_DEFAULT_CHART
+    : FITTED_DEFAULT_CHART;
   return chartToEditRows(chart);
 }
 
@@ -169,7 +169,7 @@ export default function CategoriesPage() {
     setEditingCat(cat);
     setCatName(cat.name);
     setCatTag(cat.tag || "");
-    const niche = (["fitted","tshirt","long_clothing","dress","t_shirt"].includes(cat.niche)) ? cat.niche : "fitted";
+    const niche = (["fitted","tshirt","abaya","thobe","long_clothing","dress","t_shirt"].includes(cat.niche)) ? cat.niche : "fitted";
     setCatNiche(niche);
     setCatFabric(cat.fabric_type || "semi");
     setRows(jsonToEditRows(cat.size_chart, niche));
