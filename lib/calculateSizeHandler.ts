@@ -135,16 +135,12 @@ export async function POST(req: NextRequest) {
 
     const sizeChart = category.size_chart as SizeChart;
     const niche     = String(category.niche ?? "");
-    console.log("DEBUG size_chart:", JSON.stringify(sizeChart));
-    console.log("DEBUG niche:", niche);
-    console.log("DEBUG inputs:", { height, weight, katif, sadr, khasr, warek });
 
     // ── Cache ──────────────────────────────────────────────────────────────────
-    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}:NOCACHE`;
+    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       try {
-        console.log("DEBUG cache HIT — returning cached:", cached);
         const data = typeof cached === "string" ? JSON.parse(cached) : cached;
         return NextResponse.json(data, { headers: CORS });
       } catch {
@@ -158,16 +154,6 @@ export async function POST(req: NextRequest) {
       katif, sadr, khasr, warek,
       size_chart: sizeChart.rows,
     });
-    console.log("DEBUG result:", JSON.stringify(result));
-
-    return NextResponse.json({
-      DEBUG: {
-        size_chart: sizeChart,
-        niche,
-        inputs: { height, weight, katif, sadr, khasr, warek },
-        result,
-      }
-    }, { headers: CORS });
 
     log("info", "size_calculated", {
       domain: normalizedOrigin,
