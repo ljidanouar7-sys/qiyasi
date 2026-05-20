@@ -135,6 +135,9 @@ export async function POST(req: NextRequest) {
 
     const sizeChart = category.size_chart as SizeChart;
     const niche     = String(category.niche ?? "");
+    console.log("DEBUG size_chart:", JSON.stringify(sizeChart));
+    console.log("DEBUG niche:", niche);
+    console.log("DEBUG inputs:", { height, weight, katif, sadr, khasr, warek });
 
     // ── Cache ──────────────────────────────────────────────────────────────────
     const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}`;
@@ -154,6 +157,7 @@ export async function POST(req: NextRequest) {
       katif, sadr, khasr, warek,
       size_chart: sizeChart.rows,
     });
+    console.log("DEBUG result:", JSON.stringify(result));
 
     log("info", "size_calculated", {
       domain: normalizedOrigin,
