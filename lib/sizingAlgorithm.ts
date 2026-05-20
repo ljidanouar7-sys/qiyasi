@@ -64,7 +64,7 @@ function getFittedSize(
   const adj: Record<string, number> = { big: 1, normal: 0, slim: -1 };
 
   const bmi     = weight / Math.pow(height / 100, 2);
-  const BMI_MIN = 18.5, BMI_MAX = 30;
+  const BMI_MIN = 15, BMI_MAX = 35;
   const ratio   = Math.min(Math.max((bmi - BMI_MIN) / (BMI_MAX - BMI_MIN), 0), 1);
   const baseIdx = Math.min(Math.max(Math.round(ratio * (rows.length - 1)), 0), rows.length - 1);
 
