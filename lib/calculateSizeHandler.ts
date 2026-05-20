@@ -140,10 +140,11 @@ export async function POST(req: NextRequest) {
     console.log("DEBUG inputs:", { height, weight, katif, sadr, khasr, warek });
 
     // ── Cache ──────────────────────────────────────────────────────────────────
-    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}`;
+    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}:NOCACHE`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       try {
+        console.log("DEBUG cache HIT — returning cached:", cached);
         const data = typeof cached === "string" ? JSON.parse(cached) : cached;
         return NextResponse.json(data, { headers: CORS });
       } catch {
