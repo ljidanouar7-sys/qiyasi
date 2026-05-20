@@ -1,4 +1,5 @@
 (function () {
+  const DEBUG = typeof localStorage !== "undefined" && localStorage.getItem("SSM_DEBUG");
   const API_BASE = (() => {
     if (document.currentScript && document.currentScript.src) {
       return new URL(document.currentScript.src).origin;
@@ -9,7 +10,7 @@
         try { return new URL(s.src).origin; } catch {}
       }
     }
-    console.warn('[SSM] Could not detect API origin — defaulting to current page origin.');
+    if (DEBUG) console.warn('[SSM] Could not detect API origin — defaulting to current page origin.');
     return window.location.origin;
   })();
 
@@ -482,7 +483,7 @@
           if (r.status === 403) showError("هذا المتجر غير مُفعَّل أو غير مُسجَّل في النظام.");
           else if (r.status === 429) showError("طلبات كثيرة — انتظر دقيقة ثم أعد المحاولة.");
           else showError("حدث خطأ أثناء الاتصال بالخادم. أعد المحاولة.");
-          console.error("[SSM] API error", r.status, errBody);
+          if (DEBUG) console.error("[SSM] API error", r.status, errBody);
           return null;
         });
       })

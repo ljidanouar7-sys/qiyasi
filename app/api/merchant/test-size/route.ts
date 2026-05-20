@@ -13,8 +13,9 @@ const admin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const CORS: Record<string, string> = {
-  "Access-Control-Allow-Origin":  process.env.NEXT_PUBLIC_APP_URL || "*",
+  "Access-Control-Allow-Origin":  allowedOrigin,
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
       katif: string, sadr: string, khasr: string, warek: string;
   try {
     const body = await req.json();
-    tag    = body.tag;
+    tag    = String(body.tag ?? "").toLowerCase().trim();
     height = Number(body.height ?? 0);
     weight = Number(body.weight ?? 0);
     katif  = String(body.katif ?? body.shoulders ?? "normal");
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     .from("categories")
     .select("size_chart, niche")
     .eq("merchant_id", merchant.id)
-    .ilike("tag", tag)
+    .eq("tag", tag)
     .single();
 
   if (!category?.size_chart) {

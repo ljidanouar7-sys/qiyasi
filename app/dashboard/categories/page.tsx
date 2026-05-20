@@ -112,7 +112,7 @@ export default function CategoriesPage() {
   const [catTag,    setCatTag]    = useState("");
   const [catNiche,  setCatNiche]  = useState<string>("fitted");
   const [catFabric, setCatFabric] = useState<string>("semi");
-  const [rows,      setRows]      = useState<EditRow[]>(() => defaultEditRows("long_clothing"));
+  const [rows,      setRows]      = useState<EditRow[]>(() => defaultEditRows("fitted"));
 
   // Test modal
   const [testCat,       setTestCat]       = useState<Category | null>(null);
@@ -149,12 +149,17 @@ export default function CategoriesPage() {
   }
 
   async function fetchCategories(mid: string) {
-    const { data } = await supabase
-      .from("categories")
-      .select("id, name, tag, niche, fabric_type, size_chart")
-      .eq("merchant_id", mid)
-      .order("created_at");
-    if (data) setCategories(data as Category[]);
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, tag, niche, fabric_type, size_chart")
+        .eq("merchant_id", mid)
+        .order("created_at");
+      if (error) throw error;
+      if (data) setCategories(data as Category[]);
+    } catch {
+      showToast("❌ خطأ في تحميل الفئات");
+    }
   }
 
   function openNew() {
@@ -192,12 +197,12 @@ export default function CategoriesPage() {
   function removeRow(i: number) { setRows(r => r.filter((_, j) => j !== i)); }
 
   async function handleSave() {
-    if (!catName.trim()) { alert("أدخل اسم الفئة"); return; }
-    if (!catTag.trim())  { alert("أدخل الـ Tag"); return; }
+    if (!catName.trim()) { showToast("❌ أدخل اسم الفئة"); return; }
+    if (!catTag.trim())  { showToast("❌ أدخل الـ Tag"); return; }
     if (!merchantId) { showToast("❌ لم تتحمل بيانات المتجر — أعد تحميل الصفحة"); return; }
     const sizes = rows.map(r => r.size);
     if (new Set(sizes).size !== sizes.length) {
-      alert("يوجد مقاسات مكررة — تأكد من أن كل صف له مقاس مختلف");
+      showToast("❌ يوجد مقاسات مكررة — تأكد من أن كل صف له مقاس مختلف");
       return;
     }
     if (!editingCat) {
@@ -230,30 +235,36 @@ export default function CategoriesPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("حذف هذه الفئة نهائياً؟")) return;
-    await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) { showToast("❌ خطأ في الحذف — حاول مرة أخرى"); return; }
     if (merchantId) fetchCategories(merchantId);
   }
 
   async function handleTest() {
     if (!testCat) return;
     setTesting(true); setTestResult(null); setTestError("");
-    const res = await fetch("/api/merchant/test-size", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tag:    testCat.tag,
-        height: Number(testHeight),
-        weight: Number(testWeight),
-        katif:  testKatif,
-        sadr:   testSadr,
-        khasr:  testKhasr,
-        warek:  testWarek,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) setTestError(data.error || "حدث خطأ");
-    else         setTestResult(data);
-    setTesting(false);
+    try {
+      const res = await fetch("/api/merchant/test-size", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tag:    testCat.tag,
+          height: Number(testHeight),
+          weight: Number(testWeight),
+          katif:  testKatif,
+          sadr:   testSadr,
+          khasr:  testKhasr,
+          warek:  testWarek,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) setTestError(data.error || "حدث خطأ");
+      else         setTestResult(data);
+    } catch {
+      setTestError("❌ خطأ في الاتصال — حاول مرة أخرى");
+    } finally {
+      setTesting(false);
+    }
   }
 
   function showToast(msg: string) {

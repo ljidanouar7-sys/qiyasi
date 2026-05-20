@@ -9,7 +9,8 @@ type LogEvent =
   | "ai_reasoning_failed"
   | "webhook_received"
   | "paddle_webhook"
-  | "invalid_input";
+  | "invalid_input"
+  | "unhandled_error";
 
 const ENV = process.env.NODE_ENV ?? "production";
 

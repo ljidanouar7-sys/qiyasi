@@ -31,7 +31,7 @@ export async function middleware(request: NextRequest) {
   // ── Admin route — server-side guard ───────────────────────────
   if (pathname.startsWith("/admin")) {
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (!adminEmail || user.email !== adminEmail) {
+    if (!adminEmail || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
       log("warn", "admin_access", { email: user.email, path: pathname, blocked: true });
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
@@ -44,7 +44,7 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard")) {
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (user.email !== adminEmail) {
+    if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
       const { data: merchant } = await supabase
         .from("merchants")
         .select("store_name, status")
