@@ -70,7 +70,7 @@ function getFittedSize(
 
   const weighted = (adj[sadr]  ?? 0) * 0.6
                  + (adj[khasr] ?? 0) * 0.6
-                 + (adj[warek] ?? 0) * 0.3;
+                 + (adj[warek] ?? 0) * 0.5;
 
   const finalIdx = Math.min(Math.max(Math.round(baseIdx + weighted), 0), rows.length - 1);
   const last     = rows.length - 1;
