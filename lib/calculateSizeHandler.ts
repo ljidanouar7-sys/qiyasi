@@ -160,6 +160,15 @@ export async function POST(req: NextRequest) {
     });
     console.log("DEBUG result:", JSON.stringify(result));
 
+    return NextResponse.json({
+      DEBUG: {
+        size_chart: sizeChart,
+        niche,
+        inputs: { height, weight, katif, sadr, khasr, warek },
+        result,
+      }
+    }, { headers: CORS });
+
     log("info", "size_calculated", {
       domain: normalizedOrigin,
       merchantId,
