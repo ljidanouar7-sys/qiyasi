@@ -1,1 +1,2 @@
-export { runtime, OPTIONS, POST } from "@/lib/calculateSizeHandler";
+export const runtime = "nodejs";
+export { OPTIONS, POST } from "@/lib/calculateSizeHandler";
