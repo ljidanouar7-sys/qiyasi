@@ -20,8 +20,11 @@ interface Category {
 
 interface EditRow {
   size:      string;
+  bust_min:  string;
   bust_max:  string;
+  waist_min: string;
   waist_max: string;
+  hip_min:   string;
   hip_max:   string;
 }
 
@@ -54,8 +57,11 @@ const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
 function chartToEditRows(chart: SizeChart): EditRow[] {
   return chart.rows.map(r => ({
     size:      r.size,
+    bust_min:  String(r.bust_min  ?? ""),
     bust_max:  String(r.bust_max),
+    waist_min: String(r.waist_min ?? ""),
     waist_max: String(r.waist_max),
+    hip_min:   String(r.hip_min   ?? ""),
     hip_max:   String(r.hip_max),
   }));
 }
@@ -64,8 +70,11 @@ function editRowsToChart(rows: EditRow[]): SizeChart {
   return {
     rows: rows.map(r => ({
       size:      r.size,
+      bust_min:  parseFloat(r.bust_min)  || 0,
       bust_max:  parseFloat(r.bust_max)  || 0,
+      waist_min: parseFloat(r.waist_min) || 0,
       waist_max: parseFloat(r.waist_max) || 0,
+      hip_min:   parseFloat(r.hip_min)   || 0,
       hip_max:   parseFloat(r.hip_max)   || 0,
     })),
   };
@@ -79,7 +88,7 @@ function defaultEditRows(niche: string): EditRow[] {
 }
 
 function emptyRow(): EditRow {
-  return { size: "S", bust_max: "", waist_max: "", hip_max: "" };
+  return { size: "S", bust_min: "", bust_max: "", waist_min: "", waist_max: "", hip_min: "", hip_max: "" };
 }
 
 function jsonToEditRows(json: unknown, niche: string): EditRow[] {
@@ -88,8 +97,11 @@ function jsonToEditRows(json: unknown, niche: string): EditRow[] {
   if ("bust_max" in (j.rows[0] as object)) {
     return j.rows.map(r => ({
       size:      String(r.size      ?? ""),
+      bust_min:  String(r.bust_min  ?? ""),
       bust_max:  String(r.bust_max  ?? ""),
+      waist_min: String(r.waist_min ?? ""),
       waist_max: String(r.waist_max ?? ""),
+      hip_min:   String(r.hip_min   ?? ""),
       hip_max:   String(r.hip_max   ?? ""),
     }));
   }
@@ -410,26 +422,34 @@ export default function CategoriesPage() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-xs border-collapse" style={{ minWidth: 360 }}>
+                <table className="w-full text-xs border-collapse" style={{ minWidth: 520 }}>
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
-                      <th className="text-right px-3 py-2.5 font-black text-slate-700 w-20">المقاس</th>
-                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-l border-blue-100">
-                        صدر bust_max (سم)
+                      <th className="text-right px-3 py-2 font-black text-slate-700 w-16" rowSpan={2}>المقاس</th>
+                      <th colSpan={2} className="text-center px-2 py-1.5 font-bold text-blue-700 bg-blue-50 border-r border-l border-blue-100">
+                        الصدر (سم)
                       </th>
-                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50 border-r border-blue-100">
-                        خصر waist_max (سم)
+                      <th colSpan={2} className="text-center px-2 py-1.5 font-bold text-indigo-700 bg-indigo-50 border-r border-indigo-100">
+                        الخصر (سم)
                       </th>
-                      <th className="text-center px-3 py-2.5 font-bold text-blue-700 bg-blue-50/50">
-                        ورك hip_max (سم)
+                      <th colSpan={2} className="text-center px-2 py-1.5 font-bold text-purple-700 bg-purple-50">
+                        الورك (سم)
                       </th>
-                      <th className="w-8 bg-slate-50" />
+                      <th className="w-8 bg-slate-50" rowSpan={2} />
+                    </tr>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-blue-50 border-r border-l border-blue-100 text-[10px]">من</th>
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-blue-50 border-r border-blue-100 text-[10px]">إلى</th>
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-indigo-50 border-r border-indigo-100 text-[10px]">من</th>
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-indigo-50 border-r border-indigo-100 text-[10px]">إلى</th>
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-purple-50 border-r border-purple-100 text-[10px]">من</th>
+                      <th className="text-center px-1 py-1 font-semibold text-slate-400 bg-purple-50 text-[10px]">إلى</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row, ri) => (
                       <tr key={ri} className="border-b border-slate-100 hover:bg-slate-50/50 transition">
-                        <td className="px-3 py-2">
+                        <td className="px-2 py-2">
                           <select
                             value={row.size}
                             onChange={e => updateRow(ri, "size", e.target.value)}
@@ -438,25 +458,49 @@ export default function CategoriesPage() {
                             {SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                           </select>
                         </td>
+                        {/* Bust min/max */}
                         <td className="px-1 py-2 border-r border-l border-blue-50">
-                          <input type="number" value={row.bust_max}
-                            onChange={e => updateRow(ri, "bust_max", e.target.value)}
-                            placeholder="104.1"
-                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                          <input type="number" value={row.bust_min}
+                            onChange={e => updateRow(ri, "bust_min", e.target.value)}
+                            placeholder="0"
+                            className="w-14 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
                           />
                         </td>
                         <td className="px-1 py-2 border-r border-blue-50">
+                          <input type="number" value={row.bust_max}
+                            onChange={e => updateRow(ri, "bust_max", e.target.value)}
+                            placeholder="94"
+                            className="w-14 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                          />
+                        </td>
+                        {/* Waist min/max */}
+                        <td className="px-1 py-2 border-r border-indigo-50">
+                          <input type="number" value={row.waist_min}
+                            onChange={e => updateRow(ri, "waist_min", e.target.value)}
+                            placeholder="0"
+                            className="w-14 border border-indigo-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-indigo-400 bg-indigo-50/30"
+                          />
+                        </td>
+                        <td className="px-1 py-2 border-r border-indigo-50">
                           <input type="number" value={row.waist_max}
                             onChange={e => updateRow(ri, "waist_max", e.target.value)}
-                            placeholder="87.6"
-                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                            placeholder="77.5"
+                            className="w-14 border border-indigo-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-indigo-400 bg-indigo-50/30"
+                          />
+                        </td>
+                        {/* Hip min/max */}
+                        <td className="px-1 py-2 border-r border-purple-50">
+                          <input type="number" value={row.hip_min}
+                            onChange={e => updateRow(ri, "hip_min", e.target.value)}
+                            placeholder="0"
+                            className="w-14 border border-purple-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-purple-400 bg-purple-50/30"
                           />
                         </td>
                         <td className="px-1 py-2">
                           <input type="number" value={row.hip_max}
                             onChange={e => updateRow(ri, "hip_max", e.target.value)}
-                            placeholder="102.9"
-                            className="w-20 border border-blue-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-blue-400 bg-blue-50/30"
+                            placeholder="92.7"
+                            className="w-14 border border-purple-100 rounded-lg px-1 py-1.5 text-xs text-center focus:outline-none focus:border-purple-400 bg-purple-50/30"
                           />
                         </td>
                         <td className="px-2 py-2 text-center">
