@@ -324,6 +324,8 @@
 
   function inject() {
     if (document.getElementById("ssm-trigger")) return;
+    const tag = extractProductTag();
+    if (!tag) return;
     const target = findCartButton();
     if (!target) return;
     applyBrandColor(target);
