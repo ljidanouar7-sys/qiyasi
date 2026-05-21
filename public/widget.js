@@ -190,7 +190,7 @@
     for (const sel of selectors) {
       try { const el = document.querySelector(sel); if (el && el.textContent.trim()) return el.textContent.trim(); } catch {}
     }
-    return document.title || '';
+    return '';
   }
 
   function findTagFromTitle() {
