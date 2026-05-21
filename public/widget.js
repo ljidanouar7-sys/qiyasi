@@ -193,15 +193,6 @@
     return '';
   }
 
-  function findTagFromTitle() {
-    if (!_merchantTags.length) return null;
-    const title = readProductTitle().toLowerCase();
-    for (const { tag } of _merchantTags) {
-      const regex = new RegExp(`\\b${tag.toLowerCase()}\\b`); if (tag && regex.test(title)) return tag;
-    }
-    return null;
-  }
-
   function extractProductTag() {
     const meta   = document.querySelector('meta[name="product-tag"]');
     if (meta)   return meta.getAttribute("content");
@@ -211,7 +202,7 @@
     if (hidden) return hidden.value;
     const m = document.body.className.match(/product-tag-([\w-]+)/);
     if (m)      return m[1];
-    return findTagFromTitle();
+    return null;
   }
 
   async function fetchMerchantTags() {
