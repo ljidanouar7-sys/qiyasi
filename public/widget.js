@@ -303,6 +303,25 @@
     return null;
   }
 
+  function preloadCardImages() {
+    if (preloadCardImages._done) return;
+    preloadCardImages._done = true;
+    var suffixes = ["-f.jpg", "-m.jpg"];
+    var seen = {};
+    STEPS.forEach(function(s) {
+      if (s.type !== "cards") return;
+      s.options.forEach(function(o) {
+        if (!o.img) return;
+        suffixes.forEach(function(sfx) {
+          var src = API_BASE + "/" + o.img.replace(/-(f|m)\.jpg$/, sfx);
+          if (seen[src]) return;
+          seen[src] = true;
+          new Image().src = src;
+        });
+      });
+    });
+  }
+
   function inject() {
     if (document.getElementById("ssm-trigger")) return;
     const target = findCartButton();
@@ -313,6 +332,7 @@
     btn.innerHTML = "📏 احسب مقاسي";
     btn.onclick = () => { setupModal(); openModal(); };
     target.insertAdjacentElement("afterend", btn);
+    preloadCardImages();
   }
 
   function openModal()  {

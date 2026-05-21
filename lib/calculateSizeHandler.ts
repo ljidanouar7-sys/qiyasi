@@ -83,37 +83,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "weight must be between 30 and 250 kg" }, { status: 400, headers: CORS });
     }
 
-    // ── Domain Validation ──────────────────────────────────────────────────────
-    const { data: domainRow } = await supabase
-      .from("merchant_domains")
-      .select("user_id")
-      .eq("domain", normalizedOrigin)
-      .single();
+    // ── Merchant cache (domain → merchantId + status, TTL 1h) ─────────────────
+    const merchantCacheKey = `merchant:v1:${normalizedOrigin}`;
+    let merchantId: string | undefined;
+    let merchantStatus: string | undefined;
 
-    if (!domainRow) {
-      log("warn", "domain_rejected", { domain: normalizedOrigin });
-      return NextResponse.json({ error: "Unauthorized domain" }, { status: 403, headers: CORS });
+    const cachedMerchant = await redis.get(merchantCacheKey);
+    if (cachedMerchant) {
+      try {
+        const m = typeof cachedMerchant === "string"
+          ? JSON.parse(cachedMerchant)
+          : cachedMerchant as { id: string; status: string };
+        merchantId = m.id;
+        merchantStatus = m.status;
+      } catch {
+        await redis.del(merchantCacheKey);
+      }
     }
 
-    const { data: merchant } = await supabase
-      .from("merchants")
-      .select("id, status")
-      .eq("user_id", domainRow.user_id)
-      .single();
-
-    if (!merchant) {
-      return NextResponse.json({ error: "Merchant not found" }, { status: 404, headers: CORS });
+    if (!merchantId || !merchantStatus) {
+      const { data: domainRow } = await supabase
+        .from("merchant_domains").select("user_id")
+        .eq("domain", normalizedOrigin).single();
+      if (!domainRow) {
+        log("warn", "domain_rejected", { domain: normalizedOrigin });
+        return NextResponse.json({ error: "Unauthorized domain" }, { status: 403, headers: CORS });
+      }
+      const { data: merchant } = await supabase
+        .from("merchants").select("id, status")
+        .eq("user_id", domainRow.user_id).single();
+      if (!merchant) {
+        return NextResponse.json({ error: "Merchant not found" }, { status: 404, headers: CORS });
+      }
+      merchantId = merchant.id;
+      merchantStatus = merchant.status;
+      await redis.set(merchantCacheKey, JSON.stringify({ id: merchantId, status: merchantStatus }), { ex: 3600 });
     }
 
-    if (merchant.status !== "active") {
+    if (merchantStatus !== "active") {
       log("warn", "merchant_blocked", { domain: normalizedOrigin });
       return NextResponse.json({ error: "Service unavailable" }, { status: 403, headers: CORS });
     }
 
-    const merchantId = merchant.id;
+    // ── Rate limit + Category fetch in parallel ────────────────────────────────
+    const [{ success, limit, remaining }, categoryResult] = await Promise.all([
+      ratelimit.limit(merchantId!),
+      supabase.from("categories").select("size_chart, niche")
+        .eq("merchant_id", merchantId!).eq("tag", tag).single(),
+    ]);
 
-    // ── Rate Limiting ──────────────────────────────────────────────────────────
-    const { success, limit, remaining } = await ratelimit.limit(merchantId);
     if (!success) {
       return NextResponse.json(
         { error: "Too many requests — try again in a minute" },
@@ -121,14 +139,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Fetch Size Chart ───────────────────────────────────────────────────────
-    const { data: category } = await supabase
-      .from("categories")
-      .select("size_chart, niche")
-      .eq("merchant_id", merchantId)
-      .eq("tag", tag)
-      .single();
-
+    const category = categoryResult.data;
     if (!category?.size_chart) {
       return NextResponse.json({ error: "Category not found" }, { status: 404, headers: CORS });
     }
