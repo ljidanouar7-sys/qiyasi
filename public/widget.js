@@ -197,7 +197,7 @@
     if (!_merchantTags.length) return null;
     const title = readProductTitle().toLowerCase();
     for (const { tag } of _merchantTags) {
-      if (tag && title.includes(tag.toLowerCase())) return tag;
+      const regex = new RegExp(`\\b${tag.toLowerCase()}\\b`); if (tag && regex.test(title)) return tag;
     }
     return null;
   }
