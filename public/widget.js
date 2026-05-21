@@ -316,6 +316,7 @@
   function inject() {
     if (document.getElementById("ssm-trigger")) return;
     const tag = extractProductTag();
+    console.log('SSM DEBUG inject called, tag:', tag, '| url:', location.href);
     if (!tag) return;
     const target = findCartButton();
     if (!target) return;
