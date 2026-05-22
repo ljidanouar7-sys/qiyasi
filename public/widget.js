@@ -323,33 +323,16 @@
     return SKIP_KEYWORDS.some(function(k) { return txt.includes(k); });
   }
   function findCartButton() {
-    console.log('SSM findCartButton START');
     for (const sel of CART_SELECTORS_SPECIFIC) {
-      try {
-        const el = document.querySelector(sel);
-        if (el && !isSkip(el)) {
-          console.log('SSM findCartButton pass1 found sel=' + sel + ' tag=' + el.tagName + ' txt=' + (el.textContent||'').trim().slice(0,40));
-          return el;
-        }
-      } catch {}
+      try { const el = document.querySelector(sel); if (el && !isSkip(el)) return el; } catch {}
     }
     for (const el of document.querySelectorAll('button,a,[role="button"],input[type="submit"]')) {
       const txt = (el.textContent || el.value || '').toLowerCase().trim();
-      if (!isSkip(el) && CART_KEYWORDS.some(k => txt.includes(k))) {
-        console.log('SSM findCartButton pass2 found tag=' + el.tagName + ' txt=' + txt.slice(0,40));
-        return el;
-      }
+      if (!isSkip(el) && CART_KEYWORDS.some(k => txt.includes(k))) return el;
     }
     for (const sel of CART_SELECTORS_GENERIC) {
-      try {
-        const el = document.querySelector(sel);
-        if (el && !isSkip(el)) {
-          console.log('SSM findCartButton pass3 found sel=' + sel + ' tag=' + el.tagName);
-          return el;
-        }
-      } catch {}
+      try { const el = document.querySelector(sel); if (el && !isSkip(el)) return el; } catch {}
     }
-    console.log('SSM findCartButton: no button found');
     return null;
   }
 
