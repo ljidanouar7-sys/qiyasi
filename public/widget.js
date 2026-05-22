@@ -286,15 +286,38 @@
 
   // ======= Cart button detection =======
   const CART_KEYWORDS = [
-    'add to cart','add to bag','buy now','purchase','order now',
-    'ajouter au panier','commander','acheter',
-    'أضف للسلة','أضف إلى السلة','إضافة للسلة','اشتر الآن','اطلب الآن','أضف','شراء',
+    'add to cart', 'add to bag',
+    'ajouter au panier', 'ajouter au sac',
+    'أضف للسلة', 'أضف إلى السلة', 'إضافة للسلة', 'أضف',
+    'agregar al carrito', 'añadir al carrito',
+    'in den warenkorb', 'zum warenkorb',
   ];
   const CART_SELECTORS = [
-    'salla-add-to-cart','salla-buy-now','salla-add-to-cart button',
-    'button[name="add"]','.add-to-cart','.single_add_to_cart_button',
-    '.product-form__submit','.btn-add-to-cart','[id*="AddToCart"]',
-    '[class*="add-to-cart"]','[class*="addtocart"]','button[type="submit"]',
+    // Salla (Arabic platform)
+    'salla-add-to-cart', 'salla-buy-now', 'salla-add-to-cart button',
+    // Shopify
+    'button[name="add"]', '.product-form__submit', '[id*="AddToCart"]', '[id*="add-to-cart"]',
+    // WooCommerce
+    '.single_add_to_cart_button', '.add_to_cart_button',
+    // OpenCart
+    '#button-cart',
+    // PrestaShop
+    '#add-to-cart', '.add-to-cart',
+    // Easy-orders / Arabic stores
+    '[class*="add-to-cart"]', '[class*="addtocart"]', '[class*="btn-cart"]',
+    '[id*="btn-cart"]', '[id*="btnCart"]',
+    // Generic product form submit (NOT checkout)
+    'form.product-form button[type="submit"]',
+    'form.product_form button[type="submit"]',
+    'form[action*="/cart"] button[type="submit"]',
+    'form[action*="cart"] button[type="submit"]',
+    // Fallback: any primary button inside product section
+    'form.product-form button:first-of-type',
+    'form.product_form button:first-of-type',
+    '.product-info button:first-of-type',
+    '.product-details button:first-of-type',
+    '.product__info button:first-of-type',
+    '.product-single button:first-of-type',
   ];
   function findCartButton() {
     for (const sel of CART_SELECTORS) {
