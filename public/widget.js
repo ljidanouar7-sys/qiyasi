@@ -193,6 +193,19 @@
     return '';
   }
 
+  function findTagFromTitle() {
+    if (!_merchantTags.length) return null;
+    const title = readProductTitle().toLowerCase();
+    if (!title) return null;
+    for (const { tag } of _merchantTags) {
+      if (!tag) continue;
+      const t = tag.toLowerCase();
+      const regex = new RegExp(`(^|\\s|-)${t}(\\s|-|$)`);
+      if (regex.test(title)) return tag;
+    }
+    return null;
+  }
+
   function extractProductTag() {
     const meta   = document.querySelector('meta[name="product-tag"]');
     if (meta)   return meta.getAttribute("content");
@@ -202,7 +215,7 @@
     if (hidden) return hidden.value;
     const m = document.body.className.match(/product-tag-([\w-]+)/);
     if (m)      return m[1];
-    return null;
+    return findTagFromTitle();
   }
 
   async function fetchMerchantTags() {
