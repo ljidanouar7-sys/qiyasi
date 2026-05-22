@@ -329,8 +329,7 @@
   function inject() {
     if (document.getElementById("ssm-trigger")) return;
     const tag = extractProductTag();
-    const title = readProductTitle();
-    console.log('SSM DEBUG:', { tag, title, merchantTags: _merchantTags });
+    console.log('SSM DEBUG:', { tag, title: readProductTitle(), tags: _merchantTags });
     if (!tag) return;
     const target = findCartButton();
     if (!target) return;
