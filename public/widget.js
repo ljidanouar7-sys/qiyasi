@@ -182,10 +182,9 @@
 
   function readProductTitle() {
     const selectors = [
-      'h1.product-title','h1.product__title','h1[class*="product"]',
-      '.product-title','.product__title','.product-name',
-      '[class*="product-title"]','[class*="product-name"]',
-      '[itemprop="name"]','h1',
+      'h1.product-title', 'h1.product__title', 'h1[class*="product"]',
+      '.product-title', '.product__title', '.product-name',
+      '[class*="product-title"]', '[class*="product-name"]',
     ];
     for (const sel of selectors) {
       try { const el = document.querySelector(sel); if (el && el.textContent.trim()) return el.textContent.trim(); } catch {}
@@ -329,7 +328,6 @@
   function inject() {
     if (document.getElementById("ssm-trigger")) return;
     const tag = extractProductTag();
-    console.log('SSM DEBUG inject called, tag:', tag, '| url:', location.href);
     if (!tag) return;
     const target = findCartButton();
     if (!target) return;
