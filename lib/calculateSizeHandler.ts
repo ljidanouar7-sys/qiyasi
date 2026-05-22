@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
 
     // ── Rate limit + Category fetch in parallel ────────────────────────────────
     const [{ success, limit, remaining }, categoryResult] = await Promise.all([
-      ratelimit.limit(merchantId!),
+      ratelimit.limit(merchantId as string),
       supabase.from("categories").select("size_chart, niche")
         .eq("merchant_id", merchantId!).eq("tag", tag).single(),
     ]);
