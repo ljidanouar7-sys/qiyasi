@@ -285,6 +285,11 @@
   }
 
   // ======= Cart button detection =======
+  const SKIP_KEYWORDS = [
+    'اضغط هنا للشراء', 'اطلب الآن', 'اشتر الآن', 'شراء الآن',
+    'buy now', 'checkout', 'place order', 'complete order',
+    'passer la commande', 'commander maintenant',
+  ];
   const CART_KEYWORDS = [
     'add to cart', 'add to bag',
     'ajouter au panier', 'ajouter au sac',
@@ -292,26 +297,20 @@
     'agregar al carrito', 'añadir al carrito',
     'in den warenkorb', 'zum warenkorb',
   ];
-  const CART_SELECTORS = [
-    // Salla (Arabic platform)
-    'salla-add-to-cart', 'salla-buy-now', 'salla-add-to-cart button',
-    // Shopify
-    'button[name="add"]', '.product-form__submit', '[id*="AddToCart"]', '[id*="add-to-cart"]',
-    // WooCommerce
+  const CART_SELECTORS_SPECIFIC = [
+    'salla-add-to-cart', 'salla-add-to-cart button',
+    'button[name="add"]', '.product-form__submit',
+    '[id*="AddToCart"]', '[id*="add-to-cart"]',
     '.single_add_to_cart_button', '.add_to_cart_button',
-    // OpenCart
-    '#button-cart',
-    // PrestaShop
-    '#add-to-cart', '.add-to-cart',
-    // Easy-orders / Arabic stores
+    '#button-cart', '#add-to-cart', '.add-to-cart',
     '[class*="add-to-cart"]', '[class*="addtocart"]', '[class*="btn-cart"]',
     '[id*="btn-cart"]', '[id*="btnCart"]',
-    // Generic product form submit (NOT checkout)
+  ];
+  const CART_SELECTORS_GENERIC = [
     'form.product-form button[type="submit"]',
     'form.product_form button[type="submit"]',
     'form[action*="/cart"] button[type="submit"]',
     'form[action*="cart"] button[type="submit"]',
-    // Fallback: any primary button inside product section
     'form.product-form button:first-of-type',
     'form.product_form button:first-of-type',
     '.product-info button:first-of-type',
@@ -319,13 +318,20 @@
     '.product__info button:first-of-type',
     '.product-single button:first-of-type',
   ];
+  function isSkip(el) {
+    const txt = (el.textContent || el.value || '').trim();
+    return SKIP_KEYWORDS.some(function(k) { return txt.includes(k); });
+  }
   function findCartButton() {
-    for (const sel of CART_SELECTORS) {
-      try { const el = document.querySelector(sel); if (el) return el; } catch {}
+    for (const sel of CART_SELECTORS_SPECIFIC) {
+      try { const el = document.querySelector(sel); if (el && !isSkip(el)) return el; } catch {}
     }
     for (const el of document.querySelectorAll('button,[role="button"],input[type="submit"]')) {
       const txt = (el.textContent || el.value || '').toLowerCase().trim();
-      if (CART_KEYWORDS.some(k => txt.includes(k))) return el;
+      if (!isSkip(el) && CART_KEYWORDS.some(k => txt.includes(k))) return el;
+    }
+    for (const sel of CART_SELECTORS_GENERIC) {
+      try { const el = document.querySelector(sel); if (el && !isSkip(el)) return el; } catch {}
     }
     return null;
   }
