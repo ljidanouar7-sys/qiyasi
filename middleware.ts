@@ -59,6 +59,25 @@ export async function middleware(request: NextRequest) {
       if (!merchant.store_name || merchant.store_name === "متجري") {
         return NextResponse.redirect(new URL("/welcome", request.url));
       }
+
+      // ── فحص الاشتراك — تجاوز صفحة upgrade لمنع redirect loop ──
+      if (pathname !== "/dashboard/upgrade") {
+        const { data: sub } = await supabase
+          .from("subscriptions")
+          .select("status, current_period_end")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        const hasActiveSub =
+          sub?.status === "active" &&
+          sub.current_period_end != null &&
+          new Date(sub.current_period_end) > new Date();
+
+        if (!hasActiveSub) {
+          return NextResponse.redirect(new URL("/dashboard/upgrade", request.url));
+        }
+      }
     }
   }
 
