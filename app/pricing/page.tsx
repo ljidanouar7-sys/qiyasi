@@ -184,6 +184,10 @@ export default function PricingPage() {
   const [merchantId,      setMerchantId]      = useState<string>("");
   const [checkoutLoading, setCheckoutLoading] = useState<"monthly" | "yearly" | null>(null);
   const [toast,           setToast]           = useState<string>("");
+  const [demoStore,       setDemoStore]       = useState<string>("");
+  const [demoEmail,       setDemoEmail]       = useState<string>("");
+  const [demoLoading,     setDemoLoading]     = useState<boolean>(false);
+  const [demoSent,        setDemoSent]        = useState<boolean>(false);
 
   const t    = T[lang];
   const isAr = lang === "ar";
@@ -216,6 +220,25 @@ export default function PricingPage() {
   function showToast(msg: string) {
     setToast(msg);
     setTimeout(() => setToast(""), 4000);
+  }
+
+  async function handleDemoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!demoStore.trim() || !demoEmail.trim()) return;
+    setDemoLoading(true);
+    try {
+      const res = await fetch("/api/demo-request", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ storeName: demoStore, email: demoEmail }),
+      });
+      if (res.ok) setDemoSent(true);
+      else showToast(isAr ? "حدث خطأ، حاول مجدداً" : "Something went wrong, try again");
+    } catch {
+      showToast(isAr ? "حدث خطأ، حاول مجدداً" : "Something went wrong, try again");
+    } finally {
+      setDemoLoading(false);
+    }
   }
 
   async function handleProClick(cycle: "monthly" | "yearly") {
@@ -389,21 +412,54 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* DEMO CTA */}
+      {/* DEMO CTA — contact form */}
       <section className="pb-28 px-6">
         <div className="max-w-2xl mx-auto bg-indigo-600 rounded-3xl px-10 py-16 text-center
                         shadow-[0_0_80px_rgba(99,102,241,0.2)]">
           <h2 className="text-white font-black text-3xl md:text-4xl tracking-tight mb-4">{t.cta.h2}</h2>
-          <p className="text-indigo-200 text-lg mb-10 leading-relaxed">{t.cta.sub}</p>
-          <Link
-            href="/#demo"
-            className="inline-block bg-white text-indigo-600 font-black px-10 py-4 rounded-2xl
-                       hover:bg-indigo-50 transition text-base shadow-lg"
-          >
-            {t.cta.btn}
-          </Link>
+          <p className="text-indigo-200 text-lg mb-8 leading-relaxed">{t.cta.sub}</p>
+
+          {demoSent ? (
+            <div className="bg-white/20 rounded-2xl px-8 py-6">
+              <p className="text-white font-black text-xl">
+                {isAr ? "✅ تم الإرسال! سنتواصل معك قريباً" : "✅ Sent! We'll contact you soon"}
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleDemoSubmit} className="flex flex-col gap-4 text-right" dir={t.dir}>
+              <input
+                type="text"
+                placeholder={isAr ? "اسم المتجر" : "Store name"}
+                value={demoStore}
+                onChange={e => setDemoStore(e.target.value)}
+                required
+                className="w-full rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-medium outline-none
+                           focus:ring-2 focus:ring-white placeholder:text-slate-400"
+              />
+              <input
+                type="email"
+                placeholder={isAr ? "البريد الإلكتروني" : "Email address"}
+                value={demoEmail}
+                onChange={e => setDemoEmail(e.target.value)}
+                required
+                className="w-full rounded-2xl px-5 py-3.5 text-slate-900 text-sm font-medium outline-none
+                           focus:ring-2 focus:ring-white placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                disabled={demoLoading}
+                className="w-full bg-white text-indigo-600 font-black py-3.5 rounded-2xl
+                           hover:bg-indigo-50 transition text-base shadow-lg disabled:opacity-60"
+              >
+                {demoLoading
+                  ? (isAr ? "جاري الإرسال..." : "Sending...")
+                  : (isAr ? "أرسل الطلب" : "Send Request")}
+              </button>
+            </form>
+          )}
+
           <p className="text-indigo-300 text-xs mt-6">
-            {isAr ? "بدون التزام · 15 دقيقة فقط" : "No commitment · 15 minutes only"}
+            {isAr ? "بدون التزام · سنرد عليك خلال 24 ساعة" : "No commitment · We'll reply within 24 hours"}
           </p>
         </div>
       </section>
