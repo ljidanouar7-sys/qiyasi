@@ -52,12 +52,12 @@ const T = {
       },
       {
         name: "Pro Yearly",
-        price: "$150",
+        price: "1770",
         period: "/year",
-        desc: "Best value — save $30 compared to monthly.",
+        desc: "Best value — save compared to monthly.",
         features: [
           "Everything in Pro Monthly",
-          "Save $30 (≈ $12.5/mo)",
+          "Best annual rate",
           "Early access to new features",
           "Priority support",
         ],
@@ -127,12 +127,12 @@ const T = {
       },
       {
         name: "برو سنوي",
-        price: "$150",
+        price: "1770",
         period: "/سنة",
-        desc: "أفضل قيمة — وفّر $30 مقارنةً بالشهري.",
+        desc: "أفضل قيمة — وفّر مقارنةً بالشهري.",
         features: [
           "كل شيء في برو الشهري",
-          "وفّر $30 (≈ $12.5/شهر)",
+          "أفضل سعر سنوي",
           "وصول مبكر للميزات الجديدة",
           "دعم مُفضَّل",
         ],
