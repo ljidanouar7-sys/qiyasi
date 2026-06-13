@@ -22,21 +22,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let storeName: string, email: string;
+  let storeName: string, email: string, store_url: string, message: string;
   try {
     const body = await req.json();
-    storeName = (body.storeName || "").trim();
+    storeName = (body.storeName || body.name || "").trim();
     email     = (body.email    || "").toLowerCase().trim();
+    store_url = (body.storeUrl || "").trim();
+    message   = (body.message  || "").trim();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   if (!storeName || !email) {
-    return NextResponse.json({ error: "storeName and email are required" }, { status: 400 });
+    return NextResponse.json({ error: "name and email are required" }, { status: 400 });
   }
 
   // حفظ في DB
-  await admin.from("demo_requests").insert({ name: storeName, email, store_url: "" }).throwOnError();
+  await admin.from("demo_requests").insert({ name: storeName, email, store_url, message }).throwOnError();
 
   // إرسال email لصاحب Qiyasi
   await resend.emails.send({
