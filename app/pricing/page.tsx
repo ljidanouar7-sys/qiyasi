@@ -52,7 +52,7 @@ const T = {
       },
       {
         name: "Pro Yearly",
-        price: "1770",
+        price: "$1770",
         period: "/year",
         desc: "Best value — save compared to monthly.",
         features: [
@@ -127,7 +127,7 @@ const T = {
       },
       {
         name: "برو سنوي",
-        price: "1770",
+        price: "$1770",
         period: "/سنة",
         desc: "أفضل قيمة — وفّر مقارنةً بالشهري.",
         features: [
