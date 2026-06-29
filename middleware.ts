@@ -44,6 +44,7 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard")) {
     const adminEmail = process.env.ADMIN_EMAIL;
+    console.log("SSM_DEBUG user.email=" + JSON.stringify(user.email) + " adminEmail=" + JSON.stringify(adminEmail));
     if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
       const { data: merchant } = await supabase
         .from("merchants")
