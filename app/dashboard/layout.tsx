@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       if (!user) { router.replace("/auth"); return; }
       setEmail(user.email ?? "");
 
-      if (user.email !== ADMIN_EMAIL) {
+      if (user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
         const { data } = await supabase.from("merchants").select("status").eq("user_id", user.id).single();
         if (data?.status !== "active") {
           await supabase.auth.signOut();
