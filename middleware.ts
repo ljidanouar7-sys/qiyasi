@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
     if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
       const { data: merchant } = await supabase
         .from("merchants")
-        .select("store_name, status")
+        .select("store_name, status, plan, subscription_status")
         .eq("user_id", user.id)
         .single();
 
@@ -60,19 +60,24 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/welcome", request.url));
       }
 
-      // ── فحص الاشتراك — تجاوز صفحة upgrade لمنع redirect loop ──
+      // ── فحص الاشتراك — يقبل النظام القديم (merchants.plan) أو الجديد (subscriptions) ──
       if (pathname !== "/dashboard/upgrade") {
-        const { data: sub } = await supabase
-          .from("subscriptions")
-          .select("status, current_period_end")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle();
+        const hasOldPlan = merchant.plan === "pro" || merchant.subscription_status === "active";
 
-        const hasActiveSub =
-          sub?.status === "active" &&
-          sub.current_period_end != null &&
-          new Date(sub.current_period_end) > new Date();
+        let hasActiveSub = hasOldPlan;
+        if (!hasActiveSub) {
+          const { data: sub } = await supabase
+            .from("subscriptions")
+            .select("status, current_period_end")
+            .eq("user_id", user.id)
+            .eq("status", "active")
+            .maybeSingle();
+
+          hasActiveSub =
+            sub?.status === "active" &&
+            sub.current_period_end != null &&
+            new Date(sub.current_period_end) > new Date();
+        }
 
         if (!hasActiveSub) {
           return NextResponse.redirect(new URL("/dashboard/upgrade", request.url));
