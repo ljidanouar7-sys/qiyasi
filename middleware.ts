@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
 
   // ── Admin route — server-side guard ───────────────────────────
   if (pathname.startsWith("/admin")) {
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
     if (!adminEmail || user.email?.toLowerCase() !== adminEmail.toLowerCase()) {
       log("warn", "admin_access", { email: user.email, path: pathname, blocked: true });
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -43,8 +43,7 @@ export async function middleware(request: NextRequest) {
   if (pathname === "/welcome") return response;
 
   if (pathname.startsWith("/dashboard")) {
-    const adminEmail = process.env.ADMIN_EMAIL;
-    console.log("SSM_DEBUG user.email=" + JSON.stringify(user.email) + " adminEmail=" + JSON.stringify(adminEmail));
+    const adminEmail = process.env.ADMIN_EMAIL?.trim();
     if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
       const { data: merchant } = await supabase
         .from("merchants")
