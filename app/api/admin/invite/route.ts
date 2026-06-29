@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { makeRatelimit, getClientIp } from "@/lib/rate-limit";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL!;
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL!.trim().toLowerCase();
 const APP_URL     = process.env.NEXT_PUBLIC_APP_URL;
 
 const admin = createClient(
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     { cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} } }
   );
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

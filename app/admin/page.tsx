@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { useRouter } from "next/navigation";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
 
 type Merchant = {
   id: string;
@@ -23,7 +23,7 @@ export default function AdminPage() {
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.email !== ADMIN_EMAIL) { router.replace("/"); return; }
+      if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) { router.replace("/"); return; }
       const res = await fetch("/api/admin/merchants");
       if (res.ok) { const json = await res.json(); setMerchants(json.merchants); }
       setLoading(false);

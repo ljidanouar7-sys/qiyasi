@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
 import Link from "next/link";
 
-const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "";
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").trim().toLowerCase();
 
 export default function AdminInvitePage() {
   const [authed, setAuthed]     = useState(false);
@@ -19,7 +19,7 @@ export default function AdminInvitePage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user || user.email !== ADMIN_EMAIL) {
+      if (!user || user.email?.toLowerCase() !== ADMIN_EMAIL) {
         window.location.href = "/";
       } else {
         setAuthed(true);
