@@ -95,13 +95,16 @@ export async function POST(req: NextRequest) {
   // Delete any old merchant record linked to this user (from auto-trigger on signup)
   await admin.from("merchants").delete().eq("user_id", userId).neq("id", merchantId);
 
-  // Link invitation merchant to auth user
+  // Link invitation merchant to auth user — يبدا تجربة مجانية 14 يوم من لحظة القبول
+  const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
   const { error: updateError } = await admin
     .from("merchants")
     .update({
       user_id:                userId,
       status:                 "active",
       invitation_accepted_at: new Date().toISOString(),
+      trial_ends_at:          trialEndsAt,
     })
     .eq("id", merchantId);
 

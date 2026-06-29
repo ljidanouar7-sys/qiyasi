@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
     if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
       const { data: merchant } = await supabase
         .from("merchants")
-        .select("store_name, status, plan, subscription_status")
+        .select("store_name, status, plan, subscription_status, trial_ends_at")
         .eq("user_id", user.id)
         .single();
 
@@ -60,11 +60,12 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/welcome", request.url));
       }
 
-      // ── فحص الاشتراك — يقبل النظام القديم (merchants.plan) أو الجديد (subscriptions) ──
+      // ── فحص الاشتراك — تجربة مجانية، أو النظام القديم، أو الجديد ──
       if (pathname !== "/dashboard/upgrade") {
+        const inTrial   = merchant.trial_ends_at != null && new Date(merchant.trial_ends_at) > new Date();
         const hasOldPlan = merchant.plan === "pro" || merchant.subscription_status === "active";
 
-        let hasActiveSub = hasOldPlan;
+        let hasActiveSub = inTrial || hasOldPlan;
         if (!hasActiveSub) {
           const { data: sub } = await supabase
             .from("subscriptions")
