@@ -44,7 +44,9 @@ export async function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard")) {
     const adminEmail = process.env.ADMIN_EMAIL?.trim();
-    if (user.email?.toLowerCase() !== adminEmail?.toLowerCase()) {
+    const isAdmin = user.email?.toLowerCase() === adminEmail?.toLowerCase();
+    console.log("SSM_DEBUG2 user.email=" + JSON.stringify(user.email) + " adminEmail=" + JSON.stringify(adminEmail) + " isAdmin=" + isAdmin);
+    if (!isAdmin) {
       const { data: merchant } = await supabase
         .from("merchants")
         .select("store_name, status")
