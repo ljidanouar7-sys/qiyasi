@@ -613,45 +613,6 @@
     restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
     result.appendChild(restartBtn);
 
-    // ── رابط التقييم (للتاجر يبعتو مع الطلب) ────────────────────────────────
-    if (_lastRecId) {
-      var fbWrap = document.createElement("div");
-      fbWrap.style.cssText = "margin-top:14px;text-align:center;direction:rtl";
-
-      var fbLabel = document.createElement("p");
-      fbLabel.style.cssText = "font-size:11px;color:#6b7280;margin:0 0 6px";
-      fbLabel.textContent = "احتفظ برابط التقييم — قيّم المقاس بعد الاستلام";
-      fbWrap.appendChild(fbLabel);
-
-      var copyBtn = document.createElement("button");
-      copyBtn.style.cssText = "padding:6px 14px;font-size:12px;border:1px solid #0d9488;border-radius:8px;cursor:pointer;background:#f0fdfa;color:#0d9488;font-weight:700;direction:rtl";
-      copyBtn.textContent = "📋 انسخ رابط التقييم";
-      copyBtn.onclick = function() {
-        var link = API_BASE + "/feedback?rec=" + _lastRecId;
-        if (navigator.clipboard) {
-          navigator.clipboard.writeText(link).then(function() {
-            copyBtn.textContent = "✅ تم النسخ!";
-            setTimeout(function() { copyBtn.textContent = "📋 انسخ رابط التقييم"; }, 2000);
-          });
-        } else {
-          var ta = document.createElement("textarea");
-          ta.value = link; ta.style.position = "fixed"; ta.style.opacity = "0";
-          document.body.appendChild(ta); ta.select();
-          document.execCommand("copy");
-          document.body.removeChild(ta);
-          copyBtn.textContent = "✅ تم النسخ!";
-          setTimeout(function() { copyBtn.textContent = "📋 انسخ رابط التقييم"; }, 2000);
-        }
-      };
-      fbWrap.appendChild(copyBtn);
-      result.appendChild(fbWrap);
-    }
-
-    // ── Consent notice ────────────────────────────────────────────────────────
-    var consentEl = document.createElement("p");
-    consentEl.style.cssText = "font-size:10px;color:#9ca3af;text-align:center;margin:10px 0 0;direction:rtl";
-    consentEl.textContent = "بإدخال قياساتك، أنت توافق على معالجتها لحساب مقاسك فقط";
-    result.appendChild(consentEl);
 
     body.appendChild(result);
   }
