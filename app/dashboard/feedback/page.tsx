@@ -8,15 +8,25 @@ type Rec = {
   category:         string | null;
   recommended_size: string;
   created_at:       string;
+  requested_at:     string | null;
   customers:        { height: number | null; weight: number | null } | null;
-  outcomes:         { status: string; feedback_type: string; return_reason?: string | null }[] | null;
+  outcomes:         { status: string; return_reason?: string | null }[] | null;
 };
 
-const FEEDBACK_LABELS: Record<string, string> = {
-  fit_good:  "مناسب ✅",
-  too_tight: "ضيّق 📏",
-  too_loose: "واسع 📏",
-};
+function buildWhatsAppMsg(size: string, rec_id: string): string {
+  return `السلام عليكم 🌟
+شكراً على شرائك من متجرنا!
+اقترحنا عليك مقاس ${size}. واش جاك مناسب؟
+عافاك جاوبنا هنا باش نحسنو خدمتنا:
+https://qiyasi.net/feedback?rec=${rec_id}
+شكراً 🙏`;
+}
+
+function getStatus(rec: Rec): "done" | "sent" | "pending" {
+  if (rec.outcomes?.length) return "done";
+  if (rec.requested_at)     return "sent";
+  return "pending";
+}
 
 export default function FeedbackDashboardPage() {
   const [recs,      setRecs]      = useState<Rec[]>([]);
@@ -25,6 +35,7 @@ export default function FeedbackDashboardPage() {
   const [catFilter, setCatFilter] = useState("all");
   const [fbFilter,  setFbFilter]  = useState("all");
   const [sending,   setSending]   = useState<string | null>(null);
+  const [phones,    setPhones]    = useState<Record<string, string>>({});
 
   useEffect(() => { load(); }, []);
 
@@ -40,9 +51,9 @@ export default function FeedbackDashboardPage() {
     const { data } = await supabase
       .from("recommendations")
       .select(`
-        rec_id, category, recommended_size, created_at,
+        rec_id, category, recommended_size, created_at, requested_at,
         customers!inner(height, weight, merchant_id),
-        outcomes(status, feedback_type)
+        outcomes(status, return_reason)
       `)
       .eq("customers.merchant_id", merchant.id)
       .order("created_at", { ascending: false })
@@ -57,9 +68,30 @@ export default function FeedbackDashboardPage() {
     setTimeout(() => setToast(""), 3000);
   }
 
-  function copyLink(rec_id: string) {
-    const url = `${window.location.origin}/feedback?rec=${rec_id}`;
-    navigator.clipboard.writeText(url).then(() => showToast("✅ تم نسخ الرابط"));
+  async function markRequested(rec_id: string) {
+    await supabase.from("recommendations")
+      .update({ requested_at: new Date().toISOString() })
+      .eq("rec_id", rec_id);
+    await load();
+  }
+
+  async function copyWhatsApp(rec: Rec) {
+    const msg = buildWhatsAppMsg(rec.recommended_size, rec.rec_id);
+    try {
+      await navigator.clipboard.writeText(msg);
+      showToast("✅ تم نسخ الرسالة");
+    } catch {
+      showToast("❌ فشل النسخ — حاول مجدداً");
+      return;
+    }
+    await markRequested(rec.rec_id);
+  }
+
+  async function openWhatsApp(rec: Rec, phone: string) {
+    const msg = buildWhatsAppMsg(rec.recommended_size, rec.rec_id);
+    const url = `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    await markRequested(rec.rec_id);
   }
 
   async function sendManual(rec_id: string, quick_feedback: string) {
@@ -70,9 +102,9 @@ export default function FeedbackDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ rec_id, quick_feedback, feedback_type: "manual_merchant" }),
       });
-      if (res.status === 409) { showToast("⚠️ تم إرسال feedback لهذه التوصية من قبل"); }
+      if (res.status === 409) showToast("⚠️ تم إرسال feedback لهذه التوصية من قبل");
       else if (res.ok)         { showToast("✅ تم الحفظ"); await load(); }
-      else                     { showToast("❌ حدث خطأ"); }
+      else                     showToast("❌ حدث خطأ");
     } catch { showToast("❌ خطأ في الاتصال"); }
     finally  { setSending(null); }
   }
@@ -80,40 +112,37 @@ export default function FeedbackDashboardPage() {
   const categories = [...new Set(recs.map(r => r.category).filter(Boolean))];
 
   const filtered = recs.filter(r => {
-    const hasFb = r.outcomes && r.outcomes.length > 0;
+    const status = getStatus(r);
     if (catFilter !== "all" && r.category !== catFilter) return false;
-    if (fbFilter === "done"    && !hasFb) return false;
-    if (fbFilter === "pending" &&  hasFb) return false;
+    if (fbFilter === "done"    && status !== "done")    return false;
+    if (fbFilter === "pending" && status === "done")    return false;
     return true;
   });
+
+  const statusBadge = {
+    done:    <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full font-semibold">وصل الفيدباك ✅</span>,
+    sent:    <span className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded-full font-semibold">اتبعت الرسالة ✉️</span>,
+    pending: <span className="text-xs text-slate-400">مازال</span>,
+  };
 
   return (
     <div dir="rtl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-black text-slate-900">التوصيات والفيدباك</h1>
-        <button onClick={load} className="text-sm text-slate-400 hover:text-slate-700 transition">
-          🔄 تحديث
-        </button>
+        <button onClick={load} className="text-sm text-slate-400 hover:text-slate-700 transition">🔄 تحديث</button>
       </div>
 
-      {/* Filters */}
       <div className="flex gap-3 mb-5 flex-wrap">
-        <select
-          value={catFilter}
-          onChange={e => setCatFilter(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-        >
+        <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
           <option value="all">كل الفئات</option>
           {categories.map(c => <option key={c!} value={c!}>{c}</option>)}
         </select>
-        <select
-          value={fbFilter}
-          onChange={e => setFbFilter(e.target.value)}
-          className="border border-slate-200 rounded-lg px-3 py-2 text-sm"
-        >
+        <select value={fbFilter} onChange={e => setFbFilter(e.target.value)}
+          className="border border-slate-200 rounded-lg px-3 py-2 text-sm">
           <option value="all">كل الحالات</option>
-          <option value="pending">مازال ما وصلش</option>
-          <option value="done">واصل</option>
+          <option value="pending">مازال + اتبعت</option>
+          <option value="done">وصل الفيدباك</option>
         </select>
         <span className="text-sm text-slate-400 self-center">{filtered.length} توصية</span>
       </div>
@@ -134,51 +163,59 @@ export default function FeedbackDashboardPage() {
                   <th className="px-4 py-3 text-right font-semibold">الفئة</th>
                   <th className="px-4 py-3 text-right font-semibold">المقاس</th>
                   <th className="px-4 py-3 text-right font-semibold">الطول/الوزن</th>
-                  <th className="px-4 py-3 text-right font-semibold">الفيدباك</th>
+                  <th className="px-4 py-3 text-right font-semibold">الحالة</th>
                   <th className="px-4 py-3 text-right font-semibold">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filtered.map(rec => {
-                  const outcome = rec.outcomes?.[0];
-                  const hasFb   = !!outcome;
-                  const date    = new Date(rec.created_at).toLocaleDateString("ar-MA");
-                  const cust    = rec.customers;
+                  const status = getStatus(rec);
+                  const cust   = rec.customers;
+                  const date   = new Date(rec.created_at).toLocaleDateString("ar-MA");
+                  const phone  = phones[rec.rec_id] ?? "";
 
                   return (
                     <tr key={rec.rec_id} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3 text-slate-500">{date}</td>
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{date}</td>
                       <td className="px-4 py-3 text-slate-700">{rec.category ?? "—"}</td>
                       <td className="px-4 py-3 font-bold text-teal-600">{rec.recommended_size}</td>
-                      <td className="px-4 py-3 text-slate-500">
+                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                         {cust ? `${cust.height ?? "?"}سم / ${cust.weight ?? "?"}كغ` : "—"}
                       </td>
+                      <td className="px-4 py-3">{statusBadge[status]}</td>
                       <td className="px-4 py-3">
-                        {hasFb ? (
-                          <span className="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full font-semibold">
-                            {FEEDBACK_LABELS[outcome!.status === "kept" ? "fit_good"
-                              : outcome!.return_reason ?? ""] ?? outcome!.status}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400">مازال</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {!hasFb && (
-                          <div className="flex gap-2 flex-wrap">
-                            <button
-                              onClick={() => copyLink(rec.rec_id)}
-                              className="text-xs px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50 transition"
-                            >
-                              📋 انسخ الرابط
+                        {status !== "done" && (
+                          <div className="flex gap-2 flex-wrap items-center">
+                            {/* نسخ رسالة واتساب */}
+                            <button onClick={() => copyWhatsApp(rec)}
+                              className="text-xs px-2 py-1 border border-green-200 text-green-700 rounded-lg hover:bg-green-50 transition whitespace-nowrap">
+                              📱 انسخ رسالة
                             </button>
+
+                            {/* رقم الهاتف */}
+                            <input
+                              type="tel"
+                              placeholder="06XXXXXXXX"
+                              value={phone}
+                              onChange={e => setPhones(p => ({ ...p, [rec.rec_id]: e.target.value }))}
+                              className="w-28 text-xs border border-slate-200 rounded-lg px-2 py-1 text-right"
+                              dir="ltr"
+                            />
+
+                            {/* فتح واتساب */}
+                            {phone && (
+                              <button onClick={() => openWhatsApp(rec, phone)}
+                                className="text-xs px-2 py-1 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition whitespace-nowrap">
+                                📲 فتح واتساب
+                              </button>
+                            )}
+
+                            {/* إدخال يدوي */}
                             {(["fit_good","too_tight","too_loose"] as const).map(fb => (
-                              <button
-                                key={fb}
+                              <button key={fb}
                                 disabled={sending === rec.rec_id + fb}
                                 onClick={() => sendManual(rec.rec_id, fb)}
-                                className="text-xs px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50 transition disabled:opacity-50"
-                              >
+                                className="text-xs px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-50 transition disabled:opacity-50">
                                 {fb === "fit_good" ? "مناسب" : fb === "too_tight" ? "ضيّق" : "واسع"}
                               </button>
                             ))}

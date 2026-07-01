@@ -695,6 +695,10 @@
     restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
     result.appendChild(restartBtn);
 
+    var consentEl = document.createElement("p");
+    consentEl.style.cssText = "font-size:10px;color:#9ca3af;text-align:center;margin:10px 0 0;direction:rtl";
+    consentEl.textContent = "بإدخال قياساتك، أنت توافق على معالجتها لحساب مقاسك فقط";
+    result.appendChild(consentEl);
 
     body.appendChild(result);
   }
