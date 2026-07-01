@@ -12,8 +12,12 @@ const supabase = createClient(
 
 const ratelimit = makeRatelimit(10, "1 m", "qiyasi_feedback");
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const STEP    = 0.05;
+const UUID_RE  = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const STEP_MAP: Record<string, number> = {
+  manual_merchant:     0.1,
+  localStorage_return: 0.08,
+  quick_widget:        0.05,
+};
 
 function clamp(v: number): number { return Math.min(1, Math.max(-1, v)); }
 
@@ -36,11 +40,14 @@ export async function POST(req: NextRequest) {
   const CORS   = corsHeaders(origin);
 
   try {
-    let rec_id: string, quick_feedback: string;
+    let rec_id: string, quick_feedback: string, feedback_type: string;
     try {
       const body     = await req.json();
       rec_id         = String(body.rec_id         ?? "").trim();
       quick_feedback = String(body.quick_feedback ?? "").trim();
+      feedback_type  = Object.keys(STEP_MAP).includes(body.feedback_type)
+        ? String(body.feedback_type)
+        : "quick_widget";
     } catch {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: CORS });
     }
@@ -87,7 +94,7 @@ export async function POST(req: NextRequest) {
       bought_size:   rec.recommended_size,
       status,
       return_reason,
-      feedback_type: "quick_widget",
+      feedback_type,
     });
 
     // تحديث size_bias per-category (category مخزونة مباشرة فـ recommendations)
@@ -101,8 +108,9 @@ export async function POST(req: NextRequest) {
 
       if (customer) {
         const merchantId = customer.merchant_id as string;
-        const signal     = quick_feedback === "too_tight" ?  STEP
-                         : quick_feedback === "too_loose" ? -STEP : 0;
+        const step       = STEP_MAP[feedback_type] ?? 0.05;
+        const signal     = quick_feedback === "too_tight" ?  step
+                         : quick_feedback === "too_loose" ? -step : 0;
 
         const { data: biasRow } = await supabase
           .from("size_bias")

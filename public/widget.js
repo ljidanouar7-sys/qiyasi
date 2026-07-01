@@ -387,10 +387,82 @@
     preloadCardImages();
   }
 
-  function openModal()  {
-    step = 0; answers = {};
+  function openModal() {
+    // تحقق من feedback معلّق (>= 3 أيام)
+    var pending = null;
+    try {
+      var raw = localStorage.getItem("qiyasi_pending_rec");
+      if (raw) {
+        var p = JSON.parse(raw);
+        if (p && p.rec_id && (Date.now() - (p.timestamp || 0)) >= 3 * 24 * 60 * 60 * 1000) {
+          pending = p;
+        }
+      }
+    } catch {}
+
     gid("ssm-overlay").classList.add("open");
-    render();
+
+    if (pending) {
+      showPendingFeedback(pending);
+    } else {
+      step = 0; answers = {};
+      render();
+    }
+  }
+
+  function showPendingFeedback(pending) {
+    var body = gid("ssm-body");
+    body.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.style.cssText = "text-align:center;padding:20px 16px;direction:rtl";
+
+    var title = document.createElement("p");
+    title.style.cssText = "font-size:15px;font-weight:700;color:#1e293b;margin:0 0 6px";
+    title.textContent = "جرّبتي المقاس " + pending.recommended_size + "؟ كيفاش كان؟";
+    wrap.appendChild(title);
+
+    var sub = document.createElement("p");
+    sub.style.cssText = "font-size:12px;color:#9ca3af;margin:0 0 16px";
+    sub.textContent = "تقييمك يساعدنا على تحسين التوصيات";
+    wrap.appendChild(sub);
+
+    var btnRow = document.createElement("div");
+    btnRow.style.cssText = "display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:14px";
+
+    [
+      { label: "👍 كان مناسباً", value: "fit_good"  },
+      { label: "كان ضيّقاً",     value: "too_tight" },
+      { label: "كان واسعاً",     value: "too_loose" },
+    ].forEach(function(b) {
+      var btn = document.createElement("button");
+      btn.textContent = b.label;
+      btn.style.cssText = "padding:8px 12px;font-size:13px;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;background:#f9fafb;direction:rtl";
+      btn.onclick = function() {
+        fetch(API_BASE + "/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rec_id: pending.rec_id, quick_feedback: b.value, feedback_type: "localStorage_return" }),
+        }).then(function(r) {
+          // 200 أو 409: امسح localStorage وابدا Quiz
+          if (r.ok || r.status === 409) {
+            try { localStorage.removeItem("qiyasi_pending_rec"); } catch {}
+          }
+          step = 0; answers = {}; render();
+        }).catch(function() {
+          step = 0; answers = {}; render();
+        });
+      };
+      btnRow.appendChild(btn);
+    });
+    wrap.appendChild(btnRow);
+
+    var skipBtn = document.createElement("button");
+    skipBtn.textContent = "تجاوز ←";
+    skipBtn.style.cssText = "font-size:12px;color:#9ca3af;background:none;border:none;cursor:pointer;direction:rtl";
+    skipBtn.onclick = function() { step = 0; answers = {}; render(); }; // لا يمسح localStorage
+    wrap.appendChild(skipBtn);
+
+    body.appendChild(wrap);
   }
   function closeModal() { gid("ssm-overlay").classList.remove("open"); }
 
@@ -562,6 +634,16 @@
       .then(data => {
         if (data && data.size) {
           _lastRecId = data.rec_id || null;
+          // خزّن التوصية فـ localStorage باش يتسأل الزبون بعد 3 أيام
+          if (_lastRecId) {
+            try {
+              localStorage.setItem("qiyasi_pending_rec", JSON.stringify({
+                rec_id:           _lastRecId,
+                recommended_size: data.size,
+                timestamp:        Date.now(),
+              }));
+            } catch {}
+          }
           showResult(data);
         } else if (data) showError("لم يتمكن النظام من تحديد مقاسك — يبدو أن جدول مقاسات هذا المنتج يحتاج إلى تحديث. يرجى التواصل مع المتجر.");
       })

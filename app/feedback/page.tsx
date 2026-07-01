@@ -26,7 +26,7 @@ export default function FeedbackPage() {
       const res = await fetch("/api/feedback", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ rec_id, quick_feedback }),
+        body:    JSON.stringify({ rec_id, quick_feedback, feedback_type: "localStorage_return" }),
       });
       if (res.status === 409) { setStatus("already"); return; }
       if (res.status === 404) { setStatus("notfound"); return; }
@@ -64,10 +64,10 @@ export default function FeedbackPage() {
         {status === "idle" && (
           <>
             <h1 style={{ fontSize: "20px", fontWeight: 800, color: "#1e293b", margin: "0 0 8px" }}>
-              كيف كان المقاس؟
+              كيفاش كان مقاس المنتج اللي شريتي؟
             </h1>
             <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 28px" }}>
-              تقييمك يساعدنا على تحسين التوصيات
+              تقييمك يساعدنا على تحسين التوصيات للجميع
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {OPTIONS.map(o => (
