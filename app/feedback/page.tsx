@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Status = "idle" | "loading" | "success" | "error" | "already" | "notfound";
@@ -11,9 +11,9 @@ const OPTIONS = [
   { label: "📏 كان واسعاً",           value: "too_loose", color: "#3b82f6" },
 ];
 
-export default function FeedbackPage() {
-  const params   = useSearchParams();
-  const rec_id   = params.get("rec") ?? "";
+function FeedbackContent() {
+  const params  = useSearchParams();
+  const rec_id  = params.get("rec") ?? "";
   const [status, setStatus] = useState<Status>("idle");
 
   useEffect(() => {
@@ -39,25 +39,14 @@ export default function FeedbackPage() {
 
   return (
     <div style={{
-      minHeight:   "100vh",
-      display:     "flex",
-      alignItems:  "center",
-      justifyContent: "center",
-      background:  "#f8fafc",
-      fontFamily:  "'Segoe UI', Tahoma, Arial, sans-serif",
-      direction:   "rtl",
-      padding:     "24px",
+      minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", background: "#f8fafc",
+      fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif", direction: "rtl", padding: "24px",
     }}>
       <div style={{
-        background:   "#fff",
-        borderRadius: "20px",
-        padding:      "40px 32px",
-        maxWidth:     "400px",
-        width:        "100%",
-        boxShadow:    "0 4px 24px rgba(0,0,0,.08)",
-        textAlign:    "center",
+        background: "#fff", borderRadius: "20px", padding: "40px 32px",
+        maxWidth: "400px", width: "100%", boxShadow: "0 4px 24px rgba(0,0,0,.08)", textAlign: "center",
       }}>
-        {/* Logo */}
         <div style={{ fontSize: "32px", marginBottom: "8px" }}>📏</div>
         <p style={{ color: "#94a3b8", fontSize: "13px", margin: "0 0 28px" }}>قياسي — تقييم المقاس</p>
 
@@ -72,15 +61,9 @@ export default function FeedbackPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {OPTIONS.map(o => (
                 <button key={o.value} onClick={() => submit(o.value)} style={{
-                  padding:      "14px 20px",
-                  borderRadius: "12px",
-                  border:       `2px solid ${o.color}20`,
-                  background:   `${o.color}10`,
-                  color:        o.color,
-                  fontSize:     "15px",
-                  fontWeight:   700,
-                  cursor:       "pointer",
-                  transition:   "all .15s",
+                  padding: "14px 20px", borderRadius: "12px",
+                  border: `2px solid ${o.color}20`, background: `${o.color}10`,
+                  color: o.color, fontSize: "15px", fontWeight: 700, cursor: "pointer",
                 }}>
                   {o.label}
                 </button>
@@ -89,9 +72,7 @@ export default function FeedbackPage() {
           </>
         )}
 
-        {status === "loading" && (
-          <p style={{ color: "#64748b" }}>جاري الإرسال...</p>
-        )}
+        {status === "loading"  && <p style={{ color: "#64748b" }}>جاري الإرسال...</p>}
 
         {status === "success" && (
           <>
@@ -131,5 +112,17 @@ export default function FeedbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function FeedbackPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: "14px", color: "#94a3b8" }}>جاري التحميل...</div>
+      </div>
+    }>
+      <FeedbackContent />
+    </Suspense>
   );
 }
