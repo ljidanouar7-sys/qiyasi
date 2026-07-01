@@ -147,15 +147,32 @@ export async function POST(req: NextRequest) {
     const sizeChart = category.size_chart as SizeChart;
     const niche     = String(category.niche ?? "");
 
-    // ── Cache ──────────────────────────────────────────────────────────────────
-    const cacheKey = `size:v8:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}`;
+    // ── Bias per-category (Redis cache TTL=1h) ────────────────────────────────
+    const biasCacheKey = `bias:v1:${merchantId}:${niche}`;
+    let biasValue = 0;
+    const cachedBias = await redis.get(biasCacheKey);
+    if (cachedBias != null) {
+      biasValue = Number(cachedBias);
+    } else {
+      const { data: biasRow } = await supabase
+        .from("size_bias")
+        .select("bias_value")
+        .eq("merchant_id", merchantId!)
+        .eq("category", niche)
+        .maybeSingle();
+      biasValue = Number(biasRow?.bias_value ?? 0);
+      await redis.set(biasCacheKey, String(biasValue), { ex: 3600 });
+    }
+
+    // ── Cache (keyed with bias so stale results don't survive a bias update) ──
+    const cacheKey = `size:v9:${merchantId}:${tag}:${niche}:${height}:${weight}:${katif}:${sadr}:${khasr}:${warek}:${biasValue}`;
     const cached   = await redis.get(cacheKey);
     if (cached) {
       try {
         const data = typeof cached === "string" ? JSON.parse(cached) : cached;
-        return NextResponse.json(data, { headers: CORS });
+        return NextResponse.json(data, { headers: CORS }); // cache hit — no rec_id
       } catch {
-        // corrupted cache — fall through to calculate
+        // corrupted cache — fall through
       }
     }
 
@@ -164,23 +181,52 @@ export async function POST(req: NextRequest) {
       niche, height, weight,
       katif, sadr, khasr, warek,
       size_chart: sizeChart.rows,
+      bias:       biasValue,
     });
 
-    log("info", "size_calculated", {
-      domain: normalizedOrigin,
-      merchantId,
-      size: result.size,
-    });
+    log("info", "size_calculated", { domain: normalizedOrigin, merchantId, size: result.size });
 
-    const responseBody = {
+    // ── Log customer + recommendation (await — needed for rec_id) ─────────────
+    let recId: string | null = null;
+    try {
+      const { data: customer } = await supabase
+        .from("customers")
+        .insert({ merchant_id: merchantId!, height, weight })
+        .select("customer_id").single();
+
+      if (customer) {
+        const { data: product } = await supabase
+          .from("products")
+          .select("product_id")
+          .eq("merchant_id", merchantId!)
+          .eq("category", niche)
+          .eq("size", result.size)
+          .maybeSingle();
+
+        const { data: rec } = await supabase
+          .from("recommendations")
+          .insert({
+            customer_id:      customer.customer_id,
+            product_id:       product?.product_id ?? null,
+            category:         niche,        // دائماً متاح للـ feedback
+            recommended_size: result.size,
+            source:           "anthropometric",
+          })
+          .select("rec_id").single();
+
+        recId = rec?.rec_id ?? null;
+      }
+    } catch { /* لا نكسر الـ response إيلا فشل التسجيل */ }
+
+    // ── Cache result WITHOUT rec_id ────────────────────────────────────────────
+    const cacheBody = {
       size:         result.size,
       status:       result.status,
       alternatives: result.alternatives,
     };
+    await redis.set(cacheKey, JSON.stringify(cacheBody), { ex: 3600 });
 
-    await redis.set(cacheKey, JSON.stringify(responseBody), { ex: 3600 });
-
-    return NextResponse.json(responseBody, { headers: CORS });
+    return NextResponse.json({ ...cacheBody, rec_id: recId }, { headers: CORS });
 
   } catch (err) {
     log("error", "unhandled_error", { error: String(err) });
