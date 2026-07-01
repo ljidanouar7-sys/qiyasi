@@ -66,18 +66,35 @@ function chartToEditRows(chart: SizeChart): EditRow[] {
   }));
 }
 
+function parseDecimal(val: string | number): number {
+  if (typeof val === "number") return val;
+  return parseFloat(String(val).replace(",", ".")) || 0;
+}
+
 function editRowsToChart(rows: EditRow[]): SizeChart {
   return {
     rows: rows.map(r => ({
       size:      r.size,
-      bust_min:  parseFloat(r.bust_min)  || 0,
-      bust_max:  parseFloat(r.bust_max)  || 0,
-      waist_min: parseFloat(r.waist_min) || 0,
-      waist_max: parseFloat(r.waist_max) || 0,
-      hip_min:   parseFloat(r.hip_min)   || 0,
-      hip_max:   parseFloat(r.hip_max)   || 0,
+      bust_min:  parseDecimal(r.bust_min),
+      bust_max:  parseDecimal(r.bust_max),
+      waist_min: parseDecimal(r.waist_min),
+      waist_max: parseDecimal(r.waist_max),
+      hip_min:   parseDecimal(r.hip_min),
+      hip_max:   parseDecimal(r.hip_max),
     })),
   };
+}
+
+function detectGaps(editRows: EditRow[]): string | null {
+  const sorted = [...editRows].sort((a, b) => parseDecimal(a.bust_min) - parseDecimal(b.bust_min));
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const curMax  = parseDecimal(sorted[i].bust_max);
+    const nextMin = parseDecimal(sorted[i + 1].bust_min);
+    if (curMax < nextMin) {
+      return `فجوة بين ${sorted[i].size} (max=${curMax}) و ${sorted[i + 1].size} (min=${nextMin}) — يرجى تصحيح الحدود`;
+    }
+  }
+  return null;
 }
 
 function defaultEditRows(niche: string): EditRow[] {
@@ -221,20 +238,45 @@ export default function CategoriesPage() {
       const MAX = merchantPlan === "pro" ? 50 : 3;
       if (categories.length >= MAX) { showToast(`❌ وصلت للحد الأقصى (${MAX} فئات)`); return; }
     }
+    const gapErr = detectGaps(rows);
+    if (gapErr) { showToast(`❌ ${gapErr}`); return; }
+
     setSaving(true);
     try {
+      const chart   = editRowsToChart(rows);
       const payload = {
         merchant_id: merchantId,
         name:        catName.trim(),
         tag:         catTag.trim().replace(/\s+/g, "-"),
         niche:       catNiche,
         fabric_type: catFabric,
-        size_chart:  editRowsToChart(rows),
+        size_chart:  chart,
       };
       const { error } = editingCat
         ? await supabase.from("categories").update(payload).eq("id", editingCat.id)
         : await supabase.from("categories").insert(payload);
       if (error) { showToast(`❌ خطأ في الحفظ: ${error.message}`); return; }
+
+      // حفظ منفصل في products (normalized) — إلا فشل ما يأثرش على categories
+      await fetch("/api/merchant/save-products", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchant_id:  merchantId,
+          category:     catNiche,
+          stretch:      catFabric === "stretch",
+          rows: chart.rows.map(r => ({
+            size:      r.size,
+            chest_min: r.bust_min,
+            chest_max: r.bust_max,
+            waist_min: r.waist_min,
+            waist_max: r.waist_max,
+            hip_min:   r.hip_min,
+            hip_max:   r.hip_max,
+          })),
+        }),
+      });
+
       showToast(editingCat ? "✅ تم التعديل" : "✅ تم الحفظ");
       setShowForm(false);
       fetchCategories(merchantId);

@@ -9,7 +9,12 @@ export type AlgoInput = {
   khasr:      string;
   warek:      string;
   size_chart: SizeRow[];
+  bias?:      number; // تصحيح تلقائي مكتسب من فيدباك الزبائن (موجب = مقاس أكبر، سالب = أصغر)
 };
+
+function clampIdx(idx: number, last: number): number {
+  return Math.min(Math.max(idx, 0), last);
+}
 
 export type SizeResult = {
   size:         string;
@@ -22,7 +27,7 @@ export type SizeResult = {
 
 function getTshirtSize(
   rows: SizeRow[], height: number, weight: number,
-  katif: string, khasr: string
+  katif: string, khasr: string, bias: number
 ): SizeResult {
   const katifAdj: Record<string, number> = { wide: 2, normal: 0, slim: -2 };
   const khsarAdj: Record<string, number> = { big: 5, normal: 0, slim: -5 };
@@ -32,17 +37,19 @@ function getTshirtSize(
   const chest_final = chest_base + (katifAdj[katif] ?? 0);
   const waist_final = waist_base + (khsarAdj[khasr] ?? 0);
 
-  function findIdx(val: number, key: "bust_max" | "waist_max"): number {
+  function findIdx(val: number, minKey: "bust_min"|"waist_min", maxKey: "bust_max"|"waist_max"): number {
     for (let i = 0; i < rows.length; i++) {
-      if (val <= rows[i][key]) return i;
+      const min = rows[i][minKey] ?? -Infinity;
+      const max = rows[i][maxKey];
+      if (val >= min && val < max) return i;  // min ≤ x < max — لا overlap
     }
-    return rows.length - 1;
+    return rows.length - 1;  // يتجاوز الأقصى → آخر مقاس
   }
 
-  const chestIdx = findIdx(chest_final, "bust_max");
-  const waistIdx = findIdx(waist_final, "waist_max");
-  const finalIdx = Math.max(chestIdx, waistIdx);
+  const chestIdx = findIdx(chest_final, "bust_min", "bust_max");
+  const waistIdx = findIdx(waist_final, "waist_min", "waist_max");
   const last     = rows.length - 1;
+  const finalIdx = clampIdx(Math.max(chestIdx, waistIdx) + Math.round(bias), last);
 
   return {
     size:       rows[finalIdx].size,
@@ -59,7 +66,7 @@ function getTshirtSize(
 
 function getFittedSize(
   rows: SizeRow[], height: number, weight: number,
-  sadr: string, khasr: string, warek: string
+  sadr: string, khasr: string, warek: string, bias: number
 ): SizeResult {
   const adj: Record<string, number> = { big: 1, normal: 0, slim: -1 };
 
@@ -72,8 +79,8 @@ function getFittedSize(
                  + (adj[khasr] ?? 0) * 0.6
                  + (adj[warek] ?? 0) * 0.5;
 
-  const finalIdx = Math.min(Math.max(Math.round(baseIdx + weighted), 0), rows.length - 1);
   const last     = rows.length - 1;
+  const finalIdx = clampIdx(Math.round(baseIdx + weighted) + Math.round(bias), last);
 
   return {
     size:   rows[finalIdx].size,
@@ -89,7 +96,7 @@ function getFittedSize(
 
 function getAbayaSize(
   rows: SizeRow[], height: number, weight: number,
-  sadr: string, warek: string
+  sadr: string, warek: string, bias: number
 ): SizeResult {
   const adj: Record<string, number> = { big: 1, normal: 0, slim: -1 };
 
@@ -101,8 +108,8 @@ function getAbayaSize(
   const weighted = (adj[sadr]  ?? 0) * 0.7
                  + (adj[warek] ?? 0) * 0.3;
 
-  const finalIdx = Math.min(Math.max(Math.round(baseIdx + weighted), 0), rows.length - 1);
-  const last = rows.length - 1;
+  const last     = rows.length - 1;
+  const finalIdx = clampIdx(Math.round(baseIdx + weighted) + Math.round(bias), last);
 
   return {
     size: rows[finalIdx].size,
@@ -118,7 +125,7 @@ function getAbayaSize(
 
 function getThobeSize(
   rows: SizeRow[], height: number, weight: number,
-  katif: string, sadr: string
+  katif: string, sadr: string, bias: number
 ): SizeResult {
   const adj: Record<string, number> = { wide: 1, big: 1, normal: 0, slim: -1 };
 
@@ -130,8 +137,8 @@ function getThobeSize(
   const weighted = (adj[katif] ?? 0) * 0.6
                  + (adj[sadr]  ?? 0) * 0.4;
 
-  const finalIdx = Math.min(Math.max(Math.round(baseIdx + weighted), 0), rows.length - 1);
-  const last = rows.length - 1;
+  const last     = rows.length - 1;
+  const finalIdx = clampIdx(Math.round(baseIdx + weighted) + Math.round(bias), last);
 
   return {
     size: rows[finalIdx].size,
@@ -146,9 +153,12 @@ function getThobeSize(
 // ─── Main entry ──────────────────────────────────────────────────────────────
 
 export function calculateSize(input: AlgoInput): SizeResult {
-  const { height, weight, katif, sadr, khasr, warek, size_chart } = input;
+  const { height, weight, katif, sadr, khasr, warek, bias = 0 } = input;
 
-  if (!size_chart?.length) return { size: "", status: "ok", alternatives: [] };
+  // نرتب تصاعدياً حسب bust_min قبل أي حساب — باش fallback آخر مقاس يكون صحيح دائماً
+  const size_chart = [...input.size_chart].sort((a, b) => (a.bust_min ?? 0) - (b.bust_min ?? 0));
+
+  if (!size_chart.length) return { size: "", status: "ok", alternatives: [] };
 
   const niche =
     input.niche === "t_shirt"       ? "tshirt" :
@@ -157,8 +167,8 @@ export function calculateSize(input: AlgoInput): SizeResult {
     input.niche === "jelaba"        ? "thobe"  :
     input.niche;
 
-  if (niche === "tshirt") return getTshirtSize(size_chart, height, weight, katif, khasr);
-  if (niche === "abaya")  return getAbayaSize(size_chart, height, weight, sadr, warek);
-  if (niche === "thobe")  return getThobeSize(size_chart, height, weight, katif, sadr);
-  return getFittedSize(size_chart, height, weight, sadr, khasr, warek);
+  if (niche === "tshirt") return getTshirtSize(size_chart, height, weight, katif, khasr, bias);
+  if (niche === "abaya")  return getAbayaSize(size_chart, height, weight, sadr, warek, bias);
+  if (niche === "thobe")  return getThobeSize(size_chart, height, weight, katif, sadr, bias);
+  return getFittedSize(size_chart, height, weight, sadr, khasr, warek, bias);
 }
