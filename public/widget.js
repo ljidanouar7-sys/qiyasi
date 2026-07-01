@@ -613,41 +613,37 @@
     restartBtn.addEventListener("click", () => { step = 0; answers = {}; render(); });
     result.appendChild(restartBtn);
 
-    // ── Feedback (اختياري) ────────────────────────────────────────────────────
+    // ── رابط التقييم (للتاجر يبعتو مع الطلب) ────────────────────────────────
     if (_lastRecId) {
       var fbWrap = document.createElement("div");
       fbWrap.style.cssText = "margin-top:14px;text-align:center;direction:rtl";
 
       var fbLabel = document.createElement("p");
-      fbLabel.style.cssText = "font-size:12px;color:#6b7280;margin:0 0 8px";
-      fbLabel.textContent = "واش المقاس كان مناسب؟";
+      fbLabel.style.cssText = "font-size:11px;color:#6b7280;margin:0 0 6px";
+      fbLabel.textContent = "احتفظ برابط التقييم — قيّم المقاس بعد الاستلام";
       fbWrap.appendChild(fbLabel);
 
-      var btnRow = document.createElement("div");
-      btnRow.style.cssText = "display:flex;gap:6px;justify-content:center;flex-wrap:wrap";
-
-      [
-        { label: "👍 مناسب",  value: "fit_good"  },
-        { label: "كان ضيّق", value: "too_tight" },
-        { label: "كان واسع", value: "too_loose" },
-      ].forEach(function(b) {
-        var btn = document.createElement("button");
-        btn.textContent = b.label;
-        btn.style.cssText = "padding:5px 10px;font-size:12px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#f9fafb;direction:rtl";
-        btn.onclick = function() {
-          var rid = _lastRecId;
-          if (!rid) return;
-          fetch(API_BASE + "/api/feedback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rec_id: rid, quick_feedback: b.value }),
+      var copyBtn = document.createElement("button");
+      copyBtn.style.cssText = "padding:6px 14px;font-size:12px;border:1px solid #0d9488;border-radius:8px;cursor:pointer;background:#f0fdfa;color:#0d9488;font-weight:700;direction:rtl";
+      copyBtn.textContent = "📋 انسخ رابط التقييم";
+      copyBtn.onclick = function() {
+        var link = API_BASE + "/feedback?rec=" + _lastRecId;
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(link).then(function() {
+            copyBtn.textContent = "✅ تم النسخ!";
+            setTimeout(function() { copyBtn.textContent = "📋 انسخ رابط التقييم"; }, 2000);
           });
-          fbWrap.innerHTML = '<p style="font-size:12px;color:#10b981;text-align:center;direction:rtl">شكراً على تقييمك! ✅</p>';
-        };
-        btnRow.appendChild(btn);
-      });
-
-      fbWrap.appendChild(btnRow);
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = link; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          copyBtn.textContent = "✅ تم النسخ!";
+          setTimeout(function() { copyBtn.textContent = "📋 انسخ رابط التقييم"; }, 2000);
+        }
+      };
+      fbWrap.appendChild(copyBtn);
       result.appendChild(fbWrap);
     }
 
