@@ -117,6 +117,7 @@ export async function GET(req: NextRequest) {
   const { data: linkData } = await supabase.auth.admin.generateLink({
     type:  "magiclink",
     email: shopEmail,
+    options: { redirectTo: `${appUrl}/dashboard` },
   });
 
   const redirectTarget = linkData?.properties?.action_link ?? `${appUrl}/auth`;
