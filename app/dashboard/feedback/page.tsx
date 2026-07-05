@@ -48,14 +48,22 @@ export default function FeedbackDashboardPage() {
       .from("merchants").select("id").eq("user_id", user.id).single();
     if (!merchant) return;
 
+    const { data: custRows } = await supabase
+      .from("customers")
+      .select("customer_id")
+      .eq("merchant_id", merchant.id);
+
+    const ids = (custRows ?? []).map(c => c.customer_id);
+    if (!ids.length) { setRecs([]); setLoading(false); return; }
+
     const { data } = await supabase
       .from("recommendations")
       .select(`
         rec_id, category, recommended_size, created_at, requested_at,
-        customers!inner(height, weight, merchant_id),
+        customers(height, weight),
         outcomes(status, return_reason)
       `)
-      .eq("customers.merchant_id", merchant.id)
+      .in("customer_id", ids)
       .order("created_at", { ascending: false })
       .limit(200);
 
