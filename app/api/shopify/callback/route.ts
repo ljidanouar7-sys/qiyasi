@@ -66,18 +66,25 @@ export async function GET(req: NextRequest) {
       .update({ shopify_access_token: access_token, status: "active" })
       .eq("id", existing.id);
   } else {
-    // أنشئ user جديد
-    const { data: authData } = await supabase.auth.admin.createUser({
-      email:         shopEmail,
-      password:      crypto.randomUUID(),
-      email_confirm: true,
-    });
+    // تحقق إيلا الـ auth user موجود من قبل (محاولة سابقة فاشلة)
+    const { data: listData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    const foundUser = listData?.users?.find(u => u.email === shopEmail);
 
-    if (!authData?.user) {
-      return new Response("Failed to create user", { status: 500 });
+    if (foundUser) {
+      userId = foundUser.id;
+    } else {
+      const { data: authData } = await supabase.auth.admin.createUser({
+        email:         shopEmail,
+        password:      crypto.randomUUID(),
+        email_confirm: true,
+      });
+
+      if (!authData?.user) {
+        return new Response("Failed to create user", { status: 500 });
+      }
+
+      userId = authData.user.id;
     }
-
-    userId = authData.user.id;
 
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
