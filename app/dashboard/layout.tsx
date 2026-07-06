@@ -21,6 +21,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [email,      setEmail]      = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [checking,   setChecking]   = useState(true);
+  const [shopifyHost, setShopifyHost] = useState<string | null>(null);
+
+  // كشف إيلا التطبيق مفتوح داخل Shopify admin (يبعت ?host=xxx في URL)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const h = params.get("host");
+    if (h) setShopifyHost(h);
+  }, []);
 
   useEffect(() => {
     async function check() {
@@ -61,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 
-  return (
+  const dashboardContent = (
     <div className="min-h-screen bg-slate-50" dir="rtl">
 
       {/* ===== MOBILE TOP HEADER ===== */}
@@ -197,4 +205,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     </div>
   );
+
+  return dashboardContent;
 }

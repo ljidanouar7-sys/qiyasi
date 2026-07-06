@@ -12,6 +12,7 @@
     "@paddle/paddle-js": "^1.6.4",
     "@paddle/paddle-node-sdk": "^3.8.0",
     "@sentry/nextjs": "^10.51.0",
+    "@shopify/app-bridge-react": "^4.2.11",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.2",
     "@upstash/ratelimit": "^2.0.8",

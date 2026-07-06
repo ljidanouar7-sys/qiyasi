@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// CSP للصفحات العادية (مغلق بالكامل)
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://js.paddle.com${isDev ? " 'unsafe-eval'" : ""}`,
@@ -17,12 +18,36 @@ const csp = [
   "form-action 'self'",
 ].join("; ");
 
+// CSP للداشبورد — يسمح لـ Shopify بالـ iframe
+const dashboardCsp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline' https://cdn.paddle.com https://js.paddle.com${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: https: blob:",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://*.supabase.co https://*.upstash.io https://api.paddle.com https://sandbox-api.paddle.com https://*.myshopify.com https://admin.shopify.com",
+  "frame-src https://*.paddle.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  // السماح لـ Shopify admin بتحميل الداشبورد داخل iframe
+  "frame-ancestors https://*.myshopify.com https://admin.shopify.com",
+  "form-action 'self'",
+].join("; ");
+
 const securityHeaders = [
   { key: "X-Frame-Options",           value: "DENY" },
   { key: "X-Content-Type-Options",    value: "nosniff" },
   { key: "Referrer-Policy",           value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy",        value: "camera=(), microphone=(), geolocation=()" },
   { key: "Content-Security-Policy",   value: csp },
+];
+
+const dashboardHeaders = [
+  // بدون X-Frame-Options (لأن frame-ancestors في CSP كافي)
+  { key: "X-Content-Type-Options",    value: "nosniff" },
+  { key: "Referrer-Policy",           value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy",        value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Content-Security-Policy",   value: dashboardCsp },
 ];
 
 const nextConfig: NextConfig = {
@@ -32,9 +57,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Apply to all non-API routes (APIs need open CORS for widget)
-        source: "/((?!api).*)",
+        // صفحات عادية (مو dashboard ومو api) — مغلق بالكامل
+        source: "/((?!api|dashboard).*)",
         headers: securityHeaders,
+      },
+      {
+        // داشبورد — يسمح لـ Shopify بالـ iframe
+        source: "/dashboard/:path*",
+        headers: dashboardHeaders,
       },
       {
         source: "/widget.js",
