@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "../../../lib/supabase";
 
 export default function EmbedPage() {
@@ -8,6 +9,7 @@ export default function EmbedPage() {
   const [savedDomain, setSavedDomain] = useState("");
   const [savingDomain, setSavingDomain] = useState(false);
   const [domainToast, setDomainToast]   = useState("");
+  const [isShopify, setIsShopify]       = useState(false);
 
   const appOrigin = typeof window !== "undefined" ? window.location.origin : "https://qiyasi.net";
 
@@ -21,16 +23,18 @@ export default function EmbedPage() {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) { window.location.href = "/auth"; return; }
     let { data: merchant } = await supabase
-      .from("merchants").select("id").eq("user_id", userData.user.id).single();
+      .from("merchants").select("id, shop_domain").eq("user_id", userData.user.id).single();
 
     if (!merchant) {
       const { data: m } = await supabase
         .from("merchants").insert({ user_id: userData.user.id, store_name: "متجري" })
-        .select("id").single();
+        .select("id, shop_domain").single();
       merchant = m;
     }
 
     if (merchant) {
+      if ((merchant as { shop_domain?: string | null }).shop_domain) setIsShopify(true);
+
       // Load existing domain via service role API
       const { data: s } = await supabase.auth.getSession();
       const res = await fetch("/api/merchants/get-domain", {
@@ -76,6 +80,79 @@ export default function EmbedPage() {
     navigator.clipboard.writeText(embedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  }
+
+  if (isShopify) {
+    return (
+      <div dir="rtl">
+        <div className="mb-6 md:mb-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">التضمين</p>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">أضف زر "احسب مقاسي"</h1>
+        </div>
+
+        <div className="w-full max-w-2xl space-y-5">
+
+          {/* Shopify status card */}
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-600 text-white text-xl flex items-center justify-center flex-shrink-0">✅</div>
+              <div>
+                <h2 className="font-black text-slate-900">متجرك متصل عبر Shopify App</h2>
+                <p className="text-emerald-700 text-xs mt-0.5">ما محتاجش كود يدوي — كل شي مدار تلقائياً</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <span className="text-emerald-500 font-bold">✓</span>
+                <span>الدومين مسجّل تلقائياً عند تثبيت التطبيق</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-700">
+                <span className="text-emerald-500 font-bold">✓</span>
+                <span>الـ Widget مثبّت عبر Theme App Extension — بضغطة زر في متجرك</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Categories warning */}
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">⚠️</span>
+              <div>
+                <h2 className="font-black text-slate-900 mb-1">خطوة ضرورية باش يظهر الزر</h2>
+                <p className="text-slate-600 text-sm mb-4">
+                  الـ Widget يظهر الزر فقط في صفحات المنتجات اللي عنوانها يطابق فئة مسجّلة عندك.
+                  خاصك تضيف فئة واحدة على الأقل.
+                </p>
+                <Link
+                  href="/dashboard/categories"
+                  className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition"
+                >
+                  ← اذهب لصفحة الفئات
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6">
+            <h2 className="font-black text-slate-900 mb-1">معاينة الزر</h2>
+            <p className="text-slate-400 text-xs mb-5">هكذا سيظهر الزر في متجرك</p>
+            <div className="border border-slate-200 rounded-xl p-5 bg-slate-50">
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {["XS","S","M","L","XL"].map(s => (
+                  <div key={s} className="w-12 h-10 border-2 border-slate-300 rounded-lg flex items-center justify-center text-sm font-bold text-slate-600 bg-white">{s}</div>
+                ))}
+              </div>
+              <button className="inline-flex items-center gap-2 text-white font-bold text-sm px-5 py-2.5 rounded-lg" style={{ background: "#0d9488" }}>
+                📏 احسب مقاسي
+              </button>
+              <p className="text-slate-400 text-xs mt-3">↑ الزر يظهر هنا بجانب خيارات المقاس</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
   }
 
   return (
