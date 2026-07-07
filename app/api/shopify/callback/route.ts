@@ -104,21 +104,26 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 4 — سجّل webhook app/uninstalled
-  await fetch(`https://${shop}/admin/api/2024-01/webhooks.json`, {
-    method:  "POST",
-    headers: {
-      "X-Shopify-Access-Token": access_token,
-      "Content-Type":           "application/json",
-    },
-    body: JSON.stringify({
-      webhook: {
-        topic:   "app/uninstalled",
-        address: `${appUrl}/api/shopify/webhooks`,
-        format:  "json",
-      },
-    }),
-  }).catch(() => { /* non-fatal */ });
+  // 4 — سجّل webhooks (app/uninstalled + app_subscriptions/update)
+  const webhooksToRegister = ["app/uninstalled", "app_subscriptions/update"];
+  await Promise.all(
+    webhooksToRegister.map(topic =>
+      fetch(`https://${shop}/admin/api/2024-01/webhooks.json`, {
+        method:  "POST",
+        headers: {
+          "X-Shopify-Access-Token": access_token,
+          "Content-Type":           "application/json",
+        },
+        body: JSON.stringify({
+          webhook: {
+            topic,
+            address: `${appUrl}/api/shopify/webhooks`,
+            format:  "json",
+          },
+        }),
+      }).catch(() => { /* non-fatal */ })
+    )
+  );
 
   // 5 — أنشئ magic link وredirect للداشبورد
   const { data: linkData } = await supabase.auth.admin.generateLink({

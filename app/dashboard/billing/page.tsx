@@ -11,6 +11,7 @@ export default function BillingPage() {
   const [plan,        setPlan]        = useState<string>("free");
   const [email,       setEmail]       = useState<string>("");
   const [merchantId,  setMerchantId]  = useState<string>("");
+  const [isShopify,   setIsShopify]   = useState(false);
   const [paddle,      setPaddle]      = useState<Paddle | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<"monthly"|"yearly"|null>(null);
@@ -25,15 +26,17 @@ export default function BillingPage() {
 
       const { data: merchant } = await supabase
         .from("merchants")
-        .select("id, plan")
+        .select("id, plan, shop_domain")
         .eq("user_id", user.id)
         .single();
 
       if (merchant) {
         setMerchantId(merchant.id);
         setPlan(merchant.plan || "free");
+        if (merchant.shop_domain) { setIsShopify(true); return; }
       }
 
+      // تجار عاديون فقط — هيّئ Paddle
       try {
         const p = await initializePaddle({
           environment: "production",
@@ -71,6 +74,53 @@ export default function BillingPage() {
 
   const isPro = plan === "pro";
 
+  /* ───── تاجر Shopify ───── */
+  if (isShopify) {
+    return (
+      <div dir="rtl">
+        <div className="mb-6 md:mb-8">
+          <p className="text-xs font-bold uppercase tracking-widest text-teal-600 mb-1">الباقة</p>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">إدارة اشتراكك</h1>
+          <p className="text-slate-400 text-xs md:text-sm mt-1">
+            باقتك الحالية:
+            <span className={`font-black mr-1 ${isPro ? "text-teal-600" : "text-slate-500"}`}>
+              {isPro ? "Pro ⭐" : "مجانية"}
+            </span>
+          </p>
+        </div>
+
+        {isPro ? (
+          <div className="bg-teal-50 border border-teal-200 rounded-2xl p-6 max-w-md">
+            <div className="text-3xl mb-3">🎉</div>
+            <h2 className="font-black text-teal-900 text-lg mb-1">أنت على باقة Pro</h2>
+            <p className="text-teal-700 text-sm mb-4">
+              تستمتع بكل المزايا — حتى 50 فئة، دعم أولوية، وكل الميزات القادمة.
+            </p>
+            <p className="text-teal-600 text-xs font-bold">
+              💳 الاشتراك مُدار عبر Shopify — يُفوتر من حساب متجرك مباشرة.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 max-w-md shadow-sm">
+            <div className="text-3xl mb-3">⭐</div>
+            <h2 className="font-black text-slate-900 text-lg mb-2">اشترك في قياسي Pro</h2>
+            <p className="text-slate-500 text-sm mb-6">
+              $19/شهر — يُفوتر من حساب Shopify الخاص بك.
+            </p>
+            <a
+              href="/api/shopify/billing"
+              className="inline-block w-full text-center bg-teal-600 hover:bg-teal-700
+                         text-white font-black py-3 rounded-xl transition"
+            >
+              اشترك عبر Shopify — $19/شهر
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /* ───── تجار عاديون (Paddle) ───── */
   return (
     <div dir="rtl">
       <div className="mb-6 md:mb-8">

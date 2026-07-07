@@ -34,5 +34,26 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  if (topic === "app_subscriptions/update") {
+    const shopDomain = req.headers.get("x-shopify-shop-domain") ?? "";
+    const payload = JSON.parse(body) as {
+      app_subscription?: { status?: string };
+    };
+    const subStatus = payload?.app_subscription?.status;
+
+    if (shopDomain && subStatus) {
+      if (subStatus === "ACTIVE") {
+        await supabase.from("merchants")
+          .update({ plan: "pro" })
+          .eq("shop_domain", shopDomain);
+      } else {
+        // CANCELLED, DECLINED, EXPIRED, PENDING
+        await supabase.from("merchants")
+          .update({ plan: "free" })
+          .eq("shop_domain", shopDomain);
+      }
+    }
+  }
+
   return new Response("OK", { status: 200 });
 }
