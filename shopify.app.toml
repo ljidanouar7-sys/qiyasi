@@ -1,6 +1,6 @@
 name            = "قياسي"
 client_id       = "d9645bc5d285e2a0464fbd0a8ad28e75"
-application_url = "https://qiyasi.net"
+application_url = "https://qiyasi.net/dashboard"
 embedded        = true
 
 [build]

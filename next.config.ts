@@ -57,9 +57,14 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // صفحات عادية (مو dashboard ومو api) — مغلق بالكامل
-        source: "/((?!api|dashboard).*)",
+        // صفحات عادية (مو dashboard ومو api ومو auth) — مغلق بالكامل
+        source: "/((?!api|dashboard|auth|blocked|welcome).*)",
         headers: securityHeaders,
+      },
+      {
+        // auth/blocked/welcome — يسمح لـ Shopify بالـ iframe (middleware يوجّه إليها)
+        source: "/(auth|blocked|welcome)",
+        headers: dashboardHeaders,
       },
       {
         // داشبورد — يسمح لـ Shopify بالـ iframe
