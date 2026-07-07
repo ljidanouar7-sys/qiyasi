@@ -1,6 +1,4 @@
-api_version = "2024-01"
-
-[[extensions]]
 type   = "theme"
 name   = "قياسي — مطابقة المقاس"
 handle = "size-matcher"
+uid = "e868ce4c-3cf6-570a-325f-d03cd4dd13b0ff47a017"

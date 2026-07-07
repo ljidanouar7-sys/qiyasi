@@ -1,9 +1,10 @@
-name = "قياسي"
-client_id = ""
+name            = "قياسي"
+client_id       = "d9645bc5d285e2a0464fbd0a8ad28e75"
+application_url = "https://qiyasi.net"
+embedded        = true
 
 [build]
 automatically_update_urls_on_dev = true
-dev_store_url = ""
 
 [access_scopes]
 scopes = "read_products"
@@ -15,6 +16,3 @@ redirect_urls = [
 
 [webhooks]
 api_version = "2024-01"
-
-[pos]
-embedded = false
